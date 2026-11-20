@@ -46,12 +46,10 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
         when (state.constructor) {
             TdApi.AuthorizationStateWaitTdlibParameters.CONSTRUCTOR -> client?.send(TdApi.SetTdlibParameters(
                 false, context.filesDir.resolve("tdlib/" + profile.id).absolutePath,
-                null, null, true, true, true, false, profile.apiId, apiHash,
+                null, null, true, true, true, true, profile.apiId, apiHash,
                 "en", android.os.Build.MODEL ?: "Android",
                 android.os.Build.VERSION.RELEASE ?: "Android", "1.0.0"
             ), this)
-            TdApi.AuthorizationStateWaitEncryptionKey.CONSTRUCTOR ->
-                client?.send(TdApi.CheckDatabaseEncryptionKey(""), this)
             TdApi.AuthorizationStateReady.CONSTRUCTOR -> loadChats()
             TdApi.AuthorizationStateClosed.CONSTRUCTOR -> client = null
         }
