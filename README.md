@@ -14,11 +14,13 @@ TronDroid is an Android Telegram userbot manager built with Kotlin, Jetpack Comp
 - Plugin catalogue with persistent enable/disable preferences
 - Automatic debug and manually triggered release GitHub Actions
 
-## Package IDs
-| Variant | Application ID |
-|---|---|
-| Debug | `com.vikram.trondroid-debug` |
-| Release | `com.vikram.trondroid` |
+## Package IDs and variants
+| Variant | Gradle task | Application ID |
+|---|---|---|
+| Debug | `assembleDevDebug` | `com.vikram.trondroid-debug` |
+| Release | `assembleProdRelease` | `com.vikram.trondroid` |
+
+The two selected variants are explicitly filtered in Gradle; the debug and release app IDs are not derived through a suffix.
 
 ## Requirements
 - Android Studio with Android SDK 36
@@ -29,8 +31,8 @@ TronDroid is an Android Telegram userbot manager built with Kotlin, Jetpack Comp
 ## First-time setup
 1. Clone this repository.
 2. Run `bash scripts/bootstrap-easytdlib.sh`. This downloads EasyTDLib's generated TDLib Java bindings, native Android libraries, third-party notices and Gradle wrapper. These upstream binaries are not duplicated in this repository.
-3. Open in Android Studio and sync, or run `./gradlew assembleDebug`.
-4. Debug APK output: `app/build/outputs/apk/debug/`.
+3. Open in Android Studio and sync, or run `./gradlew assembleDevDebug`.
+4. Debug APK output: `app/build/outputs/apk/dev/debug/`.
 
 ## Telegram API credentials
 Create an application at [my.telegram.org](https://my.telegram.org) → API development tools. Add a profile in TronDroid and enter its API ID and API hash. The hash is encrypted locally with an AES-GCM key held by Android Keystore. Never commit credentials, session databases or 2FA passwords.
@@ -38,8 +40,8 @@ Create an application at [my.telegram.org](https://my.telegram.org) → API deve
 Optional Actions secrets: `TELEGRAM_API_ID` and `TELEGRAM_API_HASH`. These are build defaults only; each saved profile uses its own credentials. Secrets are not required to compile.
 
 ## GitHub Actions
-- **Debug:** `.github/workflows/debug.yml` runs on every push and pull request, builds `assembleDebug` and uploads the APK artifact.
-- **Release:** `.github/workflows/release.yml` runs only via Actions → Release APK → Run workflow. It builds `assembleRelease`, uploads the APK and can create a GitHub Release.
+- **Debug:** `.github/workflows/debug.yml` runs on every push and pull request, builds `assembleDevDebug` and uploads the APK artifact.
+- **Release:** `.github/workflows/release.yml` runs only via Actions → Release APK → Run workflow. It builds `assembleProdRelease`, uploads the APK and can create a GitHub Release.
 
 The release workflow currently creates an **unsigned release APK**. Configure signing secrets and a signing step before store or public distribution. Debug and release IDs allow both variants to be installed side by side.
 
