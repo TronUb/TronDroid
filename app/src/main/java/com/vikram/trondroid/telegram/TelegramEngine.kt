@@ -36,7 +36,7 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
         isPluginEnabled = { pluginSettings.enabled(it) },
         sendText = { chatId, text ->
             val content = TdApi.InputMessageText(TdApi.FormattedText(text, emptyArray()), null, true)
-            client?.send(TdApi.SendMessage(chatId, 0, null, null, null, content)) { response ->
+            client?.send(TdApi.SendMessage(chatId, null, null, null, null, content)) { response ->
                 if (response.constructor == TdApi.Error.CONSTRUCTOR) {
                     val error = response as TdApi.Error
                     log("Automation reply failed: ${error.message}", true)
