@@ -17,7 +17,7 @@ TronDroid is an Android Telegram userbot manager built with Kotlin, Jetpack Comp
 ## Package IDs and variants
 | Variant | Gradle task | Application ID |
 |---|---|---|
-| Debug | `assembleDevDebug` | `com.vikram.trondroid-debug` |
+| Debug | `assembleDevDebug` | `com.vikram.trondroid.debug` |
 | Release | `assembleProdRelease` | `com.vikram.trondroid` |
 
 The two selected variants are explicitly filtered in Gradle; the debug and release app IDs are not derived through a suffix.
