@@ -53,9 +53,10 @@ fun TronDroidHome(
 ) {
     var tab by remember { mutableStateOf(Tab.USERBOTS) }
     var pageStack by remember { mutableStateOf(listOf<Page>(Page.Home)) }
+    var navigationDirection by remember { mutableIntStateOf(1) }
     val page = pageStack.last()
-    fun navigate(next: Page) { pageStack = pageStack + next }
-    fun goBack() { if (pageStack.size > 1) pageStack = pageStack.dropLast(1) }
+    fun navigate(next: Page) { navigationDirection = 1; pageStack = pageStack + next }
+    fun goBack() { if (pageStack.size > 1) { navigationDirection = -1; pageStack = pageStack.dropLast(1) } }
     var showAdd by remember { mutableStateOf(false) }
     var pendingDelete by remember { mutableStateOf<BotProfile?>(null) }
     var pendingLogout by remember { mutableStateOf<BotProfile?>(null) }
@@ -102,8 +103,9 @@ fun TronDroidHome(
         }
     ) { padding ->
         AnimatedContent(targetState = page, transitionSpec = {
-            (slideInHorizontally { it / 4 } + fadeIn()) togetherWith
-                (slideOutHorizontally { -it / 4 } + fadeOut())
+            val direction = navigationDirection
+            (slideInHorizontally { width -> if (direction > 0) width else -width } + fadeIn()) togetherWith
+                (slideOutHorizontally { width -> if (direction > 0) -width else width } + fadeOut())
         }, label = "page-slide") { currentPage ->
         when (val current = currentPage) {
             Page.Home -> when (tab) {
