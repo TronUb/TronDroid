@@ -9,7 +9,7 @@ val localProps = Properties().apply {
     if (f.exists()) f.inputStream().use(::load)
 }
 fun secret(name: String) = providers.gradleProperty(name).orNull
-    ?: System.getenv(name.uppercase())?.takeIf { it.isNotBlank() }
+    ?: System.getenv(if (name == "telegramApiId") "TELEGRAM_API_ID" else "TELEGRAM_API_HASH")
     ?: localProps.getProperty(name) ?: ""
 android {
     namespace = "com.vikram.trondroid"
@@ -25,11 +25,28 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64", "x86") }
     }
+    flavorDimensions += "distribution"
+    productFlavors {
+        create("dev") {
+            dimension = "distribution"
+            applicationId = "com.vikram.trondroid-debug"
+            versionNameSuffix = "-debug"
+        }
+        create("prod") {
+            dimension = "distribution"
+            applicationId = "com.vikram.trondroid"
+        }
+    }
     buildTypes {
-        debug { applicationIdSuffix = "-debug"; versionNameSuffix = "-debug"; isDebuggable = true }
+        debug { isDebuggable = true }
         release {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+        }
+    }
+    androidComponents {
+        beforeVariants { variant ->
+            if (variant.name != "devDebug" && variant.name != "prodRelease") variant.enable = false
         }
     }
     compileOptions {
