@@ -29,7 +29,7 @@ android {
     productFlavors {
         create("dev") {
             dimension = "distribution"
-            applicationId = "com.vikram.trondroid-debug"
+            applicationId = "com.vikram.trondroid.debug"
             versionNameSuffix = "-debug"
         }
         create("prod") {
