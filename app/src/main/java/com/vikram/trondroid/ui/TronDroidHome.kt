@@ -49,7 +49,7 @@ private sealed interface Page {
 fun TronDroidHome(
     bots: List<BotProfile>, selected: BotProfile?, engine: TelegramEngine?,
     onSelect: (String) -> Unit, onAdd: (String, String, Int, String) -> Unit,
-    onRemove: (String) -> Unit, onReadApiHash: (String) -> String?,
+    onRemove: (String) -> Unit, onToggle: (String, Boolean) -> Unit, onReadApiHash: (String) -> String?,
     onUpdateApiHash: (String, String) -> Unit,
     themeMode: String, onThemeChange: (String) -> Unit
 ) {
@@ -113,7 +113,7 @@ fun TronDroidHome(
             Page.Home -> when (tab) {
                 Tab.USERBOTS -> UserbotsScreen(Modifier.padding(padding), bots, onOpen = {
                     onSelect(it); navigate(Page.Userbot(it))
-                }, onDelete = { pendingDelete = it })
+                }, onDelete = { pendingDelete = it }, onToggle = { id, enabled -> onToggle(id, enabled) })
                 Tab.PLUGINS -> PluginsScreen(Modifier.padding(padding), onOpen = { navigate(Page.PluginDetail(it)) })
                 Tab.SETTINGS -> SettingsScreen(Modifier.padding(padding),
                     onCredentials = { navigate(Page.Credentials) }, onGeneral = { navigate(Page.GeneralSettings) }, onUpdater = { navigate(Page.Updater) }, themeMode = themeMode, onThemeChange = onThemeChange)
@@ -122,7 +122,7 @@ fun TronDroidHome(
                 val bot = bots.firstOrNull { it.id == current.id }
                 UserbotDetailScreen(Modifier.padding(padding), bot,
                     engine = if (selected?.id == current.id) engine else null,
-                    onDelete = { if (bot != null) pendingDelete = bot }, onLogout = { if (bot != null) pendingLogout = bot })
+                    onDelete = { if (bot != null) pendingDelete = bot }, onLogout = { if (bot != null) pendingLogout = bot }, onToggle = onToggle)
             }
             Page.Credentials -> CredentialsScreen(Modifier.padding(padding), bots, onOpen = { navigate(Page.CredentialDetail(it)) })
             is Page.CredentialDetail -> {
@@ -163,7 +163,7 @@ fun TronDroidHome(
 }
 
 @Composable
-private fun UserbotsScreen(modifier: Modifier, bots: List<BotProfile>, onOpen: (String) -> Unit, onDelete: (BotProfile) -> Unit) {
+private fun UserbotsScreen(modifier: Modifier, bots: List<BotProfile>, onOpen: (String) -> Unit, onDelete: (BotProfile) -> Unit, onToggle: (String, Boolean) -> Unit) {
     LazyColumn(modifier.fillMaxSize().padding(horizontal = 18.dp),
         contentPadding = PaddingValues(top = 12.dp, bottom = 100.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         if (bots.isEmpty()) item {
@@ -185,7 +185,7 @@ private fun UserbotsScreen(modifier: Modifier, bots: List<BotProfile>, onOpen: (
                         Text(bot.name, style = MaterialTheme.typography.titleMedium)
                         Text(bot.phoneNumber, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    IconButton(onClick = { onDelete(bot) }) { Icon(Icons.Rounded.DeleteOutline, "Delete userbot") }
+                    Switch(checked = bot.enabled, onCheckedChange = { onToggle(bot.id, it) })
                     Icon(Icons.Rounded.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
@@ -194,7 +194,7 @@ private fun UserbotsScreen(modifier: Modifier, bots: List<BotProfile>, onOpen: (
 }
 
 @Composable
-private fun UserbotDetailScreen(modifier: Modifier, bot: BotProfile?, engine: TelegramEngine?, onDelete: () -> Unit, onLogout: () -> Unit) {
+private fun UserbotDetailScreen(modifier: Modifier, bot: BotProfile?, engine: TelegramEngine?, onDelete: () -> Unit, onLogout: () -> Unit, onToggle: (String, Boolean) -> Unit) {
     if (bot == null) return
     val auth = engine?.authorization?.collectAsState()?.value
     val logs = engine?.logs?.collectAsState()?.value.orEmpty()
@@ -218,9 +218,14 @@ private fun UserbotDetailScreen(modifier: Modifier, bot: BotProfile?, engine: Te
                             Text(bot.phoneNumber, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
-                    AssistChip(onClick = {}, label = { Text(if (ready) "Connected" else authLabel(auth)) },
-                        leadingIcon = { Icon(if (ready) Icons.Rounded.CheckCircle else Icons.Rounded.Sync, null) })
-                    when (auth?.constructor) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        AssistChip(onClick = {}, label = { Text(if (!bot.enabled) "Turned off" else if (ready) "Connected" else authLabel(auth)) },
+                            leadingIcon = { Icon(if (bot.enabled && ready) Icons.Rounded.CheckCircle else Icons.Rounded.Sync, null) })
+                        Spacer(Modifier.weight(1f))
+                        Text(if (bot.enabled) "On" else "Off", style = MaterialTheme.typography.labelMedium)
+                        Switch(checked = bot.enabled, onCheckedChange = { onToggle(bot.id, it) })
+                    }
+                    if (bot.enabled) when (auth?.constructor) {
                         TdApi.AuthorizationStateWaitPhoneNumber.CONSTRUCTOR -> AuthInput("Phone number", KeyboardType.Phone, "Continue") { engine?.submitPhone(it) }
                         TdApi.AuthorizationStateWaitCode.CONSTRUCTOR -> AuthInput("Telegram login code", KeyboardType.Number, "Verify code") { engine?.submitCode(it) }
                         TdApi.AuthorizationStateWaitPassword.CONSTRUCTOR -> AuthInput("Two-step verification password", KeyboardType.Password, "Unlock account", true) { engine?.submitPassword(it) }
@@ -232,7 +237,7 @@ private fun UserbotDetailScreen(modifier: Modifier, bot: BotProfile?, engine: Te
                                 contentColor = MaterialTheme.colorScheme.onError)) {
                             Icon(Icons.Rounded.DeleteOutline, null)
                             Spacer(Modifier.width(6.dp))
-                            Text("Delete userbot")
+                            Text("Delete")
                         }
                     }
                 }
