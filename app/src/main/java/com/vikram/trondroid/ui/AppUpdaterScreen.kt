@@ -38,12 +38,13 @@ private data class Transfer(val done:Long=0,val total:Long=-1,val speed:Long=0,v
 private fun updateFile(c:Context)=File(c.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS),"TronDroid-latest.apk")
 private fun bytes(v:Long):String { if(v<0)return "—"; var n=v.toDouble(); val u=listOf("B","KB","MB","GB"); var i=0; while(n>=1024&&i<3){n/=1024;i++}; return if(i==0) "$v B" else String.format(Locale.US,"%.1f %s",n,u[i]) }
 private fun duration(v:Long)=if(v<0)"Calculating…" else if(v<60)"${v}s" else "${v/60}m ${v%60}s"
+@Suppress("DEPRECATION")
 private fun validUpdate(c:Context,f:File,expected:Long=0):Boolean=runCatching {
     if(!f.exists()||f.length()==0L)return false
     val p=if(Build.VERSION.SDK_INT>=33)c.packageManager.getPackageArchiveInfo(f.path,PackageManager.PackageInfoFlags.of(0))
-        else @Suppress("DEPRECATION") c.packageManager.getPackageArchiveInfo(f.path,0)
+        else c.packageManager.getPackageArchiveInfo(f.path,0)
     p ?: return false
-    val version=if(Build.VERSION.SDK_INT>=28)p.longVersionCode else @Suppress("DEPRECATION") p.versionCode.toLong()
+    val version=if(Build.VERSION.SDK_INT>=28)p.longVersionCode else p.versionCode.toLong()
     p.packageName==c.packageName && version>BuildConfig.VERSION_CODE && (expected==0L||version==expected)
 }.getOrDefault(false)
 
