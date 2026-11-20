@@ -406,7 +406,6 @@ private fun PluginDetailScreen(modifier: Modifier, id: String) {
 @Composable
 private fun SettingsScreen(modifier: Modifier, onCredentials: () -> Unit, onGeneral: () -> Unit, onUpdater: () -> Unit, themeMode: String, onThemeChange: (String) -> Unit) {
     Column(modifier.fillMaxSize().padding(18.dp).verticalScroll(rememberScrollState())) {
-        SettingsGroup("General", listOf(Triple("General settings", "Appearance and app behaviour", Icons.Rounded.Tune)), listOf(onGeneral))
         Text("Appearance", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 18.dp, bottom = 8.dp))
         ElevatedCard(shape = RoundedCornerShape(20.dp)) {
             Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -420,6 +419,7 @@ private fun SettingsScreen(modifier: Modifier, onCredentials: () -> Unit, onGene
                 }
             }
         }
+        SettingsGroup("General", listOf(Triple("General settings", "Appearance and app behaviour", Icons.Rounded.Tune)), listOf(onGeneral))
         SettingsGroup("Account", listOf(Triple("Credentials", "API keys, account details and local sessions", Icons.Rounded.Key)), listOf(onCredentials))
         SettingsGroup("Application", listOf(Triple("App updates", "Check and install the latest APK", Icons.Rounded.SystemUpdate)), listOf(onUpdater))
         Text("Security", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 20.dp))
