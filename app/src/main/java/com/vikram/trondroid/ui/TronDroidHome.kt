@@ -293,7 +293,7 @@ private fun PluginsScreen(modifier: Modifier, onOpen: (String) -> Unit) {
     Column(modifier.fillMaxSize().padding(horizontal = 18.dp)) {
         Text("Command handler", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 12.dp))
         var handler by remember { mutableStateOf(settings.handler()) }
-        OutlinedTextField(handler, { handler = it.take(3); settings.setHandler(it.take(3)) },
+        OutlinedTextField(handler, { handler = it.take(8); settings.setHandler(it.take(8)) },
             modifier = Modifier.fillMaxWidth().padding(top = 8.dp), label = { Text("Command prefix") },
             supportingText = { Text("Example: .ban, .mute, .afk") }, singleLine = true)
         Text("Plugin library", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 18.dp, bottom = 8.dp))
@@ -340,7 +340,6 @@ private fun PluginDetailScreen(modifier: Modifier, id: String) {
 @Composable
 private fun SettingsScreen(modifier: Modifier, onCredentials: () -> Unit, onGeneral: () -> Unit) {
     Column(modifier.fillMaxSize().padding(18.dp)) {
-        Text("Account", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
         SettingsGroup("Account", listOf(
             Triple("Credentials", "API keys, account details and local sessions", Icons.Rounded.Key),
             Triple("General", "Appearance and app behaviour", Icons.Rounded.Tune)
@@ -416,6 +415,7 @@ private fun CredentialsScreen(modifier: Modifier, bots: List<BotProfile>, onOpen
 private fun CredentialDetailScreen(modifier: Modifier, bot: BotProfile, apiHash: String, onSaveApiHash: (String) -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     var editing by remember { mutableStateOf(false) }
+    var reveal by remember { mutableStateOf(false) }
     var hash by remember(bot.id, apiHash) { mutableStateOf(apiHash) }
     LazyColumn(modifier.fillMaxSize().padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         item {
@@ -431,10 +431,11 @@ private fun CredentialDetailScreen(modifier: Modifier, bot: BotProfile, apiHash:
                 Column(Modifier.fillMaxWidth().padding(14.dp)) {
                     Text("Telegram API Hash", style = MaterialTheme.typography.labelLarge)
                     if (editing) OutlinedTextField(hash, { hash = it }, modifier = Modifier.fillMaxWidth(),
-                        visualTransformation = PasswordVisualTransformation(), singleLine = true)
-                    else Text("••••••••••••••••", modifier = Modifier.padding(vertical = 8.dp))
+                        visualTransformation = if (reveal) VisualTransformation.None else PasswordVisualTransformation(), singleLine = true)
+                    else Text(if (reveal) apiHash else "••••••••••••••••", modifier = Modifier.padding(vertical = 8.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         TextButton(onClick = { editing = !editing; hash = apiHash }) { Text(if (editing) "Cancel" else "Edit") }
+                        TextButton(onClick = { reveal = !reveal }) { Text(if (reveal) "Hide" else "Show") }
                         if (editing) Button(onClick = { onSaveApiHash(hash); editing = false }) { Text("Save") }
                         IconButton(onClick = { android.content.ClipData.newPlainText("Telegram API Hash", apiHash).also {
                             (context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager).setPrimaryClip(it)
@@ -443,7 +444,7 @@ private fun CredentialDetailScreen(modifier: Modifier, bot: BotProfile, apiHash:
                 }
             }
         }
-        item { CredentialField("TDLib session", "Generated automatically · app-private storage") }
+        item { CredentialField("TDLib session", context.filesDir.resolve("tdlib/" + bot.id).absolutePath) }
     }
 }
 
