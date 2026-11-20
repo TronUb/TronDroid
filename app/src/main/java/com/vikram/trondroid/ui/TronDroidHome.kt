@@ -188,7 +188,7 @@ private fun SettingsScreen(modifier: Modifier) {
         ElevatedCard(shape = RoundedCornerShape(18.dp)) {
             Column(Modifier.padding(16.dp)) {
                 Text("Build variants", style = MaterialTheme.typography.titleMedium)
-                Text("Debug: com.vikram.trondroid-debug\nRelease: com.vikram.trondroid", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Debug: com.vikram.trondroid.debug\nRelease: com.vikram.trondroid", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
         Text("TronDroid 1.0.0", color = MaterialTheme.colorScheme.onSurfaceVariant)
