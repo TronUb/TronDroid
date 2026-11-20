@@ -21,120 +21,205 @@ import com.vikram.trondroid.plugins.PluginSettings
 import com.vikram.trondroid.telegram.TelegramEngine
 import org.drinkless.tdlib.TdApi
 
-private enum class Tab { BOTS, PLUGINS, SETTINGS }
+private enum class Tab { USERBOTS, PLUGINS, SETTINGS }
+private sealed interface Page {
+    data object Home : Page
+    data class Userbot(val id: String) : Page
+    data object Credentials : Page
+    data class CredentialDetail(val id: String) : Page
+    data object GeneralSettings : Page
+    data class PluginDetail(val id: String) : Page
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TronDroidHome(bots: List<BotProfile>, selected: BotProfile?, engine: TelegramEngine?,
-    onSelect: (String) -> Unit, onAdd: (String, String, Int, String) -> Unit, onRemove: (String) -> Unit) {
-    var tab by remember { mutableStateOf(Tab.BOTS) }
+fun TronDroidHome(
+    bots: List<BotProfile>, selected: BotProfile?, engine: TelegramEngine?,
+    onSelect: (String) -> Unit, onAdd: (String, String, Int, String) -> Unit,
+    onRemove: (String) -> Unit, onReadApiHash: (String) -> String?,
+    onUpdateApiHash: (String, String) -> Unit
+) {
+    var tab by remember { mutableStateOf(Tab.USERBOTS) }
+    var page by remember { mutableStateOf<Page>(Page.Home) }
     var showAdd by remember { mutableStateOf(false) }
-    Scaffold(topBar = {
-        TopAppBar(title = { Column {
-            Text("TronDroid", style = MaterialTheme.typography.titleLarge)
-            Text("Telegram userbot manager", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        } }, actions = { IconButton(onClick = { showAdd = true }) { Icon(Icons.Rounded.Add, "Add userbot") } })
-    }, bottomBar = {
-        NavigationBar {
-            listOf(Tab.BOTS, Tab.PLUGINS, Tab.SETTINGS).forEach { t ->
-                NavigationBarItem(selected = tab == t, onClick = { tab = t },
-                    icon = { Icon(when(t) {
-                        Tab.BOTS -> Icons.Rounded.SmartToy
-                        Tab.PLUGINS -> Icons.Rounded.Extension
-                        Tab.SETTINGS -> Icons.Rounded.Settings
-                    }, t.name.lowercase()) }, label = { Text(t.name.lowercase().replaceFirstChar { it.uppercase() }) })
+    var pendingDelete by remember { mutableStateOf<BotProfile?>(null) }
+    val isHome = page == Page.Home
+    val title = when (val p = page) {
+        Page.Home -> when (tab) { Tab.USERBOTS -> "Userbots"; Tab.PLUGINS -> "Plugins"; Tab.SETTINGS -> "Settings" }
+        is Page.Userbot -> bots.firstOrNull { it.id == p.id }?.name ?: "Userbot"
+        Page.Credentials -> "Credentials"
+        is Page.CredentialDetail -> bots.firstOrNull { it.id == p.id }?.name ?: "Credentials"
+        Page.GeneralSettings -> "General"
+        is Page.PluginDetail -> PluginCatalog.all.firstOrNull { it.id == p.id }?.title ?: "Plugin"
+    }
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(title, style = MaterialTheme.typography.titleLarge) },
+                navigationIcon = {
+                    if (!isHome) IconButton(onClick = {
+                        page = when (page) {
+                            is Page.CredentialDetail -> Page.Credentials
+                            Page.Credentials, Page.GeneralSettings -> Page.Home
+                            is Page.Userbot, is Page.PluginDetail -> Page.Home
+                            else -> Page.Home
+                        }
+                    }) { Icon(Icons.Rounded.ArrowBack, "Back") }
+                }
+            )
+        },
+        bottomBar = {
+            if (isHome) NavigationBar {
+                listOf(Tab.USERBOTS, Tab.PLUGINS, Tab.SETTINGS).forEach { t ->
+                    NavigationBarItem(selected = tab == t, onClick = { tab = t },
+                        icon = { Icon(when (t) {
+                            Tab.USERBOTS -> Icons.Rounded.SmartToy
+                            Tab.PLUGINS -> Icons.Rounded.Extension
+                            Tab.SETTINGS -> Icons.Rounded.Settings
+                        }, t.name.lowercase()) },
+                        label = { Text(t.name.lowercase().replaceFirstChar { it.uppercase() }) })
+                }
+            }
+        },
+        floatingActionButton = {
+            if (isHome && tab == Tab.USERBOTS) {
+                FloatingActionButton(onClick = { showAdd = true }) {
+                    Icon(Icons.Rounded.Add, "Add userbot")
+                }
             }
         }
-    }) { padding ->
-        when(tab) {
-            Tab.BOTS -> BotsScreen(Modifier.padding(padding), bots, selected, engine, onSelect, { showAdd = true }, onRemove)
-            Tab.PLUGINS -> PluginsScreen(Modifier.padding(padding))
-            Tab.SETTINGS -> SettingsScreen(Modifier.padding(padding))
+    ) { padding ->
+        when (val current = page) {
+            Page.Home -> when (tab) {
+                Tab.USERBOTS -> UserbotsScreen(Modifier.padding(padding), bots, onOpen = {
+                    onSelect(it); page = Page.Userbot(it)
+                }, onDelete = { pendingDelete = it })
+                Tab.PLUGINS -> PluginsScreen(Modifier.padding(padding), onOpen = { page = Page.PluginDetail(it) })
+                Tab.SETTINGS -> SettingsScreen(Modifier.padding(padding),
+                    onCredentials = { page = Page.Credentials }, onGeneral = { page = Page.GeneralSettings })
+            }
+            is Page.Userbot -> {
+                val bot = bots.firstOrNull { it.id == current.id }
+                UserbotDetailScreen(Modifier.padding(padding), bot,
+                    engine = if (selected?.id == current.id) engine else null,
+                    onDelete = { if (bot != null) pendingDelete = bot })
+            }
+            Page.Credentials -> CredentialsScreen(Modifier.padding(padding), bots, onOpen = { page = Page.CredentialDetail(it) })
+            is Page.CredentialDetail -> {
+                val bot = bots.firstOrNull { it.id == current.id }
+                if (bot != null) CredentialDetailScreen(Modifier.padding(padding), bot,
+                    apiHash = onReadApiHash(bot.id).orEmpty(),
+                    onSaveApiHash = { onUpdateApiHash(bot.id, it) })
+            }
+            Page.GeneralSettings -> GeneralSettingsScreen(Modifier.padding(padding))
+            is Page.PluginDetail -> PluginDetailScreen(Modifier.padding(padding), current.id)
         }
     }
-    if (showAdd) AddBotDialog({ showAdd = false }) { name, phone, id, hash ->
+    if (showAdd) AddBotDialog(onDismiss = { showAdd = false }) { name, phone, id, hash ->
         onAdd(name, phone, id, hash); showAdd = false
+    }
+    pendingDelete?.let { bot ->
+        AlertDialog(
+            onDismissRequest = { pendingDelete = null },
+            icon = { Icon(Icons.Rounded.DeleteOutline, null) },
+            title = { Text("Delete userbot?") },
+            text = { Text("Remove ${bot.name} and its saved API hash from TronDroid? The local Telegram session folder will also be deleted.") },
+            confirmButton = {
+                TextButton(onClick = { onRemove(bot.id); pendingDelete = null; page = Page.Home }) {
+                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = { TextButton(onClick = { pendingDelete = null }) { Text("Cancel") } }
+        )
     }
 }
 
 @Composable
-private fun BotsScreen(modifier: Modifier, bots: List<BotProfile>, selected: BotProfile?, engine: TelegramEngine?,
-    onSelect: (String) -> Unit, onAddClick: () -> Unit, onRemove: (String) -> Unit) {
-    val auth = engine?.authorization?.collectAsState()?.value
-    val error = engine?.error?.collectAsState()?.value
+private fun UserbotsScreen(modifier: Modifier, bots: List<BotProfile>, onOpen: (String) -> Unit, onDelete: (BotProfile) -> Unit) {
     LazyColumn(modifier.fillMaxSize().padding(horizontal = 18.dp),
-        contentPadding = PaddingValues(top = 18.dp, bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        item {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text("Your accounts", style = MaterialTheme.typography.headlineSmall)
-                    Text("Add and configure Telegram userbot sessions.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                FilledTonalIconButton(onClick = onAddClick) { Icon(Icons.Rounded.Add, "Add") }
-            }
-        }
+        contentPadding = PaddingValues(top = 12.dp, bottom = 100.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         if (bots.isEmpty()) item {
-            ElevatedCard(shape = RoundedCornerShape(24.dp)) {
-                Column(Modifier.fillMaxWidth().padding(22.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(Icons.Rounded.SmartToy, null, Modifier.size(42.dp), tint = MaterialTheme.colorScheme.primary)
+            Box(Modifier.fillMaxWidth().padding(top = 90.dp), contentAlignment = Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(Icons.Rounded.SmartToy, null, Modifier.size(46.dp), tint = MaterialTheme.colorScheme.primary)
                     Spacer(Modifier.height(12.dp))
-                    Text("No userbots configured", style = MaterialTheme.typography.titleMedium)
-                    Text("Create a profile with your Telegram API credentials to start login.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(Modifier.height(16.dp))
-                    Button(onClick = onAddClick) { Text("Add userbot") }
+                    Text("No userbots yet", style = MaterialTheme.typography.titleMedium)
+                    Text("Tap + to add a Telegram account.", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
         items(bots, key = { it.id }) { bot ->
-            ElevatedCard(onClick = { onSelect(bot.id) }, shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.elevatedCardColors(containerColor =
-                    if (selected?.id == bot.id) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainer)) {
+            ElevatedCard(onClick = { onOpen(bot.id) }, shape = RoundedCornerShape(20.dp)) {
                 Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Rounded.AccountCircle, null, Modifier.size(34.dp))
+                    Icon(Icons.Rounded.AccountCircle, null, Modifier.size(38.dp), tint = MaterialTheme.colorScheme.primary)
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
                         Text(bot.name, style = MaterialTheme.typography.titleMedium)
                         Text(bot.phoneNumber, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    if (selected?.id == bot.id) Icon(Icons.Rounded.CheckCircle, "Selected")
-                    IconButton(onClick = { onRemove(bot.id) }) { Icon(Icons.Rounded.DeleteOutline, "Remove account") }
+                    IconButton(onClick = { onDelete(bot) }) { Icon(Icons.Rounded.DeleteOutline, "Delete userbot") }
+                    Icon(Icons.Rounded.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
-        if (selected != null) item {
-            Text("Session · " + selected.name, style = MaterialTheme.typography.titleLarge)
-            val ready = auth?.constructor == TdApi.AuthorizationStateReady.CONSTRUCTOR
-            val label = when(auth?.constructor) {
-                TdApi.AuthorizationStateWaitPhoneNumber.CONSTRUCTOR -> "Waiting for phone number"
-                TdApi.AuthorizationStateWaitCode.CONSTRUCTOR -> "Verification code required"
-                TdApi.AuthorizationStateWaitPassword.CONSTRUCTOR -> "Two-step password required"
-                TdApi.AuthorizationStateReady.CONSTRUCTOR -> "Connected"
-                TdApi.AuthorizationStateWaitTdlibParameters.CONSTRUCTOR -> "Preparing TDLib"
-                else -> "Connecting"
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (!ready) CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
-                else Icon(Icons.Rounded.CheckCircle, null, tint = MaterialTheme.colorScheme.primary)
-                Spacer(Modifier.width(8.dp)); Text(label)
-            }
-            if (!error.isNullOrBlank()) Text(error, color = MaterialTheme.colorScheme.error)
-            when(auth?.constructor) {
-                TdApi.AuthorizationStateWaitPhoneNumber.CONSTRUCTOR ->
-                    AuthInput("Phone number", KeyboardType.Phone, "Continue") { engine?.submitPhone(it) }
-                TdApi.AuthorizationStateWaitCode.CONSTRUCTOR ->
-                    AuthInput("Telegram login code", KeyboardType.Number, "Verify code") { engine?.submitCode(it) }
-                TdApi.AuthorizationStateWaitPassword.CONSTRUCTOR ->
-                    AuthInput("Two-step verification password", KeyboardType.Password, "Unlock account", true) { engine?.submitPassword(it) }
-            }
-            if (ready) {
-                Text("Chats", style = MaterialTheme.typography.titleMedium)
-                val chats = engine?.chats?.collectAsState()?.value.orEmpty()
-                if (chats.isEmpty()) Text("Loading chats…", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                chats.take(20).forEach { Text(it.title, Modifier.padding(vertical = 5.dp)) }
-                OutlinedButton(onClick = { engine?.logout() }) { Text("Log out") }
+    }
+}
+
+@Composable
+private fun UserbotDetailScreen(modifier: Modifier, bot: BotProfile?, engine: TelegramEngine?, onDelete: () -> Unit) {
+    if (bot == null) return
+    val auth = engine?.authorization?.collectAsState()?.value
+    val error = engine?.error?.collectAsState()?.value
+    val logs = engine?.logs?.collectAsState()?.value.orEmpty()
+    val chats = engine?.chats?.collectAsState()?.value.orEmpty()
+    val ready = auth?.constructor == TdApi.AuthorizationStateReady.CONSTRUCTOR
+    LazyColumn(modifier.fillMaxSize().padding(horizontal = 18.dp),
+        contentPadding = PaddingValues(vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        item {
+            ElevatedCard(shape = RoundedCornerShape(22.dp)) {
+                Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Rounded.AccountCircle, null, Modifier.size(42.dp), tint = MaterialTheme.colorScheme.primary)
+                        Spacer(Modifier.width(12.dp))
+                        Column {
+                            Text(bot.name, style = MaterialTheme.typography.titleLarge)
+                            Text(bot.phoneNumber, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                    AssistChip(onClick = {}, label = { Text(if (ready) "Connected" else authLabel(auth)) },
+                        leadingIcon = { Icon(if (ready) Icons.Rounded.CheckCircle else Icons.Rounded.Sync, null) })
+                    if (!error.isNullOrBlank()) Text(error, color = MaterialTheme.colorScheme.error)
+                    when (auth?.constructor) {
+                        TdApi.AuthorizationStateWaitPhoneNumber.CONSTRUCTOR -> AuthInput("Phone number", KeyboardType.Phone, "Continue") { engine?.submitPhone(it) }
+                        TdApi.AuthorizationStateWaitCode.CONSTRUCTOR -> AuthInput("Telegram login code", KeyboardType.Number, "Verify code") { engine?.submitCode(it) }
+                        TdApi.AuthorizationStateWaitPassword.CONSTRUCTOR -> AuthInput("Two-step verification password", KeyboardType.Password, "Unlock account", true) { engine?.submitPassword(it) }
+                    }
+                    if (ready) OutlinedButton(onClick = { engine?.logout() }) { Text("Log out") }
+                    TextButton(onClick = onDelete) { Text("Delete userbot", color = MaterialTheme.colorScheme.error) }
+                }
             }
         }
+        item { Text("Recent activity", style = MaterialTheme.typography.titleMedium) }
+        if (logs.isEmpty()) item { Text("No log entries yet.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        items(logs.reversed().take(60)) { entry ->
+            ListItem(headlineContent = { Text(entry.message) }, supportingContent = { Text(entry.time) },
+                leadingContent = { Icon(Icons.Rounded.Circle, null, Modifier.size(10.dp), tint = if (entry.isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary) })
+        }
+        if (ready) {
+            item { Text("Chats", style = MaterialTheme.typography.titleMedium) }
+            if (chats.isEmpty()) item { Text("Loading chats…", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            items(chats.take(20)) { Text(it.title, Modifier.padding(vertical = 4.dp)) }
+        }
     }
+}
+
+private fun authLabel(auth: TdApi.AuthorizationState?): String = when (auth?.constructor) {
+    TdApi.AuthorizationStateWaitPhoneNumber.CONSTRUCTOR -> "Phone number required"
+    TdApi.AuthorizationStateWaitCode.CONSTRUCTOR -> "Verification code required"
+    TdApi.AuthorizationStateWaitPassword.CONSTRUCTOR -> "Two-step password required"
+    TdApi.AuthorizationStateWaitTdlibParameters.CONSTRUCTOR -> "Preparing session"
+    TdApi.AuthorizationStateReady.CONSTRUCTOR -> "Connected"
+    else -> "Connecting"
 }
 
 @Composable
@@ -148,26 +233,80 @@ private fun AuthInput(label: String, keyboard: KeyboardType, action: String, sec
     }
 }
 
+private data class Country(val name: String, val dial: String)
+private val countries = listOf(
+    Country("India", "+91"), Country("United States", "+1"), Country("United Kingdom", "+44"),
+    Country("United Arab Emirates", "+971"), Country("Canada", "+1"), Country("Australia", "+61"),
+    Country("Germany", "+49"), Country("France", "+33"), Country("Japan", "+81"),
+    Country("Nepal", "+977"), Country("Bangladesh", "+880"), Country("Pakistan", "+92"),
+    Country("Sri Lanka", "+94"), Country("Singapore", "+65"), Country("Brazil", "+55"),
+    Country("Russia", "+7"), Country("Ukraine", "+380"), Country("South Africa", "+27")
+)
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun PluginsScreen(modifier: Modifier) {
+private fun AddBotDialog(onDismiss: () -> Unit, onSave: (String, String, Int, String) -> Unit) {
+    var name by remember { mutableStateOf("") }
+    var phone by remember { mutableStateOf("") }
+    var apiId by remember { mutableStateOf("") }
+    var apiHash by remember { mutableStateOf("") }
+    var country by remember { mutableStateOf(countries.first()) }
+    var countryMenu by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    AlertDialog(onDismissRequest = onDismiss, title = { Text("Add userbot") }, text = {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedTextField(name, { name = it }, label = { Text("Profile name") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+            ExposedDropdownMenuBox(expanded = countryMenu, onExpandedChange = { countryMenu = it }) {
+                OutlinedTextField(value = "${country.name} (${country.dial})", onValueChange = {}, readOnly = true,
+                    label = { Text("Country code") }, trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(countryMenu) },
+                    modifier = Modifier.menuAnchor().fillMaxWidth())
+                ExposedDropdownMenu(expanded = countryMenu, onDismissRequest = { countryMenu = false }) {
+                    countries.forEach { c -> DropdownMenuItem(text = { Text("${c.name}  ${c.dial}") },
+                        onClick = { country = c; countryMenu = false }) }
+                }
+            }
+            OutlinedTextField(phone, { phone = it.filter(Char::isDigit) }, label = { Text("Phone number") },
+                prefix = { Text(country.dial) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                singleLine = true, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(apiId, { apiId = it }, label = { Text("Telegram API ID") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), singleLine = true, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(apiHash, { apiHash = it }, label = { Text("Telegram API Hash") },
+                visualTransformation = PasswordVisualTransformation(), singleLine = true, modifier = Modifier.fillMaxWidth())
+            error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+        }
+    }, confirmButton = {
+        Button(onClick = {
+            val id = apiId.toIntOrNull()
+            if (name.isBlank() || phone.length < 5 || id == null || apiHash.length < 20)
+                error = "Enter a name, valid phone number, API ID and API hash."
+            else onSave(name.trim(), country.dial + phone, id, apiHash.trim())
+        }) { Text("Save userbot") }
+    }, dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } })
+}
+
+@Composable
+private fun PluginsScreen(modifier: Modifier, onOpen: (String) -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val settings = remember { PluginSettings(context) }
     var refresh by remember { mutableIntStateOf(0) }
-    Column(modifier.fillMaxSize().padding(18.dp)) {
-        Text("Plugin library", style = MaterialTheme.typography.headlineSmall)
-        Text("Enable only the automations you intend to run.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Spacer(Modifier.height(14.dp))
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Column(modifier.fillMaxSize().padding(horizontal = 18.dp)) {
+        Text("Command handler", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 12.dp))
+        var handler by remember { mutableStateOf(settings.handler()) }
+        OutlinedTextField(handler, { handler = it.take(3); settings.setHandler(it.take(3)) },
+            modifier = Modifier.fillMaxWidth().padding(top = 8.dp), label = { Text("Command prefix") },
+            supportingText = { Text("Example: .ban, .mute, .afk") }, singleLine = true)
+        Text("Plugin library", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 18.dp, bottom = 8.dp))
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(bottom = 24.dp)) {
             items(PluginCatalog.all, key = { it.id }) { plugin ->
                 val checked = remember(refresh, plugin.id) { settings.enabled(plugin.id) }
-                ElevatedCard(shape = RoundedCornerShape(18.dp)) {
+                ElevatedCard(onClick = { onOpen(plugin.id) }, shape = RoundedCornerShape(18.dp)) {
                     Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
                             Text(plugin.title, style = MaterialTheme.typography.titleMedium)
-                            Text(plugin.category.uppercase(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
-                            Text(plugin.summary, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("${plugin.commands.size} commands · ${plugin.category}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Switch(checked, { settings.setEnabled(plugin.id, it); refresh++ })
+                        Icon(Icons.Rounded.ChevronRight, null)
                     }
                 }
             }
@@ -176,47 +315,136 @@ private fun PluginsScreen(modifier: Modifier) {
 }
 
 @Composable
-private fun SettingsScreen(modifier: Modifier) {
-    Column(modifier.fillMaxSize().padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("Settings", style = MaterialTheme.typography.headlineSmall)
-        ElevatedCard(shape = RoundedCornerShape(18.dp)) {
-            Column(Modifier.padding(16.dp)) {
-                Text("Credential security", style = MaterialTheme.typography.titleMedium)
-                Text("API hashes are encrypted with an Android Keystore AES-GCM key. TDLib session databases stay in app-private storage.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+private fun PluginDetailScreen(modifier: Modifier, id: String) {
+    val plugin = PluginCatalog.all.firstOrNull { it.id == id } ?: return
+    val handler = PluginSettings(androidx.compose.ui.platform.LocalContext.current).handler()
+    LazyColumn(modifier.fillMaxSize().padding(horizontal = 18.dp), contentPadding = PaddingValues(vertical = 16.dp)) {
+        item {
+            Text(plugin.summary, style = MaterialTheme.typography.bodyLarge)
+            Text("Commands", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 20.dp, bottom = 8.dp))
+        }
+        items(plugin.commands) { command ->
+            ElevatedCard(shape = RoundedCornerShape(16.dp), modifier = Modifier.padding(bottom = 8.dp)) {
+                Column(Modifier.fillMaxWidth().padding(16.dp)) {
+                    Text(handler + command.name, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                    Text(command.description, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 4.dp))
+                    Text("Usage: " + handler + command.usage, style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 6.dp))
+                }
             }
         }
-        ElevatedCard(shape = RoundedCornerShape(18.dp)) {
-            Column(Modifier.padding(16.dp)) {
-                Text("Build variants", style = MaterialTheme.typography.titleMedium)
-                Text("Debug: com.vikram.trondroid.debug\nRelease: com.vikram.trondroid", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
-        Text("TronDroid 1.0.0", color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
 @Composable
-private fun AddBotDialog(onDismiss: () -> Unit, onSave: (String, String, Int, String) -> Unit) {
-    var name by remember { mutableStateOf("") }
-    var phone by remember { mutableStateOf("") }
-    var apiId by remember { mutableStateOf("") }
-    var apiHash by remember { mutableStateOf("") }
-    var error by remember { mutableStateOf<String?>(null) }
-    AlertDialog(onDismissRequest = onDismiss, title = { Text("Add Telegram userbot") }, text = {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Create an app at my.telegram.org and enter its API credentials.", style = MaterialTheme.typography.bodySmall)
-            OutlinedTextField(name, { name = it }, label = { Text("Profile name") }, singleLine = true)
-            OutlinedTextField(phone, { phone = it }, label = { Text("Phone number") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone), singleLine = true)
-            OutlinedTextField(apiId, { apiId = it }, label = { Text("API ID") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), singleLine = true)
-            OutlinedTextField(apiHash, { apiHash = it }, label = { Text("API Hash") }, visualTransformation = PasswordVisualTransformation(), singleLine = true)
-            error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+private fun SettingsScreen(modifier: Modifier, onCredentials: () -> Unit, onGeneral: () -> Unit) {
+    Column(modifier.fillMaxSize().padding(18.dp)) {
+        Text("Preferences", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+        SettingsGroup("Account", listOf(Triple("Credentials", "API keys, account details and local sessions", Icons.Rounded.Key),
+            Triple("General", "Appearance and app behaviour", Icons.Rounded.Tune)), listOf(onCredentials, onGeneral))
+        SettingsGroup("About", listOf(Triple("Privacy & security", "Local credential protection", Icons.Rounded.Security)), listOf({}))
+    }
+}
+
+@Composable
+private fun SettingsGroup(title: String, entries: List<Triple<String, String, androidx.compose.ui.graphics.vector.ImageVector>>, actions: List<() -> Unit>) {
+    Text(title, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(top = 18.dp, bottom = 8.dp))
+    ElevatedCard(shape = RoundedCornerShape(20.dp)) {
+        entries.forEachIndexed { index, entry ->
+            ListItem(
+                headlineContent = { Text(entry.first) },
+                supportingContent = { Text(entry.second) },
+                leadingContent = { Icon(entry.third, null, tint = MaterialTheme.colorScheme.primary) },
+                trailingContent = { Icon(Icons.Rounded.ChevronRight, null) },
+                modifier = Modifier.fillMaxWidth().heightIn(min = 68.dp).then(Modifier),
+            )
+            if (index != entries.lastIndex) HorizontalDivider(Modifier.padding(start = 58.dp))
         }
-    }, confirmButton = {
-        Button(onClick = {
-            val id = apiId.toIntOrNull()
-            if (name.isBlank() || phone.isBlank() || id == null || apiHash.length < 20)
-                error = "Enter a name, phone, numeric API ID and valid API hash."
-            else onSave(name.trim(), phone.trim(), id, apiHash.trim())
-        }) { Text("Save profile") }
-    }, dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } })
+    }
+    entries.forEachIndexed { index, entry ->
+        // Click surface overlay kept separate from the settings row layout.
+        if (entry.first.isNotBlank()) Unit
+    }
+    // Actions are rendered as transparent row overlays via clickable ListItems below in the actual group.
+}
+
+@Composable
+private fun GeneralSettingsScreen(modifier: Modifier) {
+    Column(modifier.fillMaxSize().padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text("General preferences", style = MaterialTheme.typography.titleMedium)
+        Text("TronDroid uses the system dark theme in this build.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("Build variants: debug com.vikram.trondroid.debug · release com.vikram.trondroid",
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@Composable
+private fun CredentialsScreen(modifier: Modifier, bots: List<BotProfile>, onOpen: (String) -> Unit) {
+    LazyColumn(modifier.fillMaxSize().padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        item {
+            Text("Userbot credentials", style = MaterialTheme.typography.titleMedium)
+            Text("Choose an account to inspect its saved keys and generated session information.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        items(bots, key = { it.id }) { bot ->
+            ElevatedCard(onClick = { onOpen(bot.id) }, shape = RoundedCornerShape(18.dp)) {
+                ListItem(headlineContent = { Text(bot.name) }, supportingContent = { Text(bot.phoneNumber) },
+                    leadingContent = { Icon(Icons.Rounded.Key, null) }, trailingContent = { Icon(Icons.Rounded.ChevronRight, null) })
+            }
+        }
+        if (bots.isEmpty()) item { Text("Add a userbot first to manage its credentials.") }
+    }
+}
+
+@Composable
+private fun CredentialDetailScreen(modifier: Modifier, bot: BotProfile, apiHash: String, onSaveApiHash: (String) -> Unit) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var editing by remember { mutableStateOf(false) }
+    var hash by remember(bot.id, apiHash) { mutableStateOf(apiHash) }
+    LazyColumn(modifier.fillMaxSize().padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        item {
+            Text("Saved credentials", style = MaterialTheme.typography.titleMedium)
+            Text("Sensitive values are stored locally. Session data is generated by TDLib and cannot be edited here.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        item { CredentialField("Profile name", bot.name, false) }
+        item { CredentialField("Phone number", bot.phoneNumber, false) }
+        item { CredentialField("Telegram API ID", bot.apiId.toString(), false) }
+        item {
+            ElevatedCard(shape = RoundedCornerShape(16.dp)) {
+                Column(Modifier.fillMaxWidth().padding(14.dp)) {
+                    Text("Telegram API Hash", style = MaterialTheme.typography.labelLarge)
+                    if (editing) OutlinedTextField(hash, { hash = it }, modifier = Modifier.fillMaxWidth(),
+                        visualTransformation = PasswordVisualTransformation(), singleLine = true)
+                    else Text("••••••••••••••••", modifier = Modifier.padding(vertical = 8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TextButton(onClick = { editing = !editing; hash = apiHash }) { Text(if (editing) "Cancel" else "Edit") }
+                        if (editing) Button(onClick = { onSaveApiHash(hash); editing = false }) { Text("Save") }
+                        IconButton(onClick = { android.content.ClipData.newPlainText("Telegram API Hash", apiHash).also {
+                            (context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager).setPrimaryClip(it)
+                        } }) { Icon(Icons.Rounded.ContentCopy, "Copy API hash") }
+                    }
+                }
+            }
+        }
+        item { CredentialField("TDLib session", "Generated automatically · app-private storage", false) }
+    }
+}
+
+@Composable
+private fun CredentialField(label: String, value: String, copy: Boolean) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    ElevatedCard(shape = RoundedCornerShape(16.dp)) {
+        Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(label, style = MaterialTheme.typography.labelLarge)
+                Text(value, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            if (copy) IconButton(onClick = {
+                (context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager)
+                    .setPrimaryClip(android.content.ClipData.newPlainText(label, value))
+            }) { Icon(Icons.Rounded.ContentCopy, "Copy $label") }
+        }
+    }
 }
