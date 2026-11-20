@@ -24,15 +24,24 @@ class MainActivity : ComponentActivity() {
             LaunchedEffect(engine) { engine?.start() }
             DisposableEffect(engine) { onDispose { engine?.close() } }
             MaterialTheme(colorScheme = darkColorScheme()) {
-                TronDroidHome(bots, selected, engine,
+                TronDroidHome(
+                    bots = bots,
+                    selected = selected,
+                    engine = engine,
                     onSelect = { selectedId = it },
                     onAdd = { name, phone, id, hash ->
                         val added = store.add(name, phone, id, hash)
-                        bots = store.all(); selectedId = added.id
+                        bots = store.all()
+                        selectedId = added.id
                     },
                     onRemove = { id ->
-                        store.remove(id); bots = store.all(); selectedId = bots.firstOrNull()?.id
-                    })
+                        store.remove(id)
+                        bots = store.all()
+                        selectedId = bots.firstOrNull()?.id
+                    },
+                    onReadApiHash = { store.apiHash(it) },
+                    onUpdateApiHash = { id, value -> store.updateApiHash(id, value) }
+                )
             }
         }
     }
