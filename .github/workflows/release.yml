@@ -22,13 +22,13 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-      - uses: android-actions/setup-android@v3
+      - name: Install Android SDK packages
+        run: |
+          yes | sdkmanager --licenses
+          sdkmanager --install "platforms;android-36" "build-tools;36.0.0" "platform-tools"
       - name: Bootstrap EasyTDLib
         run: bash scripts/bootstrap-easytdlib.sh
       - name: Build release APK
-        env:
-          TELEGRAM_API_ID: ${{ secrets.TELEGRAM_API_ID }}
-          TELEGRAM_API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
         run: ./gradlew --no-daemon assembleRelease
       - name: Rename APK
         run: cp app/build/outputs/apk/release/app-release-unsigned.apk "TronDroid-${{ inputs.version_name }}.apk"
