@@ -121,7 +121,7 @@ fun AppUpdaterScreen(modifier:Modifier=Modifier) {
             message="Allow installs from TronDroid, return here, then tap Install.";return
         }
         runCatching {
-            val uri=id?.let{(context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager).getUriForDownloadedFile(it)}?:Uri.fromFile(file)
+            val uri=id?.let{(context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager).getUriForDownloadedFile(it)}?: error("Android download record is unavailable. Discard this APK and download it again.")
             context.startActivity(Intent(Intent.ACTION_VIEW).setDataAndType(uri,"application/vnd.android.package-archive")
                 .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK))
             message="Android installer opened. The APK will be removed after the update."
