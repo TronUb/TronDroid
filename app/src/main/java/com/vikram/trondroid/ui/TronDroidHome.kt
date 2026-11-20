@@ -113,7 +113,7 @@ fun TronDroidHome(
             Page.Home -> when (tab) {
                 Tab.USERBOTS -> UserbotsScreen(Modifier.padding(padding), bots, onOpen = {
                     onSelect(it); navigate(Page.Userbot(it))
-                }, onDelete = { pendingDelete = it }, onToggle = { id, enabled -> onToggle(id, enabled) })
+                }, onToggle = { id, enabled -> onToggle(id, enabled) })
                 Tab.PLUGINS -> PluginsScreen(Modifier.padding(padding), onOpen = { navigate(Page.PluginDetail(it)) })
                 Tab.SETTINGS -> SettingsScreen(Modifier.padding(padding),
                     onCredentials = { navigate(Page.Credentials) }, onGeneral = { navigate(Page.GeneralSettings) }, onUpdater = { navigate(Page.Updater) }, themeMode = themeMode, onThemeChange = onThemeChange)
@@ -163,7 +163,7 @@ fun TronDroidHome(
 }
 
 @Composable
-private fun UserbotsScreen(modifier: Modifier, bots: List<BotProfile>, onOpen: (String) -> Unit, onDelete: (BotProfile) -> Unit, onToggle: (String, Boolean) -> Unit) {
+private fun UserbotsScreen(modifier: Modifier, bots: List<BotProfile>, onOpen: (String) -> Unit, onToggle: (String, Boolean) -> Unit) {
     LazyColumn(modifier.fillMaxSize().padding(horizontal = 18.dp),
         contentPadding = PaddingValues(top = 12.dp, bottom = 100.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         if (bots.isEmpty()) item {
