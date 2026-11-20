@@ -9,7 +9,8 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.*
 import com.vikram.trondroid.data.BotStore
-import com.vikram.trondroid.telegram.TelegramEngine
+import com.vikram.trondroid.telegram.TelegramBackgroundService
+import com.vikram.trondroid.telegram.TelegramRuntime
 import com.vikram.trondroid.ui.TronDroidHome
 
 class MainActivity : ComponentActivity() {
@@ -21,14 +22,14 @@ class MainActivity : ComponentActivity() {
             var bots by remember { mutableStateOf(store.all()) }
             var selectedId by remember { mutableStateOf(bots.firstOrNull()?.id) }
             var themeMode by remember { mutableStateOf(preferences.getString("theme_mode", "system") ?: "system") }
+            val engines by TelegramRuntime.engines.collectAsState()
             val systemDark = isSystemInDarkTheme()
             val dark = when (themeMode) { "light" -> false; "dark" -> true; else -> systemDark }
             val selected = bots.firstOrNull { it.id == selectedId }
-            val engine = remember(selected?.id) {
-                selected?.let { p -> store.apiHash(p.id)?.let { TelegramEngine(applicationContext, p, it) } }
-            }
-            LaunchedEffect(engine) { engine?.start() }
-            DisposableEffect(engine) { onDispose { engine?.close() } }
+            val engine = selected?.let { engines[it.id] }
+
+            LaunchedEffect(Unit) { TelegramBackgroundService.reconcile(applicationContext) }
+
             MaterialTheme(colorScheme = if (dark) darkColorScheme() else lightColorScheme()) {
                 TronDroidHome(
                     bots = bots,
@@ -44,11 +45,18 @@ class MainActivity : ComponentActivity() {
                         val added = store.add(name, phone, id, hash)
                         bots = store.all()
                         selectedId = added.id
+                        TelegramBackgroundService.reconcile(applicationContext)
                     },
                     onRemove = { id ->
                         store.remove(id)
                         bots = store.all()
                         selectedId = bots.firstOrNull()?.id
+                        TelegramBackgroundService.reconcile(applicationContext)
+                    },
+                    onToggle = { id, enabled ->
+                        store.setEnabled(id, enabled)
+                        bots = store.all()
+                        TelegramBackgroundService.reconcile(applicationContext)
                     },
                     onReadApiHash = { store.apiHash(it) },
                     onUpdateApiHash = { id, value -> store.updateApiHash(id, value) }
