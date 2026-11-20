@@ -24,7 +24,7 @@ import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 
-private data class ReleaseInfo(val tag: String, val name: String, val notes: String, val apkUrl: String, val publishedAt: String)
+private data class ReleaseInfo(val tag: String, val name: String, val notes: String, val apkUrl: String, val publishedAt: String, val versionCode: Int)
 
 @Composable
 fun AppUpdaterScreen(modifier: Modifier = Modifier) {
@@ -58,14 +58,17 @@ fun AppUpdaterScreen(modifier: Modifier = Modifier) {
                             if (asset.optString("name") == "TronDroid-debug-latest.apk") apk = asset.optString("browser_download_url")
                         }
                         if (apk.isBlank()) error("The latest release does not contain the expected APK asset.")
+                        val notes = json.optString("body")
+                        val latestVersionCode = notes.lineSequence().firstOrNull { it.contains("Version code:") }
+                            ?.filter { it.isDigit() }?.toIntOrNull() ?: 0
                         ReleaseInfo(json.optString("tag_name"), json.optString("name", "Latest debug build"),
-                            json.optString("body"), apk, json.optString("published_at"))
+                            notes, apk, json.optString("published_at"), latestVersionCode)
                     } finally { connection.disconnect() }
                 }
             }
             result.onSuccess {
                 release = it
-                message = if (BuildConfig.VERSION_NAME == it.tag) "You are already using this release." else "Latest build is ready to download."
+                message = if (it.versionCode > 0 && it.versionCode <= BuildConfig.VERSION_CODE) "You are already using the latest build." else "Latest build is ready to download."
             }.onFailure { message = it.message ?: "Unable to check for updates." }
             loading = false
         }
@@ -156,7 +159,7 @@ fun AppUpdaterScreen(modifier: Modifier = Modifier) {
             Card(shape = RoundedCornerShape(20.dp)) {
                 Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(info.name, style = MaterialTheme.typography.titleMedium)
-                    Text("Build ${info.tag}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                    Text("Build ${info.tag} · version code ${info.versionCode}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
                     if (info.publishedAt.isNotBlank()) Text("Published: ${info.publishedAt.take(10)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     if (info.notes.isNotBlank()) Text(info.notes.take(3000), style = MaterialTheme.typography.bodySmall)
                 }
