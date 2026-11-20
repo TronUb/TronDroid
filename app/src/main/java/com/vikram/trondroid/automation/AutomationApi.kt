@@ -46,3 +46,12 @@ object AutomationFilters {
         }
     }
 }
+
+infix fun AutomationFilter.and(other: AutomationFilter) =
+    AutomationFilter { message -> matches(message) && other.matches(message) }
+
+infix fun AutomationFilter.or(other: AutomationFilter) =
+    AutomationFilter { message -> matches(message) || other.matches(message) }
+
+operator fun AutomationFilter.not() =
+    AutomationFilter { message -> !matches(message) }
