@@ -29,9 +29,9 @@ jobs:
       - name: Bootstrap EasyTDLib
         run: bash scripts/bootstrap-easytdlib.sh
       - name: Build release APK
-        run: ./gradlew --no-daemon assembleRelease
+        run: ./gradlew --no-daemon assembleProdRelease
       - name: Rename APK
-        run: cp app/build/outputs/apk/release/app-release-unsigned.apk "TronDroid-${{ inputs.version_name }}.apk"
+        run: cp app/build/outputs/apk/prod/release/app-prod-release-unsigned.apk "TronDroid-${{ inputs.version_name }}.apk"
       - uses: actions/upload-artifact@v4
         with:
           name: trondroid-release-${{ inputs.version_name }}
