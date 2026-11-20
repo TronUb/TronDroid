@@ -84,12 +84,25 @@ fun AppUpdaterScreen(modifier:Modifier=Modifier) {
                     if(c.responseCode !in 200..299) error("GitHub returned HTTP ${c.responseCode}")
                     val j=JSONObject(c.inputStream.bufferedReader().use{it.readText()})
                     if(j.optBoolean("draft")||!j.optBoolean("prerelease"))error("No published debug update is available.")
-                    val assets=j.getJSONArray("assets");var url="";var size=0L
-                    for(i in 0 until assets.length()){val a=assets.getJSONObject(i);if(a.optString("name")=="TronDroid-debug-latest.apk"){url=a.optString("browser_download_url");size=a.optLong("size")}}
+                    val assets=j.getJSONArray("assets");var url="";var infoUrl="";var size=0L
+                    for(i in 0 until assets.length()){
+                        val a=assets.getJSONObject(i)
+                        when(a.optString("name")){
+                            "TronDroid-debug-latest.apk"->{url=a.optString("browser_download_url");size=a.optLong("size")}
+                            "build-info.md"->infoUrl=a.optString("browser_download_url")
+                        }
+                    }
                     if(url.isBlank())error("Latest release APK is missing.")
-                    val notes=j.optString("body")
-                    val version=notes.lineSequence().firstOrNull{it.contains("Version code:",true)}?.substringAfter(':')?.filter(Char::isDigit)?.toLongOrNull()?:0L
-                    if(version<=0)error("Release metadata has no valid Android version code.")
+                    var notes=j.optString("body")
+                    fun versionFrom(text:String):Long = Regex("""(?im)^\s*[-*]\s*Version\s*code\s*:\s*`?(\d+)""").find(text)?.groupValues?.getOrNull(1)?.toLongOrNull() ?: 0L
+                    var version=versionFrom(notes)
+                    if(version<=0L && infoUrl.isNotBlank()){
+                        val meta=URL(infoUrl).openConnection() as HttpURLConnection
+                        meta.connectTimeout=10000;meta.readTimeout=10000
+                        try { if(meta.responseCode in 200..299){val text=meta.inputStream.bufferedReader().use{it.readText()};if(text.isNotBlank())notes=text;version=versionFrom(text)} }
+                        finally { meta.disconnect() }
+                    }
+                    if(version<=0L)error("The latest release metadata is incomplete. Retry after the next successful build.")
                     UpdateRelease(j.optString("name","TronDroid update"),notes,url,version,j.optString("published_at"),size)
                 } finally {c.disconnect()}
             }}
