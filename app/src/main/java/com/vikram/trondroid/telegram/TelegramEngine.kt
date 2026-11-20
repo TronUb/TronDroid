@@ -3,6 +3,11 @@ package com.vikram.trondroid.telegram
 import android.content.Context
 import android.util.Log
 import com.vikram.trondroid.data.BotProfile
+import com.vikram.trondroid.automation.AutomationDispatcher
+import com.vikram.trondroid.automation.AutomationMessage
+import com.vikram.trondroid.automation.AutomationPlugin
+import com.vikram.trondroid.automation.CoreAutomationPlugin
+import com.vikram.trondroid.plugins.PluginSettings
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -25,6 +30,33 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
     val chats: StateFlow<List<TdApi.Chat>> = _chats.asStateFlow()
     private val _logs = MutableStateFlow<List<EngineLog>>(emptyList())
     val logs: StateFlow<List<EngineLog>> = _logs.asStateFlow()
+    private val pluginSettings = PluginSettings(context)
+    private val automation = AutomationDispatcher(
+        commandPrefix = { pluginSettings.handler() },
+        isPluginEnabled = { pluginSettings.enabled(it) },
+        sendText = { chatId, text ->
+            val content = TdApi.InputMessageText(TdApi.FormattedText(text, emptyArray()), null, true)
+            client?.send(TdApi.SendMessage(chatId, 0, null, null, null, content)) { response ->
+                if (response.constructor == TdApi.Error.CONSTRUCTOR) {
+                    val error = response as TdApi.Error
+                    log("Automation reply failed: ${error.message}", true)
+                }
+            }
+        },
+        logger = { message, error -> log(message, error) }
+    ).apply {
+        register(CoreAutomationPlugin { pluginSettings.handler() })
+    }
+
+    fun registerAutomationPlugin(plugin: AutomationPlugin) {
+        automation.register(plugin)
+        log("Automation plugin registered: ${plugin.id}")
+    }
+
+    fun unregisterAutomationPlugin(pluginId: String) {
+        automation.unregister(pluginId)
+        log("Automation plugin unloaded: $pluginId")
+    }
 
     private fun log(message: String, error: Boolean = false) {
         val time = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
@@ -41,6 +73,20 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
     override fun onResult(result: TdApi.Object) {
         when (result.constructor) {
             TdApi.UpdateAuthorizationState.CONSTRUCTOR -> onAuthorizationState((result as TdApi.UpdateAuthorizationState).authorizationState)
+            TdApi.UpdateNewMessage.CONSTRUCTOR -> {
+                val message = (result as TdApi.UpdateNewMessage).message
+                val text = (message.content as? TdApi.MessageText)?.text?.text.orEmpty()
+                if (text.isNotBlank()) {
+                    automation.dispatch(
+                        AutomationMessage(
+                            chatId = message.chatId,
+                            messageId = message.id.toLong(),
+                            text = text,
+                            isOutgoing = message.isOutgoing
+                        )
+                    )
+                }
+            }
             TdApi.UpdateNewChat.CONSTRUCTOR -> {
                 val chat = (result as TdApi.UpdateNewChat).chat
                 _chats.value = (_chats.value.filterNot { it.id == chat.id } + chat).sortedBy { it.title.lowercase() }
