@@ -25,10 +25,10 @@ jobs:
       - name: Bootstrap EasyTDLib
         run: bash scripts/bootstrap-easytdlib.sh
       - name: Build debug APK
-        run: ./gradlew --no-daemon assembleDebug
+        run: ./gradlew --no-daemon assembleDevDebug
       - uses: actions/upload-artifact@v4
         with:
           name: trondroid-debug-${{ github.sha }}
-          path: app/build/outputs/apk/debug/*.apk
+          path: app/build/outputs/apk/dev/debug/*.apk
           if-no-files-found: error
           retention-days: 14
