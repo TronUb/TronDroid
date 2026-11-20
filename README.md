@@ -11,7 +11,7 @@ TronDroid is an Android Telegram userbot manager built with Kotlin, Jetpack Comp
 - Phone, login-code and two-step verification flow
 - API hashes encrypted locally using Android Keystore AES-GCM
 - Per-profile TDLib database directories in app-private storage
-- Plugin catalogue with persistent enable/disable preferences
+- Categorised plugin catalogue with command reference pages and configurable command prefix
 - Automatic debug and manually triggered release GitHub Actions
 
 ## Package IDs and variants
@@ -45,13 +45,22 @@ Optional Actions secrets: `TELEGRAM_API_ID` and `TELEGRAM_API_HASH`. These are b
 
 The release workflow currently creates an **unsigned release APK**. Configure signing secrets and a signing step before store or public distribution. Debug and release IDs allow both variants to be installed side by side.
 
-## Plugin catalogue
-- AFK auto-reply — away replies (runtime handler still to be implemented).
-- Auto downloads — media queue (runtime handler still to be implemented).
-- Group admin tools — moderation helpers requiring relevant Telegram permissions.
-- Welcome messages, message filters and scheduler are extension points.
+## Userbot interface
+- Userbots tab: clean profile list, floating add button and a dedicated account detail/activity page.
+- Login: country calling-code selector, phone, Telegram login code and 2-step verification.
+- Deletion: confirmation dialog before removing a profile and its local TDLib session folder.
+- Settings: grouped Android-style categories and a Credentials manager with copy controls. API hashes are editable and re-encrypted; TDLib session files are generated and not editable.
+- Plugin tab: command prefix/handler setting (default `.`) and per-plugin command reference pages.
 
-Plugin switches persist, but do not imply every automation is already executing. Runtime handlers, per-plugin configuration, foreground execution and incoming-message routing are the next implementation layer.
+## Plugin catalogue and command reference
+- **AFK:** `.afk`, `.back`, `.afkstatus`
+- **Admin tools:** `.ban`, `.unban`, `.mute`, `.unmute`, `.kick`, `.purge`
+- **Downloads:** `.download`, `.autodownload`, `.downloadstatus`
+- **Welcome:** `.setwelcome`, `.delwelcome`, `.testwelcome`
+- **Filters:** `.filter`, `.stop`, `.filters`
+- **Scheduler:** `.schedule`, `.scheduled`, `.unschedule`
+
+The prefix can be changed to a short custom handler. The current release includes the plugin catalogue, command documentation and persisted enable/disable switches. The commands are reference/configuration entries; the incoming-message command dispatcher and the actual Telegram-side automation handlers are not yet connected. Administrative commands must enforce Telegram permissions and operate only where the logged-in account has the necessary rights.
 
 ## Architecture
 ```
