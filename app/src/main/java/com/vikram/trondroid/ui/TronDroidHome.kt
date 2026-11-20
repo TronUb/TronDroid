@@ -230,7 +230,7 @@ private fun UserbotDetailScreen(modifier: Modifier, bot: BotProfile?, engine: Te
                 shape = RoundedCornerShape(18.dp)) {
                 Column(Modifier.fillMaxWidth().padding(14.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Rounded.Terminal, null, tint = androidx.compose.ui.graphics.Color(0xFF9BE7B0))
+                        Icon(Icons.Rounded.Code, null, tint = androidx.compose.ui.graphics.Color(0xFF9BE7B0))
                         Spacer(Modifier.width(8.dp))
                         Text("TRONDROID / SESSION", color = androidx.compose.ui.graphics.Color(0xFF9BE7B0), style = MaterialTheme.typography.labelMedium)
                         Spacer(Modifier.weight(1f))
@@ -402,6 +402,7 @@ private fun PluginDetailScreen(modifier: Modifier, id: String) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SettingsScreen(modifier: Modifier, onCredentials: () -> Unit, onGeneral: () -> Unit, onUpdater: () -> Unit, themeMode: String, onThemeChange: (String) -> Unit) {
     Column(modifier.fillMaxSize().padding(18.dp).verticalScroll(rememberScrollState())) {
@@ -420,7 +421,7 @@ private fun SettingsScreen(modifier: Modifier, onCredentials: () -> Unit, onGene
             }
         }
         SettingsGroup("Account", listOf(Triple("Credentials", "API keys, account details and local sessions", Icons.Rounded.Key)), listOf(onCredentials))
-        SettingsGroup("Application", listOf(Triple("App updates", "Check and install the latest APK", Icons.Rounded.SystemUpdateAlt)), listOf(onUpdater))
+        SettingsGroup("Application", listOf(Triple("App updates", "Check and install the latest APK", Icons.Rounded.SystemUpdate)), listOf(onUpdater))
         Text("Security", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 20.dp))
         ElevatedCard(shape = RoundedCornerShape(20.dp)) {
             ListItem(headlineContent = { Text("Local credential storage") },
