@@ -15,8 +15,8 @@ class CoreAutomationPlugin(
             "help" -> {
                 val marker = prefix().ifBlank { "." }
                 context.reply(
-                    "TronDroid automation commands:\\n" +
-                        commands.joinToString("\\n") { "$marker${it.usage} — ${it.description}" }
+                    "TronDroid automation commands:\n" +
+                        commands.joinToString("\n") { "$marker${it.usage} — ${it.description}" }
                 )
             }
         }
