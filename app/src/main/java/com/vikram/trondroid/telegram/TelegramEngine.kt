@@ -39,8 +39,17 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
             client?.send(TdApi.SendMessage(chatId, null, null, null, null, content)) { response ->
                 if (response.constructor == TdApi.Error.CONSTRUCTOR) {
                     val error = response as TdApi.Error
-                    log("Automation reply failed: ${error.message}", true)
-                }
+                    log("Automation send failed: ${error.message}", true)
+                } else log("Automation response sent to chat $chatId")
+            }
+        },
+        editText = { chatId, messageId, text ->
+            val content = TdApi.InputMessageText(TdApi.FormattedText(text, emptyArray()), null, true)
+            client?.send(TdApi.EditMessageText(chatId, messageId, null, content)) { response ->
+                if (response.constructor == TdApi.Error.CONSTRUCTOR) {
+                    val error = response as TdApi.Error
+                    log("Command edit failed: ${error.message}", true)
+                } else log("Edited command message $messageId")
             }
         },
         logger = { message, error -> log(message, error) }
@@ -76,16 +85,13 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
             TdApi.UpdateNewMessage.CONSTRUCTOR -> {
                 val message = (result as TdApi.UpdateNewMessage).message
                 val text = (message.content as? TdApi.MessageText)?.text?.text.orEmpty()
-                if (text.isNotBlank()) {
-                    automation.dispatch(
-                        AutomationMessage(
-                            chatId = message.chatId,
-                            messageId = message.id.toLong(),
-                            text = text,
-                            isOutgoing = message.isOutgoing
-                        )
-                    )
-                }
+                val direction = if (message.isOutgoing) "OUTGOING →" else "INCOMING ←"
+                val preview = text.ifBlank { "[${message.content.javaClass.simpleName}]" }.replace("\n", " ").take(180)
+                val chatName = _chats.value.firstOrNull { it.id == message.chatId }?.title ?: "chat ${message.chatId}"
+                log("$direction $chatName: $preview")
+                if (text.isNotBlank()) automation.dispatch(AutomationMessage(
+                    chatId = message.chatId, messageId = message.id, text = text, isOutgoing = message.isOutgoing
+                ))
             }
             TdApi.UpdateNewChat.CONSTRUCTOR -> {
                 val chat = (result as TdApi.UpdateNewChat).chat
@@ -121,7 +127,13 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
     fun logout() { log("Logging out"); client?.send(TdApi.LogOut()) { r ->
         if (r.constructor == TdApi.Error.CONSTRUCTOR) { _error.value = (r as TdApi.Error).message; log(_error.value!!, true) }
     } }
-    fun close() { client?.send(TdApi.Close()) {}; client = null }
+    fun close() {
+        val active = client ?: return
+        log("Closing Telegram session")
+        active.send(TdApi.Close()) {}
+        client = null
+        automation.shutdown()
+    }
     private fun loadChats() {
         log("Loading recent chats")
         client?.send(TdApi.LoadChats(TdApi.ChatListMain(), 100)) { r ->
