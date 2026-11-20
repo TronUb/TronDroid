@@ -194,7 +194,6 @@ private fun UserbotsScreen(modifier: Modifier, bots: List<BotProfile>, onOpen: (
 }
 
 @Composable
-@Composable
 private fun UserbotDetailScreen(modifier: Modifier, bot: BotProfile?, engine: TelegramEngine?, onDelete: () -> Unit, onLogout: () -> Unit) {
     if (bot == null) return
     val auth = engine?.authorization?.collectAsState()?.value
