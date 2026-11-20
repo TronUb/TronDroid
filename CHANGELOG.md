@@ -8,6 +8,7 @@ All notable project changes are documented here. Automated debug pre-releases al
 - Configure one shared PKCS12 signing key for CI debug and production release APKs.
 - Publish a rolling `debug-latest` GitHub pre-release from successful pushes to `master`; replace its APK asset and move its tag to the newest commit.
 - Attach build metadata and recent commit summaries to debug and production distributions.
+- Increment CI version codes using the workflow run number so installed APKs can be updated.
 - Keep per-commit debug workflow artifacts for 14 days and production artifacts for 90 days.
 
 ### Project

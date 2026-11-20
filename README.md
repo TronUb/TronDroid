@@ -21,7 +21,7 @@ TronDroid is an Android Telegram userbot manager built with Kotlin, Jetpack Comp
 | Debug | `assembleDevDebug` | `com.vikram.trondroid.debug` | Shared CI key when secrets are available; local/fork fallback uses standard debug key |
 | Release | `assembleProdRelease` | `com.vikram.trondroid` | Shared CI key |
 
-The two selected variants are explicitly filtered in Gradle. The debug and release app IDs are separate so both can be installed side by side. Android updates an installed app only when its application ID and signing certificate match. Keep the release ID and shared keystore unchanged for every production update.
+The two selected variants are explicitly filtered in Gradle. The debug and release app IDs are separate so both can be installed side by side. Android updates an installed app only when its application ID and signing certificate match. Keep the release ID and shared keystore unchanged for every production update. CI version codes increase automatically using each workflow's run number.
 
 ## Requirements
 - Android Studio with Android SDK 36

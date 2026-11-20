@@ -48,6 +48,8 @@ jobs:
       - name: Bootstrap EasyTDLib
         run: bash scripts/bootstrap-easytdlib.sh
       - name: Build signed debug APK
+        env:
+          ANDROID_VERSION_CODE: ${{ github.run_number }}
         run: ./gradlew --no-daemon assembleDevDebug
       - name: Prepare APK and build metadata
         id: package
@@ -61,6 +63,7 @@ jobs:
           test -n "$APK"
           SHORT_SHA="$(git rev-parse --short=12 "$COMMIT_SHA")"
           cp "$APK" "TronDroid-debug-$SHORT_SHA.apk"
+          cp "$APK" "TronDroid-debug-latest.apk"
           echo "apk=TronDroid-debug-$SHORT_SHA.apk" >> "$GITHUB_OUTPUT"
           {
             echo "# TronDroid Debug Build"
@@ -68,6 +71,7 @@ jobs:
             echo "- Commit: `$COMMIT_SHA`"
             echo "- Short commit: `$SHORT_SHA`"
             echo "- Branch: `$BRANCH_NAME`"
+            echo "- Version code: `$RUN_NUMBER`"
             echo "- Workflow run: #$RUN_NUMBER (attempt $RUN_ATTEMPT)"
             echo "- Run URL: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
             echo "- Commit URL: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/commit/$COMMIT_SHA"
@@ -104,5 +108,5 @@ jobs:
           draft: false
           overwrite_files: true
           files: |
-            TronDroid-debug-${{ github.sha }}.apk
+            TronDroid-debug-latest.apk
             build-info.md

@@ -51,11 +51,14 @@ jobs:
       - name: Bootstrap EasyTDLib
         run: bash scripts/bootstrap-easytdlib.sh
       - name: Build signed release APK
+        env:
+          ANDROID_VERSION_CODE: ${{ github.run_number }}
         run: ./gradlew --no-daemon assembleProdRelease
       - name: Prepare APK and release notes
         env:
           VERSION_NAME: ${{ inputs.version_name }}
           COMMIT_SHA: ${{ github.sha }}
+          VERSION_CODE: ${{ github.run_number }}
         run: |
           APK="$(find app/build/outputs/apk/prod/release -maxdepth 1 -name '*.apk' -print -quit)"
           test -n "$APK"
@@ -63,6 +66,7 @@ jobs:
           {
             echo "# TronDroid v$VERSION_NAME"
             echo
+            echo "- Version code: `$VERSION_CODE`"
             echo "- Commit: `$COMMIT_SHA`"
             echo "- Commit URL: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/commit/$COMMIT_SHA"
             echo "- Workflow run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
