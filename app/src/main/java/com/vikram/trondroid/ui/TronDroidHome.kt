@@ -1,5 +1,11 @@
 package com.vikram.trondroid.ui
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.LazyColumn
@@ -29,6 +35,7 @@ private sealed interface Page {
     data object Credentials : Page
     data class CredentialDetail(val id: String) : Page
     data object GeneralSettings : Page
+    data object Updater : Page
     data class PluginDetail(val id: String) : Page
 }
 
@@ -38,12 +45,17 @@ fun TronDroidHome(
     bots: List<BotProfile>, selected: BotProfile?, engine: TelegramEngine?,
     onSelect: (String) -> Unit, onAdd: (String, String, Int, String) -> Unit,
     onRemove: (String) -> Unit, onReadApiHash: (String) -> String?,
-    onUpdateApiHash: (String, String) -> Unit
+    onUpdateApiHash: (String, String) -> Unit,
+    themeMode: String, onThemeChange: (String) -> Unit
 ) {
     var tab by remember { mutableStateOf(Tab.USERBOTS) }
-    var page by remember { mutableStateOf<Page>(Page.Home) }
+    var pageStack by remember { mutableStateOf(listOf<Page>(Page.Home)) }
+    val page = pageStack.last()
+    fun navigate(next: Page) { pageStack = pageStack + next }
+    fun goBack() { if (pageStack.size > 1) pageStack = pageStack.dropLast(1) }
     var showAdd by remember { mutableStateOf(false) }
     var pendingDelete by remember { mutableStateOf<BotProfile?>(null) }
+    var pendingLogout by remember { mutableStateOf<BotProfile?>(null) }
     val isHome = page == Page.Home
     val title = when (val p = page) {
         Page.Home -> when (tab) { Tab.USERBOTS -> "Userbots"; Tab.PLUGINS -> "Plugins"; Tab.SETTINGS -> "Settings" }
@@ -51,6 +63,7 @@ fun TronDroidHome(
         Page.Credentials -> "Credentials"
         is Page.CredentialDetail -> bots.firstOrNull { it.id == p.id }?.name ?: "Credentials"
         Page.GeneralSettings -> "General"
+        Page.Updater -> "App updates"
         is Page.PluginDetail -> PluginCatalog.all.firstOrNull { it.id == p.id }?.title ?: "Plugin"
     }
     Scaffold(
@@ -59,12 +72,7 @@ fun TronDroidHome(
                 title = { Text(title, style = MaterialTheme.typography.titleLarge) },
                 navigationIcon = {
                     if (!isHome) IconButton(onClick = {
-                        page = when (page) {
-                            is Page.CredentialDetail -> Page.Credentials
-                            Page.Credentials, Page.GeneralSettings -> Page.Home
-                            is Page.Userbot, is Page.PluginDetail -> Page.Home
-                            else -> Page.Home
-                        }
+                        goBack()
                     }) { Icon(Icons.Rounded.ArrowBack, "Back") }
                 }
             )
@@ -93,19 +101,19 @@ fun TronDroidHome(
         when (val current = page) {
             Page.Home -> when (tab) {
                 Tab.USERBOTS -> UserbotsScreen(Modifier.padding(padding), bots, onOpen = {
-                    onSelect(it); page = Page.Userbot(it)
+                    onSelect(it); navigate(Page.Userbot(it))
                 }, onDelete = { pendingDelete = it })
-                Tab.PLUGINS -> PluginsScreen(Modifier.padding(padding), onOpen = { page = Page.PluginDetail(it) })
+                Tab.PLUGINS -> PluginsScreen(Modifier.padding(padding), onOpen = { navigate(Page.PluginDetail(it)) })
                 Tab.SETTINGS -> SettingsScreen(Modifier.padding(padding),
-                    onCredentials = { page = Page.Credentials }, onGeneral = { page = Page.GeneralSettings })
+                    onCredentials = { navigate(Page.Credentials) }, onGeneral = { navigate(Page.GeneralSettings) }, onUpdater = { navigate(Page.Updater) }, themeMode = themeMode, onThemeChange = onThemeChange)
             }
             is Page.Userbot -> {
                 val bot = bots.firstOrNull { it.id == current.id }
                 UserbotDetailScreen(Modifier.padding(padding), bot,
                     engine = if (selected?.id == current.id) engine else null,
-                    onDelete = { if (bot != null) pendingDelete = bot })
+                    onDelete = { if (bot != null) pendingDelete = bot }, onLogout = { if (bot != null) pendingLogout = bot })
             }
-            Page.Credentials -> CredentialsScreen(Modifier.padding(padding), bots, onOpen = { page = Page.CredentialDetail(it) })
+            Page.Credentials -> CredentialsScreen(Modifier.padding(padding), bots, onOpen = { navigate(Page.CredentialDetail(it)) })
             is Page.CredentialDetail -> {
                 val bot = bots.firstOrNull { it.id == current.id }
                 if (bot != null) CredentialDetailScreen(Modifier.padding(padding), bot,
@@ -113,11 +121,19 @@ fun TronDroidHome(
                     onSaveApiHash = { onUpdateApiHash(bot.id, it) })
             }
             Page.GeneralSettings -> GeneralSettingsScreen(Modifier.padding(padding))
+            Page.Updater -> AppUpdaterScreen(Modifier.padding(padding))
             is Page.PluginDetail -> PluginDetailScreen(Modifier.padding(padding), current.id)
         }
     }
+    BackHandler(enabled = pageStack.size > 1 || tab != Tab.USERBOTS) { if (pageStack.size > 1) goBack() else tab = Tab.USERBOTS }
     if (showAdd) AddBotDialog(onDismiss = { showAdd = false }) { name, phone, id, hash ->
         onAdd(name, phone, id, hash); showAdd = false
+    }
+    pendingLogout?.let { bot ->
+        AlertDialog(onDismissRequest = { pendingLogout = null }, title = { Text("Log out of ${bot.name}?") },
+            text = { Text("This will end the Telegram session on this device. You can sign in again later.") },
+            confirmButton = { TextButton(onClick = { if (selected?.id == bot.id) engine?.logout(); pendingLogout = null }) { Text("Log out") } },
+            dismissButton = { TextButton(onClick = { pendingLogout = null }) { Text("Cancel") } })
     }
     pendingDelete?.let { bot ->
         AlertDialog(
@@ -126,7 +142,7 @@ fun TronDroidHome(
             title = { Text("Delete userbot?") },
             text = { Text("Remove ${bot.name} and its saved API hash from TronDroid? The local Telegram session folder will also be deleted.") },
             confirmButton = {
-                TextButton(onClick = { onRemove(bot.id); pendingDelete = null; page = Page.Home }) {
+                TextButton(onClick = { onRemove(bot.id); pendingDelete = null; pageStack = listOf(Page.Home) }) {
                     Text("Delete", color = MaterialTheme.colorScheme.error)
                 }
             },
@@ -167,7 +183,7 @@ private fun UserbotsScreen(modifier: Modifier, bots: List<BotProfile>, onOpen: (
 }
 
 @Composable
-private fun UserbotDetailScreen(modifier: Modifier, bot: BotProfile?, engine: TelegramEngine?, onDelete: () -> Unit) {
+private fun UserbotDetailScreen(modifier: Modifier, bot: BotProfile?, engine: TelegramEngine?, onDelete: () -> Unit, onLogout: () -> Unit) {
     if (bot == null) return
     val auth = engine?.authorization?.collectAsState()?.value
     val error = engine?.error?.collectAsState()?.value
@@ -195,19 +211,61 @@ private fun UserbotDetailScreen(modifier: Modifier, bot: BotProfile?, engine: Te
                         TdApi.AuthorizationStateWaitCode.CONSTRUCTOR -> AuthInput("Telegram login code", KeyboardType.Number, "Verify code") { engine?.submitCode(it) }
                         TdApi.AuthorizationStateWaitPassword.CONSTRUCTOR -> AuthInput("Two-step verification password", KeyboardType.Password, "Unlock account", true) { engine?.submitPassword(it) }
                     }
-                    if (ready) OutlinedButton(onClick = { engine?.logout() }) { Text("Log out") }
-                    TextButton(onClick = onDelete) { Text("Delete userbot", color = MaterialTheme.colorScheme.error) }
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                        OutlinedButton(onClick = onLogout) { Text("Log out") }
+                        TextButton(onClick = onDelete) { Text("Delete userbot", color = MaterialTheme.colorScheme.error) }
+                    }
                 }
             }
         }
-        item { Text("Recent activity", style = MaterialTheme.typography.titleMedium) }
-        if (logs.isEmpty()) item { Text("No log entries yet.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
-        items(logs.reversed().take(60)) { entry ->
-            ListItem(headlineContent = { Text(entry.message) }, supportingContent = { Text(entry.time) },
-                leadingContent = { Icon(Icons.Rounded.Circle, null, Modifier.size(10.dp), tint = if (entry.isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary) })
+        item {
+            Text("Live logs", style = MaterialTheme.typography.titleMedium)
+            Card(modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                colors = CardDefaults.cardColors(containerColor = androidx.compose.ui.graphics.Color(0xFF050505)),
+                shape = RoundedCornerShape(18.dp)) {
+                Column(Modifier.fillMaxWidth().padding(14.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Rounded.Terminal, null, tint = androidx.compose.ui.graphics.Color(0xFF9BE7B0))
+                        Spacer(Modifier.width(8.dp))
+                        Text("TRONDROID / SESSION", color = androidx.compose.ui.graphics.Color(0xFF9BE7B0), style = MaterialTheme.typography.labelMedium)
+                        Spacer(Modifier.weight(1f))
+                        Text("LIVE", color = androidx.compose.ui.graphics.Color(0xFF9BE7B0), style = MaterialTheme.typography.labelSmall)
+                    }
+                    HorizontalDivider(Modifier.padding(vertical = 8.dp), color = androidx.compose.ui.graphics.Color(0xFF26352A))
+                    if (logs.isEmpty()) Text("> waiting for events…", color = androidx.compose.ui.graphics.Color.LightGray)
+                    logs.takeLast(70).forEach { entry ->
+                        Text("[${entry.time}] ${if (entry.isError) "ERROR" else "INFO"}  ${entry.message}",
+                            color = if (entry.isError) androidx.compose.ui.graphics.Color(0xFFFF8A80) else androidx.compose.ui.graphics.Color(0xFFB8D8C0),
+                            style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(vertical = 2.dp))
+                    }
+                }
+            }
+        }
+        item {
+            val users = chats.count { it.type is TdApi.ChatTypePrivate }
+            val groups = chats.count { it.type is TdApi.ChatTypeBasicGroup }
+            val supergroups = chats.count { it.type is TdApi.ChatTypeSupergroup && !(it.type as TdApi.ChatTypeSupergroup).isChannel }
+            val channels = chats.count { it.type is TdApi.ChatTypeSupergroup && (it.type as TdApi.ChatTypeSupergroup).isChannel }
+            val stats = listOf("All" to chats.size, "Users" to users, "Groups" to groups, "Supergroups" to supergroups, "Channels" to channels)
+            Text("Account insights", style = MaterialTheme.typography.titleMedium)
+            Card(Modifier.fillMaxWidth().padding(top = 8.dp), shape = RoundedCornerShape(18.dp)) {
+                Column(Modifier.padding(14.dp)) {
+                    stats.chunked(3).forEach { line ->
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            line.forEach { (label, count) ->
+                                Column(Modifier.weight(1f).padding(vertical = 6.dp)) {
+                                    Text(count.toString(), style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
+                                    Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
+                            repeat(3 - line.size) { Spacer(Modifier.weight(1f)) }
+                        }
+                    }
+                }
+            }
         }
         if (ready) {
-            item { Text("Chats", style = MaterialTheme.typography.titleMedium) }
+            item { Text("Recent chats", style = MaterialTheme.typography.titleMedium) }
             if (chats.isEmpty()) item { Text("Loading chats…", color = MaterialTheme.colorScheme.onSurfaceVariant) }
             items(chats.take(20)) { Text(it.title, Modifier.padding(vertical = 4.dp)) }
         }
@@ -338,23 +396,31 @@ private fun PluginDetailScreen(modifier: Modifier, id: String) {
 }
 
 @Composable
-private fun SettingsScreen(modifier: Modifier, onCredentials: () -> Unit, onGeneral: () -> Unit) {
+private fun SettingsScreen(modifier: Modifier, onCredentials: () -> Unit, onGeneral: () -> Unit, onUpdater: () -> Unit, themeMode: String, onThemeChange: (String) -> Unit) {
     Column(modifier.fillMaxSize().padding(18.dp)) {
-        SettingsGroup("Account", listOf(
-            Triple("Credentials", "API keys, account details and local sessions", Icons.Rounded.Key),
-            Triple("General", "Appearance and app behaviour", Icons.Rounded.Tune)
-        ), listOf(onCredentials, onGeneral))
-        Text("Security", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(top = 20.dp))
+        SettingsGroup("General", listOf(Triple("General settings", "Appearance and app behaviour", Icons.Rounded.Tune)), listOf(onGeneral))
+        Text("Appearance", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 18.dp, bottom = 8.dp))
         ElevatedCard(shape = RoundedCornerShape(20.dp)) {
-            ListItem(
-                headlineContent = { Text("Local credential storage") },
-                supportingContent = { Text("API hashes are encrypted with Android Keystore") },
-                leadingContent = { Icon(Icons.Rounded.Security, null, tint = MaterialTheme.colorScheme.primary) }
-            )
+            Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("Theme", style = MaterialTheme.typography.titleSmall)
+                SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+                    listOf("system", "light", "dark").forEachIndexed { index, mode ->
+                        SegmentedButton(selected = themeMode == mode, onClick = { onThemeChange(mode) }, shape = SegmentedButtonDefaults.itemShape(index, 3)) {
+                            Text(mode.replaceFirstChar { it.uppercase() })
+                        }
+                    }
+                }
+            }
         }
-        Text("TronDroid 1.0.0", color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = 22.dp))
+        SettingsGroup("Account", listOf(Triple("Credentials", "API keys, account details and local sessions", Icons.Rounded.Key)), listOf(onCredentials))
+        SettingsGroup("Application", listOf(Triple("App updates", "Check and install the latest APK", Icons.Rounded.SystemUpdateAlt)), listOf(onUpdater))
+        Text("Security", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 20.dp))
+        ElevatedCard(shape = RoundedCornerShape(20.dp)) {
+            ListItem(headlineContent = { Text("Local credential storage") },
+                supportingContent = { Text("API hashes are encrypted with Android Keystore") },
+                leadingContent = { Icon(Icons.Rounded.Security, null, tint = MaterialTheme.colorScheme.primary) })
+        }
+        Text("TronDroid 1.0.0 · Telegram session manager", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 22.dp))
     }
 }
 
@@ -387,7 +453,7 @@ private fun SettingsGroup(title: String, entries: List<Triple<String, String, an
 private fun GeneralSettingsScreen(modifier: Modifier) {
     Column(modifier.fillMaxSize().padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("General preferences", style = MaterialTheme.typography.titleMedium)
-        Text("TronDroid uses the system dark theme in this build.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("Theme, account and update preferences are available directly in Settings.", color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text("Build variants: debug com.vikram.trondroid.debug · release com.vikram.trondroid",
             color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
