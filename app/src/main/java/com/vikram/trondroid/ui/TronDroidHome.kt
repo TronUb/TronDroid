@@ -6,6 +6,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.LazyColumn
@@ -98,7 +99,11 @@ fun TronDroidHome(
             }
         }
     ) { padding ->
-        when (val current = page) {
+        AnimatedContent(targetState = page, transitionSpec = {
+            (slideInHorizontally { it / 4 } + fadeIn()) togetherWith
+                (slideOutHorizontally { -it / 4 } + fadeOut())
+        }, label = "page-slide") { currentPage ->
+        when (val current = currentPage) {
             Page.Home -> when (tab) {
                 Tab.USERBOTS -> UserbotsScreen(Modifier.padding(padding), bots, onOpen = {
                     onSelect(it); navigate(Page.Userbot(it))
@@ -123,7 +128,7 @@ fun TronDroidHome(
             Page.GeneralSettings -> GeneralSettingsScreen(Modifier.padding(padding))
             Page.Updater -> AppUpdaterScreen(Modifier.padding(padding))
             is Page.PluginDetail -> PluginDetailScreen(Modifier.padding(padding), current.id)
-        }
+        } }
     }
     BackHandler(enabled = pageStack.size > 1 || tab != Tab.USERBOTS) { if (pageStack.size > 1) goBack() else tab = Tab.USERBOTS }
     if (showAdd) AddBotDialog(onDismiss = { showAdd = false }) { name, phone, id, hash ->
@@ -186,7 +191,6 @@ private fun UserbotsScreen(modifier: Modifier, bots: List<BotProfile>, onOpen: (
 private fun UserbotDetailScreen(modifier: Modifier, bot: BotProfile?, engine: TelegramEngine?, onDelete: () -> Unit, onLogout: () -> Unit) {
     if (bot == null) return
     val auth = engine?.authorization?.collectAsState()?.value
-    val error = engine?.error?.collectAsState()?.value
     val logs = engine?.logs?.collectAsState()?.value.orEmpty()
     val chats = engine?.chats?.collectAsState()?.value.orEmpty()
     val ready = auth?.constructor == TdApi.AuthorizationStateReady.CONSTRUCTOR
@@ -205,7 +209,6 @@ private fun UserbotDetailScreen(modifier: Modifier, bot: BotProfile?, engine: Te
                     }
                     AssistChip(onClick = {}, label = { Text(if (ready) "Connected" else authLabel(auth)) },
                         leadingIcon = { Icon(if (ready) Icons.Rounded.CheckCircle else Icons.Rounded.Sync, null) })
-                    if (!error.isNullOrBlank()) Text(error, color = MaterialTheme.colorScheme.error)
                     when (auth?.constructor) {
                         TdApi.AuthorizationStateWaitPhoneNumber.CONSTRUCTOR -> AuthInput("Phone number", KeyboardType.Phone, "Continue") { engine?.submitPhone(it) }
                         TdApi.AuthorizationStateWaitCode.CONSTRUCTOR -> AuthInput("Telegram login code", KeyboardType.Number, "Verify code") { engine?.submitCode(it) }
@@ -315,18 +318,20 @@ private fun AddBotDialog(onDismiss: () -> Unit, onSave: (String, String, Int, St
     AlertDialog(onDismissRequest = onDismiss, title = { Text("Add userbot") }, text = {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedTextField(name, { name = it }, label = { Text("Profile name") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-            ExposedDropdownMenuBox(expanded = countryMenu, onExpandedChange = { countryMenu = it }) {
-                OutlinedTextField(value = "${country.name} (${country.dial})", onValueChange = {}, readOnly = true,
-                    label = { Text("Country code") }, trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(countryMenu) },
-                    modifier = Modifier.menuAnchor().fillMaxWidth())
-                ExposedDropdownMenu(expanded = countryMenu, onDismissRequest = { countryMenu = false }) {
-                    countries.forEach { c -> DropdownMenuItem(text = { Text("${c.name}  ${c.dial}") },
-                        onClick = { country = c; countryMenu = false }) }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                ExposedDropdownMenuBox(expanded = countryMenu, onExpandedChange = { countryMenu = it }, modifier = Modifier.width(124.dp)) {
+                    OutlinedTextField(value = country.dial, onValueChange = {}, readOnly = true,
+                        label = { Text("Code") }, trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(countryMenu) },
+                        modifier = Modifier.menuAnchor().fillMaxWidth(), singleLine = true)
+                    ExposedDropdownMenu(expanded = countryMenu, onDismissRequest = { countryMenu = false }) {
+                        countries.forEach { c -> DropdownMenuItem(text = { Text("${c.name}  ${c.dial}") },
+                            onClick = { country = c; countryMenu = false }) }
+                    }
                 }
+                OutlinedTextField(phone, { phone = it.filter(Char::isDigit) }, label = { Text("Phone number") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                    singleLine = true, modifier = Modifier.weight(1f))
             }
-            OutlinedTextField(phone, { phone = it.filter(Char::isDigit) }, label = { Text("Phone number") },
-                prefix = { Text(country.dial) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-                singleLine = true, modifier = Modifier.fillMaxWidth())
             OutlinedTextField(apiId, { apiId = it }, label = { Text("Telegram API ID") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), singleLine = true, modifier = Modifier.fillMaxWidth())
             OutlinedTextField(apiHash, { apiHash = it }, label = { Text("Telegram API Hash") },
@@ -397,7 +402,7 @@ private fun PluginDetailScreen(modifier: Modifier, id: String) {
 
 @Composable
 private fun SettingsScreen(modifier: Modifier, onCredentials: () -> Unit, onGeneral: () -> Unit, onUpdater: () -> Unit, themeMode: String, onThemeChange: (String) -> Unit) {
-    Column(modifier.fillMaxSize().padding(18.dp)) {
+    Column(modifier.fillMaxSize().padding(18.dp).verticalScroll(rememberScrollState())) {
         SettingsGroup("General", listOf(Triple("General settings", "Appearance and app behaviour", Icons.Rounded.Tune)), listOf(onGeneral))
         Text("Appearance", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 18.dp, bottom = 8.dp))
         ElevatedCard(shape = RoundedCornerShape(20.dp)) {
