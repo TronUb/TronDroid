@@ -51,7 +51,7 @@ android {
                 storeType = "PKCS12"
                 storePassword = signingStorePassword
                 keyAlias = signingKeyAlias
-                keyPassword = signingKeyPassword
+                keyPassword = signingStorePassword
             }
         }
     }
