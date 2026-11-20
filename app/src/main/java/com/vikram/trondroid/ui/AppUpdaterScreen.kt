@@ -62,14 +62,15 @@ fun AppUpdaterScreen(modifier:Modifier=Modifier) {
     var checking by remember { mutableStateOf(false) }
     var checked by remember { mutableStateOf(false) }
     var latest by remember { mutableStateOf(false) }
-    var id by remember { mutableStateOf<Long?>(null) }
+    val downloadPrefs = remember { context.getSharedPreferences("trondroid.updater", Context.MODE_PRIVATE) }
+    var id by remember { mutableStateOf(downloadPrefs.getLong("download_id", -1L).takeIf { it > 0L }) }
     var transfer by remember { mutableStateOf(Transfer()) }
     var downloading by remember { mutableStateOf(false) }
     var downloaded by remember { mutableStateOf(false) }
 
     fun discard() {
         id?.let { (context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager).remove(it) }
-        id=null; downloading=false; downloaded=false; transfer=Transfer(); file.delete()
+        id=null; downloadPrefs.edit().remove("download_id").apply(); downloading=false; downloaded=false; transfer=Transfer(); file.delete()
         message="Downloaded update discarded."
     }
     fun check() {
@@ -109,7 +110,7 @@ fun AppUpdaterScreen(modifier:Modifier=Modifier) {
                 .setMimeType("application/vnd.android.package-archive").setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
                 .setAllowedOverMetered(true).setAllowedOverRoaming(false)
                 .setDestinationInExternalFilesDir(context,Environment.DIRECTORY_DOWNLOADS,file.name)
-            id=manager.enqueue(request);transfer=Transfer(total=r.size.takeIf{it>0}?:-1);downloading=true;downloaded=false;message="Downloading update…"
+            id=manager.enqueue(request);downloadPrefs.edit().putLong("download_id", id!!).apply();transfer=Transfer(total=r.size.takeIf{it>0}?:-1);downloading=true;downloaded=false;message="Downloading update…"
         }.onFailure{message=it.message?:"Could not start download."}
     }
     fun install(){
@@ -142,17 +143,18 @@ fun AppUpdaterScreen(modifier:Modifier=Modifier) {
                 DownloadManager.STATUS_SUCCESSFUL->{
                     val ok=withContext(Dispatchers.IO){validUpdate(context,file,release?.version?:0)}
                     downloading=false;downloaded=ok
+                    if(!ok)downloadPrefs.edit().remove("download_id").apply()
                     if(ok)message="Download complete. Install or discard the APK."
                     else{file.delete();message="Downloaded APK failed validation and was deleted."}
                     break
                 }
-                DownloadManager.STATUS_FAILED->{manager.remove(key);file.delete();downloading=false;downloaded=false;message="Download failed (code $reason). Incomplete APK deleted.";break}
+                DownloadManager.STATUS_FAILED->{manager.remove(key);downloadPrefs.edit().remove("download_id").apply();file.delete();downloading=false;downloaded=false;message="Download failed (code $reason). Incomplete APK deleted.";break}
                 else->delay(800)
             }
         }
     }
     DisposableEffect(context){
-        val receiver=object:BroadcastReceiver(){override fun onReceive(c:Context?,i:Intent?){if(i?.action==Intent.ACTION_MY_PACKAGE_REPLACED){file.delete();downloaded=false;downloading=false}}}
+        val receiver=object:BroadcastReceiver(){override fun onReceive(c:Context?,i:Intent?){if(i?.action==Intent.ACTION_MY_PACKAGE_REPLACED){file.delete();downloadPrefs.edit().remove("download_id").apply();downloaded=false;downloading=false}}}
         ContextCompat.registerReceiver(context,receiver,android.content.IntentFilter(Intent.ACTION_MY_PACKAGE_REPLACED),ContextCompat.RECEIVER_NOT_EXPORTED)
         onDispose{runCatching{context.unregisterReceiver(receiver)}}
     }
