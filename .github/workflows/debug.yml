@@ -1,11 +1,11 @@
-name: Debug APK
+name: Debug APK + Rolling Pre-release
 on:
   push:
     branches: ["**"]
   pull_request:
     branches: ["**"]
 permissions:
-  contents: read
+  contents: write
 concurrency:
   group: debug-${{ github.ref }}
   cancel-in-progress: true
@@ -14,6 +14,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -22,13 +24,85 @@ jobs:
         uses: android-actions/setup-android@v3
         with:
           packages: "platform-tools platforms;android-36 build-tools;36.0.0"
+      - name: Configure shared APK signing key
+        if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -z "$ANDROID_KEYSTORE_BASE64" ] || [ -z "$ANDROID_KEYSTORE_PASSWORD" ] || [ -z "$ANDROID_KEY_ALIAS" ] || [ -z "$ANDROID_KEY_PASSWORD" ]; then
+            echo "::error::One or more Android signing secrets are missing."
+            exit 1
+          fi
+          KEYSTORE_PATH="$RUNNER_TEMP/trondroid-signing.p12"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE_PATH"
+          chmod 600 "$KEYSTORE_PATH"
+          {
+            echo "ANDROID_KEYSTORE_PATH=$KEYSTORE_PATH"
+            echo "ANDROID_KEYSTORE_PASSWORD=$ANDROID_KEYSTORE_PASSWORD"
+            echo "ANDROID_KEY_ALIAS=$ANDROID_KEY_ALIAS"
+            echo "ANDROID_KEY_PASSWORD=$ANDROID_KEY_PASSWORD"
+          } >> "$GITHUB_ENV"
       - name: Bootstrap EasyTDLib
         run: bash scripts/bootstrap-easytdlib.sh
-      - name: Build debug APK
+      - name: Build signed debug APK
         run: ./gradlew --no-daemon assembleDevDebug
+      - name: Prepare APK and build metadata
+        id: package
+        env:
+          COMMIT_SHA: ${{ github.sha }}
+          BRANCH_NAME: ${{ github.ref_name }}
+          RUN_NUMBER: ${{ github.run_number }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          APK="$(find app/build/outputs/apk/dev/debug -maxdepth 1 -name '*.apk' -print -quit)"
+          test -n "$APK"
+          SHORT_SHA="$(git rev-parse --short=12 "$COMMIT_SHA")"
+          cp "$APK" "TronDroid-debug-$SHORT_SHA.apk"
+          echo "apk=TronDroid-debug-$SHORT_SHA.apk" >> "$GITHUB_OUTPUT"
+          {
+            echo "# TronDroid Debug Build"
+            echo
+            echo "- Commit: `$COMMIT_SHA`"
+            echo "- Short commit: `$SHORT_SHA`"
+            echo "- Branch: `$BRANCH_NAME`"
+            echo "- Workflow run: #$RUN_NUMBER (attempt $RUN_ATTEMPT)"
+            echo "- Run URL: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            echo "- Commit URL: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/commit/$COMMIT_SHA"
+            echo "- Commit message: $(git log -1 --format=%s "$COMMIT_SHA")"
+            echo
+            echo "## Recent changes"
+            git log -10 --pretty=format:'- %h %s (%an)' "$COMMIT_SHA"
+            echo
+          } > build-info.md
+          cat build-info.md >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         with:
           name: trondroid-debug-${{ github.sha }}
-          path: app/build/outputs/apk/dev/debug/*.apk
+          path: |
+            ${{ steps.package.outputs.apk }}
+            build-info.md
           if-no-files-found: error
           retention-days: 14
+      - name: Move rolling debug tag to this commit
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        run: |
+          git tag -f debug-latest "$GITHUB_SHA"
+          git push --force origin refs/tags/debug-latest
+      - name: Publish or update rolling debug pre-release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: debug-latest
+          target_commitish: ${{ github.sha }}
+          name: TronDroid Debug (Latest)
+          body_path: build-info.md
+          prerelease: true
+          make_latest: false
+          draft: false
+          overwrite_files: true
+          files: |
+            TronDroid-debug-${{ github.sha }}.apk
+            build-info.md

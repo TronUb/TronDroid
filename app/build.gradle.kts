@@ -11,6 +11,12 @@ val localProps = Properties().apply {
 fun secret(name: String) = providers.gradleProperty(name).orNull
     ?: System.getenv(if (name == "telegramApiId") "TELEGRAM_API_ID" else "TELEGRAM_API_HASH")
     ?: localProps.getProperty(name) ?: ""
+val signingStorePath = System.getenv("ANDROID_KEYSTORE_PATH").orEmpty()
+val signingStorePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD").orEmpty()
+val signingKeyAlias = System.getenv("ANDROID_KEY_ALIAS").orEmpty()
+val signingKeyPassword = System.getenv("ANDROID_KEY_PASSWORD").orEmpty()
+val hasSharedSigningKey = signingStorePath.isNotBlank() && signingStorePassword.isNotBlank() &&
+    signingKeyAlias.isNotBlank() && signingKeyPassword.isNotBlank()
 android {
     namespace = "com.vikram.trondroid"
     compileSdk = 36
@@ -20,8 +26,8 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "1.0.0"
-        buildConfigField("String", "TELEGRAM_API_ID", "\"${secret("telegramApiId")}\"")
-        buildConfigField("String", "TELEGRAM_API_HASH", "\"${secret("telegramApiHash")}\"")
+        buildConfigField("String", "TELEGRAM_API_ID", "\"\${secret("telegramApiId")}\\"")
+        buildConfigField("String", "TELEGRAM_API_HASH", "\"\${secret("telegramApiHash")}\\"")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64", "x86") }
     }
@@ -37,11 +43,26 @@ android {
             applicationId = "com.vikram.trondroid"
         }
     }
+    signingConfigs {
+        if (hasSharedSigningKey) {
+            create("shared") {
+                storeFile = file(signingStorePath)
+                storeType = "PKCS12"
+                storePassword = signingStorePassword
+                keyAlias = signingKeyAlias
+                keyPassword = signingKeyPassword
+            }
+        }
+    }
     buildTypes {
-        debug { isDebuggable = true }
+        debug {
+            isDebuggable = true
+            if (hasSharedSigningKey) signingConfig = signingConfigs.getByName("shared")
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            if (hasSharedSigningKey) signingConfig = signingConfigs.getByName("shared")
         }
     }
     compileOptions {

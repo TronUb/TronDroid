@@ -12,15 +12,16 @@ TronDroid is an Android Telegram userbot manager built with Kotlin, Jetpack Comp
 - API hashes encrypted locally using Android Keystore AES-GCM
 - Per-profile TDLib database directories in app-private storage
 - Categorised plugin catalogue with command reference pages and configurable command prefix
-- Automatic debug and manually triggered release GitHub Actions
+- Automatic debug builds and a rolling GitHub debug pre-release
+- Manually triggered, signed production releases
 
 ## Package IDs and variants
-| Variant | Gradle task | Application ID |
-|---|---|---|
-| Debug | `assembleDevDebug` | `com.vikram.trondroid.debug` |
-| Release | `assembleProdRelease` | `com.vikram.trondroid` |
+| Variant | Gradle task | Application ID | Signing |
+|---|---|---|---|
+| Debug | `assembleDevDebug` | `com.vikram.trondroid.debug` | Shared CI key when secrets are available; local/fork fallback uses standard debug key |
+| Release | `assembleProdRelease` | `com.vikram.trondroid` | Shared CI key |
 
-The two selected variants are explicitly filtered in Gradle; the debug and release app IDs are not derived through a suffix.
+The two selected variants are explicitly filtered in Gradle. The debug and release app IDs are separate so both can be installed side by side. Android updates an installed app only when its application ID and signing certificate match. Keep the release ID and shared keystore unchanged for every production update.
 
 ## Requirements
 - Android Studio with Android SDK 36
@@ -39,11 +40,26 @@ Create an application at [my.telegram.org](https://my.telegram.org) → API deve
 
 Optional Actions secrets: `TELEGRAM_API_ID` and `TELEGRAM_API_HASH`. These are build defaults only; each saved profile uses its own credentials. Secrets are not required to compile.
 
-## GitHub Actions
-- **Debug:** `.github/workflows/debug.yml` runs on every push and pull request, builds `assembleDevDebug` and uploads the APK artifact.
-- **Release:** `.github/workflows/release.yml` runs only via Actions → Release APK → Run workflow. It builds `assembleProdRelease`, uploads the APK and can create a GitHub Release.
+## Android APK signing
+The CI workflows read these repository Actions secrets:
 
-The release workflow currently creates an **unsigned release APK**. Configure signing secrets and a signing step before store or public distribution. Debug and release IDs allow both variants to be installed side by side.
+| Secret | Value |
+|---|---|
+| `ANDROID_KEYSTORE_BASE64` | Entire Base64-encoded PKCS12 keystore text |
+| `ANDROID_KEYSTORE_PASSWORD` | Keystore password |
+| `ANDROID_KEY_ALIAS` | Key alias |
+| `ANDROID_KEY_PASSWORD` | Private-key password |
+
+Both CI variants use the same signing key. The debug and release application IDs are different, so they remain separate Android installations; sharing the certificate does not make one variant an update of the other. The debug workflow falls back to the standard Android debug key for forked pull requests where GitHub withholds repository secrets. The release workflow fails early if signing secrets are missing.
+
+Never commit the keystore or passwords. Keep an offline backup of the original PKCS12 file and credentials. Losing the production key can prevent publishing compatible APK updates.
+
+## GitHub Actions and distribution
+- **Debug build:** `.github/workflows/debug.yml` runs on pushes and pull requests. It builds `assembleDevDebug`, signs with the shared key when secrets are available, and uploads a commit-specific artifact retained for 14 days.
+- **Rolling debug pre-release:** successful pushes to `master` update the GitHub pre-release tagged `debug-latest`. The tag is moved to the newest master commit and the fixed-name `TronDroid-debug-latest.apk` asset is replaced. The pre-release contains the full commit SHA, short SHA, branch, commit message, workflow run link and recent commit changelog. Older commit-specific workflow artifacts remain available until their retention expires.
+- **Production release:** run **Actions → Release APK → Run workflow**. Enter a new version name. It builds and signs `assembleProdRelease`, then optionally creates a versioned GitHub Release with the APK, commit ID and recent changelog.
+
+The rolling debug pre-release is intentionally published only from `master`, so a feature-branch push cannot replace the latest mainline build. Pushes to other branches and pull requests still produce downloadable workflow artifacts.
 
 ## Userbot interface
 - Userbots tab: clean profile list, floating add button and a dedicated account detail/activity page.
