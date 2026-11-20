@@ -44,11 +44,6 @@ android {
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
-    androidComponents {
-        beforeVariants { variant ->
-            if (variant.name != "devDebug" && variant.name != "prodRelease") variant.enable = false
-        }
-    }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -56,6 +51,11 @@ android {
     kotlinOptions { jvmTarget = "17" }
     buildFeatures { compose = true; buildConfig = true }
     packaging { jniLibs { useLegacyPackaging = true } }
+}
+androidComponents {
+    beforeVariants { variant ->
+        if (variant.name != "devDebug" && variant.name != "prodRelease") variant.enable = false
+    }
 }
 dependencies {
     implementation("androidx.core:core-ktx:1.17.0")
