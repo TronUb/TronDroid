@@ -240,14 +240,8 @@ private fun UserbotDetailScreen(modifier: Modifier, bot: BotProfile?, engine: Te
             }
         }
         item {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Live logs", style = MaterialTheme.typography.titleMedium)
-                Spacer(Modifier.weight(1f))
-                IconButton(onClick = { logsFullscreen = true }) {
-                    Icon(Icons.Rounded.Fullscreen, "Expand logs")
-                }
-            }
-            Card(modifier = Modifier.fillMaxWidth().heightIn(min = 230.dp).padding(top = 4.dp),
+            Text("Live logs", style = MaterialTheme.typography.titleMedium)
+            Card(modifier = Modifier.fillMaxWidth().heightIn(min = 250.dp).padding(top = 4.dp),
                 colors = CardDefaults.cardColors(containerColor = terminal), shape = RoundedCornerShape(20.dp)) {
                 Column(Modifier.fillMaxWidth().padding(14.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -256,6 +250,9 @@ private fun UserbotDetailScreen(modifier: Modifier, bot: BotProfile?, engine: Te
                         Text("TRONDROID / SESSION", color = terminalAccent, style = MaterialTheme.typography.labelLarge)
                         Spacer(Modifier.weight(1f))
                         Text("LIVE", color = terminalAccent, style = MaterialTheme.typography.labelSmall)
+                        IconButton(onClick = { logsFullscreen = true }) {
+                            Icon(Icons.Rounded.Fullscreen, "Expand logs", tint = terminalAccent)
+                        }
                     }
                     HorizontalDivider(Modifier.padding(vertical = 10.dp), color = androidx.compose.ui.graphics.Color(0xFF26352A))
                     if (logs.isEmpty()) Text("> waiting for events…", color = terminalText)
