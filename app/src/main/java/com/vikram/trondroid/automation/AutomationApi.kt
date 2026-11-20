@@ -18,7 +18,8 @@ data class AutomationContext(
     val message: AutomationMessage,
     val command: String? = null,
     val arguments: List<String> = emptyList(),
-    val reply: (String) -> Unit
+    val reply: (String) -> Unit,
+    val replyAfter: (Long, String) -> Unit = { _, text -> reply(text) }
 )
 
 interface AutomationPlugin {
