@@ -39,8 +39,14 @@ class TelegramUpdateStore(
 
         when (update) {
             is TdApi.UpdateNewMessage -> putMessage(update.message)
-            is TdApi.UpdateMessageSendSucceeded -> putMessage(update.message)
-            is TdApi.UpdateMessageSendFailed -> putMessage(update.message)
+            is TdApi.UpdateMessageSendSucceeded -> {
+                _messages.value = _messages.value - (update.message.chatId to update.oldMessageId)
+                putMessage(update.message)
+            }
+            is TdApi.UpdateMessageSendFailed -> {
+                _messages.value = _messages.value - (update.message.chatId to update.oldMessageId)
+                putMessage(update.message)
+            }
             is TdApi.UpdateNewChat -> {
                 _chats.value = _chats.value + (update.chat.id to update.chat)
             }
