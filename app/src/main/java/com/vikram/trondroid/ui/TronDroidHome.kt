@@ -333,97 +333,41 @@ private fun UserbotDetailScreen(
                                 TdApi.AuthorizationStateWaitPassword.CONSTRUCTOR ->
                                     AuthInput("Two-step verification password", KeyboardType.Password, "Unlock account", true) { engine?.submitPassword(it) }
                             }
-                            Row(
-                                Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            OutlinedButton(
+                                onClick = onLogout,
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(16.dp)
                             ) {
-                                OutlinedButton(
-                                    onClick = onLogout,
-                                    modifier = Modifier.weight(1f),
-                                    shape = RoundedCornerShape(14.dp)
-                                ) {
-                                    Icon(Icons.Rounded.Logout, null)
-                                    Spacer(Modifier.width(7.dp))
-                                    Text("Log out")
-                                }
-                                Button(
-                                    onClick = onDelete,
-                                    modifier = Modifier.weight(1f),
-                                    shape = RoundedCornerShape(14.dp),
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = MaterialTheme.colorScheme.errorContainer,
-                                        contentColor = MaterialTheme.colorScheme.onErrorContainer
-                                    )
-                                ) {
-                                    Icon(Icons.Rounded.DeleteOutline, null)
-                                    Spacer(Modifier.width(7.dp))
-                                    Text("Delete")
-                                }
+                                Icon(Icons.Rounded.Logout, null)
+                                Spacer(Modifier.width(8.dp))
+                                Text("Log out")
                             }
                         }
                     }
                 }
 
                 item {
-                    Row(
-                        Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(Modifier.weight(1f)) {
-                            Text("Recent chats", style = MaterialTheme.typography.titleMedium)
-                            Text(
-                                if (!ready) "Connect to load recent chats"
-                                else if (chats.isEmpty()) "No recent chats loaded"
-                                else "${chats.size} chats available",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        IconButton(onClick = { recentChatsExpanded = !recentChatsExpanded }) {
-                            Icon(
-                                if (recentChatsExpanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
-                                contentDescription = if (recentChatsExpanded) "Collapse recent chats" else "Expand recent chats"
-                            )
-                        }
-                    }
-                }
-                if (recentChatsExpanded) {
-                    if (!ready || chats.isEmpty()) {
-                        item {
-                            ElevatedCard(shape = RoundedCornerShape(16.dp)) {
-                                Text(
-                                    if (!ready) "This account is not connected yet."
-                                    else "Your recent chats will appear here when Telegram finishes loading them.",
-                                    Modifier.fillMaxWidth().padding(16.dp),
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    } else {
-                        items(chats.take(20), key = { it.id }) { chat ->
-                            ElevatedCard(shape = RoundedCornerShape(16.dp)) {
-                                ListItem(
-                                    headlineContent = {
-                                        Text(chat.title.ifBlank { "Chat ${chat.id}" }, maxLines = 1)
-                                    },
-                                    supportingContent = {
-                                        Text(
-                                            when (chat.type) {
-                                                is TdApi.ChatTypePrivate -> "Personal chat"
-                                                is TdApi.ChatTypeBasicGroup -> "Group"
-                                                is TdApi.ChatTypeSupergroup ->
-                                                    if ((chat.type as TdApi.ChatTypeSupergroup).isChannel) "Channel" else "Supergroup"
-                                                is TdApi.ChatTypeSecret -> "Secret chat"
-                                                else -> "Telegram chat"
-                                            },
-                                            maxLines = 1
-                                        )
-                                    },
-                                    leadingContent = {
-                                        Icon(Icons.Rounded.ChatBubbleOutline, null, tint = MaterialTheme.colorScheme.primary)
-                                    },
-                                    trailingContent = { Icon(Icons.Rounded.ChevronRight, null) }
-                                )
+                    if (!customCredentials["BOT_TOKEN"].isNullOrBlank()) {
+                        ElevatedCard(shape = RoundedCornerShape(22.dp)) {
+                            Row(Modifier.fillMaxWidth().padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.tertiaryContainer, modifier = Modifier.size(48.dp)) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(Icons.Rounded.SmartToy, null, tint = MaterialTheme.colorScheme.onTertiaryContainer)
+                                    }
+                                }
+                                Spacer(Modifier.width(12.dp))
+                                Column(Modifier.weight(1f)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                                        Text(bot.botName ?: "Telegram bot", style = MaterialTheme.typography.titleMedium)
+                                        Surface(shape = RoundedCornerShape(50), color = MaterialTheme.colorScheme.tertiaryContainer) {
+                                            Text("BOT", Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                                style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onTertiaryContainer)
+                                        }
+                                    }
+                                    Text(if (bot.botEnabled) "Running in the background" else "Bot session paused",
+                                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                                Switch(checked = bot.botEnabled, onCheckedChange = { onBotToggle(bot.id, it) })
                             }
                         }
                     }
@@ -485,7 +429,9 @@ private fun UserbotDetailScreen(
                 Modifier.fillMaxSize(),
                 bot = bot,
                 apiHash = apiHash,
-                onSaveApiHash = onSaveApiHash
+                onSaveApiHash = onSaveApiHash,
+                customCredentials = customCredentials,
+                onSaveCustomCredentials = onSaveCustomCredentials
             )
 
             UserbotSection.INSIGHTS -> {
@@ -540,6 +486,73 @@ private fun UserbotDetailScreen(
                                 }
                             }
                             if (rowStats.size == 1) Spacer(Modifier.weight(1f))
+                        }
+                    }
+                }
+                    item {
+                        Text("Recent chats", style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            if (!ready) "Connect this account to load recent chats"
+                            else if (chats.isEmpty()) "No recent chats are available yet"
+                            else "The latest ${minOf(chats.size, 20)} chats on this account",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    if (!ready || chats.isEmpty()) {
+                        item {
+                            ElevatedCard(shape = RoundedCornerShape(18.dp)) {
+                                ListItem(
+                                    headlineContent = { Text(if (!ready) "Account not connected" else "No chats loaded") },
+                                    supportingContent = { Text(if (!ready) "Complete Telegram sign-in to view your chats." else "Telegram has not returned any chats yet.") },
+                                    leadingContent = { Icon(Icons.Rounded.ChatBubbleOutline, null) }
+                                )
+                            }
+                        }
+                    } else {
+                        items(chats.take(20), key = { "insight-chat-${it.id}" }) { chat ->
+                            ElevatedCard(shape = RoundedCornerShape(18.dp)) {
+                                ListItem(
+                                    headlineContent = { Text(chat.title.ifBlank { "Chat ${chat.id}" }, maxLines = 1) },
+                                    supportingContent = {
+                                        Text(when (chat.type) {
+                                            is TdApi.ChatTypePrivate -> "Personal chat"
+                                            is TdApi.ChatTypeBasicGroup -> "Group"
+                                            is TdApi.ChatTypeSupergroup -> if ((chat.type as TdApi.ChatTypeSupergroup).isChannel) "Channel" else "Supergroup"
+                                            is TdApi.ChatTypeSecret -> "Secret chat"
+                                            else -> "Telegram chat"
+                                        }, maxLines = 1)
+                                    },
+                                    leadingContent = { Icon(Icons.Rounded.ChatBubbleOutline, null, tint = MaterialTheme.colorScheme.primary) }
+                                )
+                            }
+                        }
+                    }
+            }
+            UserbotSection.DANGER -> LazyColumn(
+                Modifier.fillMaxSize().padding(horizontal = 18.dp),
+                contentPadding = PaddingValues(top = 20.dp, bottom = 32.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                item {
+                    Text("Danger zone", style = MaterialTheme.typography.headlineSmall)
+                    Text("These actions affect this userbot account and its local Telegram session.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                item {
+                    ElevatedCard(shape = RoundedCornerShape(22.dp),
+                        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
+                        Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Icon(Icons.Rounded.DeleteForever, null, tint = MaterialTheme.colorScheme.onErrorContainer)
+                            Text("Delete userbot", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onErrorContainer)
+                            Text("Permanently remove ${bot.name}, its encrypted credentials and its local TDLib session data.",
+                                color = MaterialTheme.colorScheme.onErrorContainer)
+                            Button(onClick = onDelete, modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error, contentColor = MaterialTheme.colorScheme.onError)) {
+                                Icon(Icons.Rounded.DeleteOutline, null)
+                                Spacer(Modifier.width(8.dp))
+                                Text("Delete this userbot")
+                            }
                         }
                     }
                 }
