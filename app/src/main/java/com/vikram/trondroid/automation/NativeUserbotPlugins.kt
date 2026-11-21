@@ -651,7 +651,7 @@ class NotesAutomationPlugin(private val preferences: SharedPreferences) : Automa
                 if (chatId == 0L || messageId == 0L) return context.reply("No note named $name.")
                 val gateway = context.telegram ?: return context.reply("Telegram session is unavailable.")
                 gateway.send(
-                    TdApi.ForwardMessages(context.message.chatId, 0L, chatId, longArrayOf(messageId), null, true, false)
+                    TdApi.ForwardMessages(context.message.chatId, null, chatId, longArrayOf(messageId), null, true, false)
                 ) { result ->
                     if (result is TdApi.Error) context.reply("Unable to restore note: ${result.message}")
                 }
