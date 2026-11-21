@@ -18,7 +18,7 @@ class TelegramUpdateStore(
     private val _updates = MutableStateFlow<List<TdApi.Update>>(emptyList())
     val updates: StateFlow<List<TdApi.Update>> = _updates.asStateFlow()
 
-    private val _messages = MutableStateFlow<Map<Long, TdApi.Message>>(emptyMap())
+    private val _messages = MutableStateFlow<Map<Pair<Long, Long>, TdApi.Message>>(emptyMap())
     val messages: StateFlow<Map<Long, TdApi.Message>> = _messages.asStateFlow()
 
     private val _chats = MutableStateFlow<Map<Long, TdApi.Chat>>(emptyMap())
@@ -49,7 +49,7 @@ class TelegramUpdateStore(
             }
             is TdApi.UpdateDeleteMessages -> {
                 val next = _messages.value.toMutableMap()
-                update.messageIds.forEach { next.remove(it) }
+                update.messageIds.forEach { next.remove(update.chatId to it) }
                 _messages.value = next
             }
         }
@@ -72,12 +72,12 @@ class TelegramUpdateStore(
 
     private fun putMessage(message: TdApi.Message) {
         val chatMessages = _messages.value.toMutableMap()
-        chatMessages[message.id] = message
+        chatMessages[message.chatId to message.id] = message
         // Keep the latest 2,000 messages across chats in memory. TDLib remains
         // the durable source and can be queried for older messages on demand.
         if (chatMessages.size > 2_000) {
             val oldest = chatMessages.values.minByOrNull { it.date }
-            if (oldest != null) chatMessages.remove(oldest.id)
+            if (oldest != null) chatMessages.remove(oldest.chatId to oldest.id)
         }
         _messages.value = chatMessages
     }
