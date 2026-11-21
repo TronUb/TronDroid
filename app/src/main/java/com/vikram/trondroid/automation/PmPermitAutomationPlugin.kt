@@ -51,7 +51,7 @@ class PmPermitAutomationPlugin(private val prefs: SharedPreferences) : Automatio
             prefs.edit().putInt("warns:$userId", count).apply()
             context.reply("PM permit is enabled. Please get approval before sending more messages ($count/$limit).")
         } else {
-            gateway.send(TdApi.BlockUser(userId)) { result ->
+            gateway.send(TdApi.SetMessageSenderBlockList(TdApi.MessageSenderUser(userId), TdApi.BlockListMain())) { result ->
                 if (result is TdApi.Error) context.reply("PM permit reached its limit, but Telegram could not block this user: ${result.message}")
                 else context.reply("PM permit limit reached. This user has been blocked.")
             }
