@@ -24,7 +24,8 @@ class BotStore(private val context: Context) {
                     botEnabled = prefs.getBoolean("botEnabled.$id", false),
                     botName = prefs.getString("botName.$id", null),
                     botUsername = prefs.getString("botUsername.$id", null),
-                    botTelegramId = prefs.getString("botTelegramId.$id", null)?.toLongOrNull()
+                    botTelegramId = prefs.getString("botTelegramId.$id", null)?.toLongOrNull(),
+                    botPhotoPath = prefs.getString("botPhotoPath.$id", null)
                 ))
             }
         }
@@ -90,11 +91,12 @@ class BotStore(private val context: Context) {
         prefs.edit().putBoolean("botEnabled.$id", enabled).apply()
     }
 
-    fun setBotIdentity(id: String, name: String?, username: String?, telegramId: Long?) {
+    fun setBotIdentity(id: String, name: String?, username: String?, telegramId: Long?, photoPath: String? = null) {
         val editor = prefs.edit()
         if (name.isNullOrBlank()) editor.remove("botName.$id") else editor.putString("botName.$id", name)
         if (username.isNullOrBlank()) editor.remove("botUsername.$id") else editor.putString("botUsername.$id", username)
         if (telegramId == null || telegramId <= 0) editor.remove("botTelegramId.$id") else editor.putString("botTelegramId.$id", telegramId.toString())
+        if (photoPath.isNullOrBlank()) editor.remove("botPhotoPath.$id") else editor.putString("botPhotoPath.$id", photoPath)
         editor.apply()
     }
 
@@ -112,7 +114,7 @@ class BotStore(private val context: Context) {
         prefs.edit().putString("bots", json.toString())
             .remove("apiHash.$id").remove("enabled.$id")
             .remove("customCredentials.$id").remove("botEnabled.$id").remove("botName.$id")
-            .remove("botUsername.$id").remove("botTelegramId.$id").apply()
+            .remove("botUsername.$id").remove("botTelegramId.$id").remove("botPhotoPath.$id").apply()
         context.filesDir.resolve("tdlib/$id").deleteRecursively()
     }
 }
