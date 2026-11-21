@@ -109,10 +109,11 @@ class AutomationDispatcher(
 
         val parsed = parseCommand(message.text, commandPrefix().ifBlank { "." }) ?: return
         val (name, arguments) = parsed
+        val incomingAuthorized = message.isOutgoing || plugins.any { it.canExecuteIncoming(message) }
         val matches = plugins.filter { candidate ->
             (candidate.id == "core" || isPluginEnabled(candidate.id)) &&
                 candidate.commands.any { it.name.equals(name, true) } &&
-                (message.isOutgoing || candidate.canExecuteIncoming(message))
+                incomingAuthorized
         }
         if (matches.isEmpty()) return
         if (matches.size > 1) {
