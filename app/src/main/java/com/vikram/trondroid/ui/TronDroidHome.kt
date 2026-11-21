@@ -250,6 +250,7 @@ private fun UserbotDetailScreen(
     val chats = engine?.chats?.collectAsState()?.value.orEmpty()
     val account = engine?.account?.collectAsState()?.value
     val accountAvatar = remember(account?.photoPath) { account?.photoPath?.let { runCatching { BitmapFactory.decodeFile(it)?.asImageBitmap() }.getOrNull() } }
+    val botAvatar = remember(bot.botPhotoPath) { bot.botPhotoPath?.let { runCatching { BitmapFactory.decodeFile(it)?.asImageBitmap() }.getOrNull() } }
     val ready = auth?.constructor == TdApi.AuthorizationStateReady.CONSTRUCTOR
     var section by remember(bot.id) { mutableStateOf(UserbotSection.GENERAL) }
     var recentChatsExpanded by remember(bot.id) { mutableStateOf(false) }
@@ -406,9 +407,14 @@ private fun UserbotDetailScreen(
                     if (customCredentials.entries.any { it.key.equals("BOT_TOKEN", ignoreCase = true) && it.value.isNotBlank() }) {
                         ElevatedCard(shape = RoundedCornerShape(22.dp)) {
                             Row(Modifier.fillMaxWidth().padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.tertiaryContainer, modifier = Modifier.size(48.dp)) {
-                                    Box(contentAlignment = Alignment.Center) {
-                                        Icon(Icons.Rounded.SmartToy, null, tint = MaterialTheme.colorScheme.onTertiaryContainer)
+                                if (botAvatar != null) {
+                                    androidx.compose.foundation.Image(bitmap = botAvatar, contentDescription = "Bot profile photo",
+                                        modifier = Modifier.size(48.dp).clip(RoundedCornerShape(16.dp)))
+                                } else {
+                                    Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.tertiaryContainer, modifier = Modifier.size(48.dp)) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Icon(Icons.Rounded.SmartToy, null, tint = MaterialTheme.colorScheme.onTertiaryContainer)
+                                        }
                                     }
                                 }
                                 Spacer(Modifier.width(12.dp))
