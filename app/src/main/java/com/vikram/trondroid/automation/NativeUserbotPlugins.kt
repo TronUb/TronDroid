@@ -301,7 +301,7 @@ class AnimeAutomationPlugin : AutomationPlugin {
         AutomationCommand("animelist", "List available anime GIF actions.", "animelist"),
         AutomationCommand("nekopic", "Fetch a random anime neko image.", "nekopic"),
         AutomationCommand("npic", "Alias for neko image.", "npic"),
-        AutomationCommand("animegif", "Fetch an anime GIF for an action.", "animegif <action>")
+        AutomationCommand("animegif", "Fetch and send an anime GIF for an action.", "animegif <action>")
     )
 
     override fun onCommand(context: AutomationContext) {
@@ -313,9 +313,13 @@ class AnimeAutomationPlugin : AutomationPlugin {
                     val result = JSONObject(PluginHttp.get("https://nekos.best/api/v2/neko"))
                         .optJSONArray("results")?.optJSONObject(0) ?: return@run "No image found."
                     val url = result.optString("url")
-                    val artist = result.optString("artist_name")
-                    if (url.isBlank()) "No image found."
-                    else buildString { append("Anime image"); if (artist.isNotBlank()) append(" · Artist: $artist"); append("\n$url") }
+                    val artist = result.optString("artist_name").ifBlank { "Unknown Artist" }
+                    if (url.isBlank()) return@run "No image found."
+                    val gateway = context.telegram ?: return@run "Telegram session is unavailable."
+                    gateway.sendPhotoUrl(context.message.chatId, url, artist) { response ->
+                        if (response is TdApi.Error) context.reply("Unable to send image: ${response.message}")
+                    }
+                    "Sending anime image…"
                 }
             }
             "animegif" -> {
@@ -326,9 +330,13 @@ class AnimeAutomationPlugin : AutomationPlugin {
                     val result = JSONObject(PluginHttp.get("https://nekos.best/api/v2/$action"))
                         .optJSONArray("results")?.optJSONObject(0) ?: return@run "No GIF found."
                     val url = result.optString("url")
-                    val anime = result.optString("anime_name")
-                    if (url.isBlank()) "No GIF found."
-                    else (if (anime.isBlank()) action else anime) + "\n$url"
+                    val anime = result.optString("anime_name").ifBlank { action }
+                    if (url.isBlank()) return@run "No GIF found."
+                    val gateway = context.telegram ?: return@run "Telegram session is unavailable."
+                    gateway.sendAnimationUrl(context.message.chatId, url, anime) { response ->
+                        if (response is TdApi.Error) context.reply("Unable to send GIF: ${response.message}")
+                    }
+                    "Sending $action GIF…"
                 }
             }
         }
