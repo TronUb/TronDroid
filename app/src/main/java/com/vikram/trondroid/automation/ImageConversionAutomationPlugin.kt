@@ -12,7 +12,8 @@ class ImageConversionAutomationPlugin(private val context: Context) : Automation
     override val id = "userbot:image-conversion"
     override val commands = listOf(
         AutomationCommand("stoi", "Convert a static replied sticker into a photo.", "stoi (reply to sticker)"),
-        AutomationCommand("colourtemplate", "Generate a solid-color image.", "colourtemplate <color name or #RRGGBB>")
+        AutomationCommand("colourtemplate", "Generate a solid-color image.", "colourtemplate <color name or #RRGGBB>"),
+        AutomationCommand("pfp", "Download the profile photo of a replied user or your own account.", "pfp (reply to a user)")
     )
     override fun onCommand(context: AutomationContext) {
         val gateway = context.telegram ?: return context.reply("Telegram session is unavailable.")
@@ -38,6 +39,25 @@ class ImageConversionAutomationPlugin(private val context: Context) : Automation
                             output.delete()
                         }
                     }.onFailure { context.reply("Conversion failed: ${it.message}"); output.delete() }
+                }
+            }
+            "pfp" -> {
+                val replied = context.message.tdMessage?.let(gateway::repliedMessage)
+                val targetId = (replied?.senderId as? TdApi.MessageSenderUser)?.userId
+                    ?: gateway.currentUserId()
+                    ?: return context.reply("Reply to a user's message or connect your account first.")
+                val user = gateway.cachedUser(targetId)
+                val photo = user?.profilePhoto?.big ?: user?.publicPhoto?.big
+                    ?: return context.reply("No profile photo is available in the local Telegram cache.")
+                context.reply("Downloading profile photo…")
+                gateway.downloadFile(photo.id) { downloaded, error ->
+                    if (downloaded == null || error != null) {
+                        context.reply("Profile photo download failed: ${error ?: "unknown error"}")
+                    } else {
+                        gateway.sendPhotoPath(context.message.chatId, downloaded.local.path, "Profile photo") { result ->
+                            context.reply(if (result is TdApi.Error) "Unable to send profile photo: ${result.message}" else "Profile photo sent.")
+                        }
+                    }
                 }
             }
             "colourtemplate" -> {
