@@ -883,22 +883,53 @@ private fun SettingsGroup(
 
 @Composable
 private fun GeneralSettingsScreen(modifier: Modifier) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val preferences = remember { context.getSharedPreferences("trondroid.settings", android.content.Context.MODE_PRIVATE) }
+    var autoStart by remember { mutableStateOf(preferences.getBoolean("auto_start_sessions", true)) }
+    var autoReconnectBots by remember { mutableStateOf(preferences.getBoolean("auto_reconnect_bots", true)) }
     Column(modifier.fillMaxSize().padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Text("Userbot & bot preferences", style = MaterialTheme.typography.headlineSmall)
         ElevatedCard(shape = RoundedCornerShape(22.dp)) {
-            Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp)) {
+                Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Auto-start sessions", style = MaterialTheme.typography.titleSmall)
+                        Text("Reconnect enabled accounts when TronDroid launches.",
+                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Switch(checked = autoStart, onCheckedChange = {
+                        autoStart = it
+                        preferences.edit().putBoolean("auto_start_sessions", it).apply()
+                    })
+                }
+                HorizontalDivider()
+                Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Auto-reconnect bots", style = MaterialTheme.typography.titleSmall)
+                        Text("Retry Bot API connections after temporary network or API errors.",
+                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Switch(checked = autoReconnectBots, onCheckedChange = {
+                        autoReconnectBots = it
+                        preferences.edit().putBoolean("auto_reconnect_bots", it).apply()
+                    })
+                }
+            }
+        }
+        ElevatedCard(shape = RoundedCornerShape(22.dp)) {
+            Column(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
                 ListItem(
                     headlineContent = { Text("Userbot sessions") },
-                    supportingContent = { Text("Each enabled userbot runs in its own TDLib session. Turn accounts on or off from their General tab.") },
+                    supportingContent = { Text("Each enabled userbot runs in its own TDLib session. Manage account toggles from the account's General tab.") },
                     leadingContent = { Icon(Icons.Rounded.Person, null, tint = MaterialTheme.colorScheme.primary) }
                 )
-                HorizontalDivider()
+                HorizontalDivider(Modifier.padding(horizontal = 16.dp))
                 ListItem(
                     headlineContent = { Text("Bot sessions") },
-                    supportingContent = { Text("Add a BOT_TOKEN in an account's Credentials tab. Its bot card and background toggle will appear in that account's General tab.") },
+                    supportingContent = { Text("Add BOT_TOKEN under an account's Credentials tab. Its bot card and background toggle appear on that account's General tab.") },
                     leadingContent = { Icon(Icons.Rounded.SmartToy, null, tint = MaterialTheme.colorScheme.primary) }
                 )
-                HorizontalDivider()
+                HorizontalDivider(Modifier.padding(horizontal = 16.dp))
                 ListItem(
                     headlineContent = { Text("Credential security") },
                     supportingContent = { Text("API hashes and custom key/value pairs are encrypted locally using Android Keystore.") },
