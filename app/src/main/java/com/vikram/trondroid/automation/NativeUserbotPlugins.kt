@@ -65,7 +65,7 @@ class WikipediaAutomationPlugin : AutomationPlugin {
             val summary = json.optString("extract").ifBlank { "No summary is available for this article." }
             val page = json.optJSONObject("content_urls")?.optJSONObject("desktop")?.optString("page").orEmpty()
             buildString {
-                append("**$title**\n\n")
+                append("$title\n\n")
                 append(summary.take(3500))
                 if (page.isNotBlank()) append("\n\n$page")
             }
@@ -189,12 +189,11 @@ class TimeAutomationPlugin : AutomationPlugin {
 class PingAutomationPlugin : AutomationPlugin {
     override val id = "userbot:ping"
     override val commands = listOf(
-        AutomationCommand("ping", "Measure how quickly TronDroid processes your command.", "ping")
+        AutomationCommand("ping", "Check that the userbot is responding.", "ping")
     )
 
     override fun onCommand(context: AutomationContext) {
-        val started = System.nanoTime()
-        context.reply("Pong! ${(System.nanoTime() - started) / 1_000_000.0} ms")
+        context.reply("Pong! TronDroid is responding.")
     }
 }
 
@@ -207,7 +206,7 @@ class AliveAutomationPlugin(
     )
 
     override fun onCommand(context: AutomationContext) {
-        context.reply("**TronDroid is running**\nAccount: ${profileName()}\nRuntime: Kotlin + TDLib")
+        context.reply("TronDroid is running\nAccount: ${profileName()}\nRuntime: Kotlin + TDLib")
     }
 }
 
@@ -227,5 +226,83 @@ class HelpAutomationPlugin(
         }.distinct().sorted()
         context.reply(if (lines.isEmpty()) "No commands are currently registered."
             else "**Available commands**\n" + lines.take(80).joinToString("\n"))
+    }
+}
+
+class AnimeAutomationPlugin : AutomationPlugin {
+    override val id = "userbot:anime"
+    private val actions = listOf(
+        "baka", "bite", "blush", "bored", "cry", "cuddle", "dance", "facepalm", "feed",
+        "happy", "highfive", "hug", "kiss", "laugh", "pat", "poke", "pout", "shrug",
+        "slap", "sleep", "smile", "stare", "think", "thumbsup", "tickle", "wave", "wink"
+    )
+    override val commands = listOf(
+        AutomationCommand("animelist", "List available anime GIF actions.", "animelist"),
+        AutomationCommand("nekopic", "Fetch a random anime neko image.", "nekopic"),
+        AutomationCommand("npic", "Alias for neko image.", "npic"),
+        AutomationCommand("animegif", "Fetch an anime GIF for an action.", "animegif <action>")
+    )
+
+    override fun onCommand(context: AutomationContext) {
+        when (context.command) {
+            "animelist" -> context.reply("Available actions:\n" + actions.joinToString(", "))
+            "nekopic", "npic" -> {
+                context.reply("Fetching an anime image…")
+                PluginHttp.run(context) {
+                    val result = JSONObject(PluginHttp.get("https://nekos.best/api/v2/neko"))
+                        .optJSONArray("results")?.optJSONObject(0) ?: return@run "No image found."
+                    val url = result.optString("url")
+                    val artist = result.optString("artist_name")
+                    if (url.isBlank()) "No image found."
+                    else "Anime image" + if (artist.isNotBlank()) " · Artist: $artist" else "" + "\n$url"
+                }
+            }
+            "animegif" -> {
+                val action = context.arguments.firstOrNull()?.lowercase().orEmpty()
+                if (action !in actions) return context.reply("Usage: .animegif <action>\nActions: " + actions.joinToString(", "))
+                context.reply("Fetching $action GIF…")
+                PluginHttp.run(context) {
+                    val result = JSONObject(PluginHttp.get("https://nekos.best/api/v2/$action"))
+                        .optJSONArray("results")?.optJSONObject(0) ?: return@run "No GIF found."
+                    val url = result.optString("url")
+                    val anime = result.optString("anime_name")
+                    if (url.isBlank()) "No GIF found."
+                    else (if (anime.isBlank()) action else anime) + "\n$url"
+                }
+            }
+        }
+    }
+}
+
+class FunAutomationPlugin : AutomationPlugin {
+    override val id = "userbot:fun"
+    override val commands = listOf(
+        AutomationCommand("upcase", "Convert supplied text to uppercase.", "upcase <text>"),
+        AutomationCommand("joke", "Fetch a random joke.", "joke"),
+        AutomationCommand("advice", "Fetch a random piece of advice.", "advice"),
+        AutomationCommand("uadvice", "Alias for advice.", "uadvice")
+    )
+
+    override fun onCommand(context: AutomationContext) {
+        when (context.command) {
+            "upcase" -> {
+                val text = context.arguments.joinToString(" ")
+                context.reply(if (text.isBlank()) "Usage: .upcase <text>" else text.uppercase(Locale.ROOT))
+            }
+            "joke" -> {
+                context.reply("Getting a joke…")
+                PluginHttp.run(context) {
+                    val json = JSONObject(PluginHttp.get("https://official-joke-api.appspot.com/random_joke"))
+                    json.optString("setup") + "\n" + json.optString("punchline")
+                }
+            }
+            "advice", "uadvice" -> {
+                context.reply("Getting advice…")
+                PluginHttp.run(context) {
+                    val json = JSONObject(PluginHttp.get("https://api.adviceslip.com/advice"))
+                    json.optJSONObject("slip")?.optString("advice") ?: "No advice found."
+                }
+            }
+        }
     }
 }
