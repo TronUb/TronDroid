@@ -168,8 +168,11 @@ class RedditAutomationPlugin : AutomationPlugin {
             val gateway = context.telegram ?: return@run "Telegram session is unavailable."
             val (url, title) = selected
             val caption = title.ifBlank { "r/$subreddit" }.take(900)
-            val send = if (url.lowercase().substringBefore('?').let { it.endsWith(".gif") || it.endsWith(".gifv") || it.endsWith(".mp4") }) {
-                gateway.sendAnimationUrl(context.message.chatId, url.removeSuffix("v"), caption) { response ->
+            if (url.lowercase().substringBefore('?').let { it.endsWith(".gif") || it.endsWith(".gifv") || it.endsWith(".mp4") }) {
+                val mediaUrl = if (url.lowercase().substringBefore('?').endsWith(".gifv")) {
+                    url.substringBefore('?').removeSuffix(".gifv") + ".mp4"
+                } else url
+                gateway.sendAnimationUrl(context.message.chatId, mediaUrl, caption) { response ->
                     if (response is TdApi.Error) context.reply("Unable to send Reddit media: ${response.message}")
                 }
             } else {
