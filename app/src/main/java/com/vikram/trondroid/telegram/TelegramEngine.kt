@@ -40,6 +40,7 @@ import com.vikram.trondroid.automation.WebMediaAutomationPlugin
 import com.vikram.trondroid.automation.UtilityExtrasAutomationPlugin
 import com.vikram.trondroid.automation.PmPermitAutomationPlugin
 import com.vikram.trondroid.automation.PublishingAutomationPlugin
+import com.vikram.trondroid.automation.GroupUtilitiesAutomationPlugin
 import com.vikram.trondroid.plugins.PluginSettings
 import com.vikram.trondroid.plugins.ExternalPluginLoader
 import android.net.Uri
@@ -141,6 +142,7 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
         nativePlugins += UtilityExtrasAutomationPlugin()
         nativePlugins += PmPermitAutomationPlugin(context.getSharedPreferences("trondroid.userbot.pmpermit", Context.MODE_PRIVATE))
         nativePlugins += PublishingAutomationPlugin(context.cacheDir)
+        nativePlugins += GroupUtilitiesAutomationPlugin()
         nativePlugins += WeatherAutomationPlugin()
         nativePlugins += CurrencyAutomationPlugin()
         nativePlugins += TemperatureAutomationPlugin()
