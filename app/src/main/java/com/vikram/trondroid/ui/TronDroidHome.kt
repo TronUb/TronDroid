@@ -54,7 +54,8 @@ fun TronDroidHome(
     onReadCustomCredentials: (String) -> Map<String, String>,
     onSaveCustomCredentials: (String, Map<String, String>) -> Unit,
     onBotToggle: (String, Boolean) -> Unit,
-    themeMode: String, onThemeChange: (String) -> Unit
+    themeMode: String, onThemeChange: (String) -> Unit,
+    dynamicColors: Boolean, onDynamicColorsChange: (Boolean) -> Unit
 ) {
     var tab by remember { mutableStateOf(Tab.USERBOTS) }
     var pageStack by remember { mutableStateOf(listOf<Page>(Page.Home)) }
@@ -117,7 +118,8 @@ fun TronDroidHome(
                 }, onToggle = { id, enabled -> onToggle(id, enabled) })
                 Tab.PLUGINS -> PluginsScreen(Modifier.padding(padding), onOpen = { navigate(Page.PluginDetail(it)) })
                 Tab.SETTINGS -> SettingsScreen(Modifier.padding(padding),
-                    onGeneral = { navigate(Page.GeneralSettings) }, onUpdater = { navigate(Page.Updater) }, themeMode = themeMode, onThemeChange = onThemeChange)
+                    onGeneral = { navigate(Page.GeneralSettings) }, onUpdater = { navigate(Page.Updater) }, themeMode = themeMode, onThemeChange = onThemeChange,
+                    dynamicColors = dynamicColors, onDynamicColorsChange = onDynamicColorsChange)
             }
             is Page.Userbot -> {
                 val bot = bots.firstOrNull { it.id == current.id }
@@ -768,7 +770,7 @@ private fun PluginDetailScreen(modifier: Modifier, id: String) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SettingsScreen(modifier: Modifier, onCredentials: () -> Unit, onGeneral: () -> Unit, onUpdater: () -> Unit, themeMode: String, onThemeChange: (String) -> Unit) {
+private fun SettingsScreen(modifier: Modifier, onGeneral: () -> Unit, onUpdater: () -> Unit, themeMode: String, onThemeChange: (String) -> Unit, dynamicColors: Boolean, onDynamicColorsChange: (Boolean) -> Unit) {
     Column(modifier.fillMaxSize().padding(18.dp).verticalScroll(rememberScrollState())) {
         Text("Appearance", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 18.dp, bottom = 8.dp))
         ElevatedCard(shape = RoundedCornerShape(20.dp)) {
@@ -781,10 +783,33 @@ private fun SettingsScreen(modifier: Modifier, onCredentials: () -> Unit, onGene
                         }
                     }
                 }
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Dynamic color", style = MaterialTheme.typography.titleSmall)
+                        Text("Use your device wallpaper colors on Android 12 and newer.",
+                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Switch(checked = dynamicColors, onCheckedChange = onDynamicColorsChange)
+                }
             }
         }
-        SettingsGroup("General", listOf(Triple("General settings", "Appearance and app behaviour", Icons.Rounded.Tune)), listOf(onGeneral))
-        SettingsGroup("Application", listOf(Triple("App updates", "Check and install the latest APK", Icons.Rounded.SystemUpdate)), listOf(onUpdater))
+        SettingsGroup(
+            "Userbot & bot",
+            listOf(
+                Triple("Session preferences", "Background account and connection behaviour", Icons.Rounded.Tune),
+                Triple("Bot connections", "Manage bot tokens and bot sessions per account", Icons.Rounded.SmartToy)
+            ),
+            listOf(onGeneral, onGeneral)
+        )
+        SettingsGroup(
+            "Application",
+            listOf(
+                Triple("App updates", "Check and install the latest APK", Icons.Rounded.SystemUpdate),
+                Triple("About TronDroid", "Build variants and application information", Icons.Rounded.Info)
+            ),
+            listOf(onUpdater, onGeneral)
+        )
         Text("Security", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 20.dp))
         ElevatedCard(shape = RoundedCornerShape(20.dp)) {
             ListItem(headlineContent = { Text("Local credential storage") },
@@ -796,37 +821,72 @@ private fun SettingsScreen(modifier: Modifier, onCredentials: () -> Unit, onGene
 }
 
 @Composable
-private fun SettingsGroup(title: String, entries: List<Triple<String, String, androidx.compose.ui.graphics.vector.ImageVector>>, actions: List<() -> Unit>) {
+private fun SettingsGroup(
+    title: String,
+    entries: List<Triple<String, String, androidx.compose.ui.graphics.vector.ImageVector>>,
+    actions: List<() -> Unit>
+) {
     Text(title, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(top = 12.dp, bottom = 8.dp))
-    ElevatedCard(shape = RoundedCornerShape(20.dp)) {
+        modifier = Modifier.padding(top = 14.dp, bottom = 8.dp))
+    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
         entries.forEachIndexed { index, entry ->
-            Row(
-                modifier = Modifier.fillMaxWidth().heightIn(min = 72.dp)
-                    .then(Modifier).padding(horizontal = 16.dp, vertical = 10.dp)
-                    .clickable { actions[index]() },
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(entry.third, null, tint = MaterialTheme.colorScheme.primary)
-                Spacer(Modifier.width(14.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(entry.first, style = MaterialTheme.typography.titleSmall)
-                    Text(entry.second, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                Icon(Icons.Rounded.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            val shape = when {
+                entries.size == 1 -> RoundedCornerShape(20.dp)
+                index == 0 -> RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp, bottomStart = 8.dp, bottomEnd = 8.dp)
+                index == entries.lastIndex -> RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp, bottomStart = 20.dp, bottomEnd = 20.dp)
+                else -> RoundedCornerShape(8.dp)
             }
-            if (index != entries.lastIndex) HorizontalDivider(Modifier.padding(start = 56.dp))
+            Surface(shape = shape, color = MaterialTheme.colorScheme.surfaceContainerHigh) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 72.dp)
+                        .clickable { actions.getOrNull(index)?.invoke() }
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(entry.third, null, tint = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.width(14.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(entry.first, style = MaterialTheme.typography.titleSmall)
+                        Text(entry.second, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Icon(Icons.Rounded.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
         }
     }
 }
 
 @Composable
 private fun GeneralSettingsScreen(modifier: Modifier) {
-    Column(modifier.fillMaxSize().padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("General preferences", style = MaterialTheme.typography.titleMedium)
-        Text("Theme, account and update preferences are available directly in Settings.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text("Build variants: debug com.vikram.trondroid.debug · release com.vikram.trondroid",
-            color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Column(modifier.fillMaxSize().padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Text("Userbot & bot preferences", style = MaterialTheme.typography.headlineSmall)
+        ElevatedCard(shape = RoundedCornerShape(22.dp)) {
+            Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                ListItem(
+                    headlineContent = { Text("Userbot sessions") },
+                    supportingContent = { Text("Each enabled userbot runs in its own TDLib session. Turn accounts on or off from their General tab.") },
+                    leadingContent = { Icon(Icons.Rounded.Person, null, tint = MaterialTheme.colorScheme.primary) }
+                )
+                HorizontalDivider()
+                ListItem(
+                    headlineContent = { Text("Bot sessions") },
+                    supportingContent = { Text("Add a BOT_TOKEN in an account's Credentials tab. Its bot card and background toggle will appear in that account's General tab.") },
+                    leadingContent = { Icon(Icons.Rounded.SmartToy, null, tint = MaterialTheme.colorScheme.primary) }
+                )
+                HorizontalDivider()
+                ListItem(
+                    headlineContent = { Text("Credential security") },
+                    supportingContent = { Text("API hashes and custom key/value pairs are encrypted locally using Android Keystore.") },
+                    leadingContent = { Icon(Icons.Rounded.Security, null, tint = MaterialTheme.colorScheme.primary) }
+                )
+            }
+        }
+        Text("Application information", style = MaterialTheme.typography.titleMedium)
+        ElevatedCard(shape = RoundedCornerShape(20.dp)) {
+            ListItem(headlineContent = { Text("TronDroid 1.0.0") },
+                supportingContent = { Text("Debug: com.vikram.trondroid.debug · Release: com.vikram.trondroid") },
+                leadingContent = { Icon(Icons.Rounded.Info, null) })
+        }
     }
 }
 
