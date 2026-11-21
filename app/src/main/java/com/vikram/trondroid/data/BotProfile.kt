@@ -7,5 +7,7 @@ data class BotProfile(
     val apiId: Int,
     val enabled: Boolean = true,
     val botEnabled: Boolean = false,
-    val botName: String? = null
+    val botName: String? = null,
+    val botUsername: String? = null,
+    val botTelegramId: Long? = null
 )
