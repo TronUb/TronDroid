@@ -507,7 +507,6 @@ private fun UserbotDetailScreen(
                             if (rowStats.size == 1) Spacer(Modifier.weight(1f))
                         }
                     }
-                }
                     item {
                         Text("Recent chats", style = MaterialTheme.typography.titleMedium)
                         Text(
@@ -547,6 +546,7 @@ private fun UserbotDetailScreen(
                             }
                         }
                     }
+            }
             }
             UserbotSection.DANGER -> LazyColumn(
                 Modifier.fillMaxSize().padding(horizontal = 18.dp),
