@@ -18,7 +18,7 @@ class ZombieCleanupAutomationPlugin : AutomationPlugin {
                 if (result is TdApi.Error) return@send context.reply("Telegram error: ${result.message}")
                 val ids = (result as? TdApi.ChatMembers)?.members.orEmpty().mapNotNull { member ->
                     val id = (member.memberId as? TdApi.MessageSenderUser)?.userId ?: return@mapNotNull null
-                    id.takeIf { gateway.cachedUser(it)?.isDeleted == true }
+                    id.takeIf { gateway.cachedUser(it)?.type is TdApi.UserTypeDeleted }
                 }.distinct()
                 if (!context.arguments.firstOrNull().equals("confirm", true)) {
                     context.reply("Deleted accounts found in cached user data: ${ids.size}\n" +
