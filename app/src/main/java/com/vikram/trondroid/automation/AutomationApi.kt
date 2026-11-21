@@ -44,6 +44,8 @@ interface AutomationPlugin {
     val commands: List<AutomationCommand> get() = emptyList()
     fun onMessage(context: AutomationContext) = Unit
     fun onCommand(context: AutomationContext) = Unit
+    /** Return true only when this plugin explicitly authorizes an incoming command sender. */
+    fun canExecuteIncoming(message: AutomationMessage): Boolean = false
     fun onTelegramUpdate(context: AutomationUpdateContext) = Unit
 }
 
