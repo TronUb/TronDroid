@@ -777,6 +777,7 @@ private fun PluginsScreen(modifier: Modifier, onOpen: (String) -> Unit) {
 
 @Composable
 private fun PluginDetailScreen(modifier: Modifier, id: String) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     val plugin = PluginCatalog.find(id) ?: return
     val isBot = plugin.owner == com.vikram.trondroid.plugins.PluginOwner.BOT
     LazyColumn(
@@ -842,7 +843,7 @@ private fun PluginDetailScreen(modifier: Modifier, id: String) {
                         android.content.Intent.ACTION_VIEW,
                         android.net.Uri.parse("https://github.com/TronUb/Tron/blob/master/" + plugin.sourcePath)
                     )
-                    androidx.compose.ui.platform.LocalContext.current.startActivity(intent)
+                    context.startActivity(intent)
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
