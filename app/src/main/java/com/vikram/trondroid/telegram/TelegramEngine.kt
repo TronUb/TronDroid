@@ -85,6 +85,7 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
     )
     /** Shared TDLib update stream used by every native and external plugin. */
     val updateHub = TelegramUpdateHub { message, isError -> log(message, isError) }
+    val updateStore = TelegramUpdateStore()
     private val updateSubscription = updateHub.subscribe(automation::dispatchUpdate)
 
     init {
@@ -143,7 +144,10 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
     override fun onResult(result: TdApi.Object) {
         // TDLib is the single source of truth: forward every Update subtype to the
         // shared plugin pipeline, not just new text messages.
-        if (result is TdApi.Update) updateHub.publish(result)
+        if (result is TdApi.Update) {
+            updateStore.accept(result)
+            updateHub.publish(result)
+        }
         when (result.constructor) {
             TdApi.UpdateAuthorizationState.CONSTRUCTOR -> onAuthorizationState((result as TdApi.UpdateAuthorizationState).authorizationState)
             TdApi.UpdateNewMessage.CONSTRUCTOR -> {
@@ -160,6 +164,7 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
             TdApi.User.CONSTRUCTOR -> updateAccount(result as TdApi.User)
             TdApi.File.CONSTRUCTOR -> {
                 val file = result as TdApi.File
+                updateStore.rememberFile(file)
                 val current = _account.value
                 if (current != null && file.local.isDownloadingCompleted && file.local.path.isNotBlank()) {
                     _account.value = current.copy(photoPath = file.local.path)
@@ -167,6 +172,7 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
             }
             TdApi.UpdateNewChat.CONSTRUCTOR -> {
                 val chat = (result as TdApi.UpdateNewChat).chat
+                updateStore.rememberChat(chat)
                 _chats.value = (_chats.value.filterNot { it.id == chat.id } + chat).sortedBy { it.title.lowercase() }
             }
             TdApi.Error.CONSTRUCTOR -> {
@@ -206,6 +212,7 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
         client = null
         updateSubscription.close()
         updateHub.close()
+        updateStore.clear()
         automation.shutdown()
     }
     private fun loadAccount() {
@@ -216,6 +223,7 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
     }
 
     private fun updateAccount(user: TdApi.User) {
+        updateStore.rememberUser(user)
         val username = ""
         val name = listOf(user.firstName, user.lastName).filter { it.isNotBlank() }.joinToString(" ")
         _account.value = TelegramAccountInfo(user.id, name, username, user.phoneNumber, user.isPremium, false)
