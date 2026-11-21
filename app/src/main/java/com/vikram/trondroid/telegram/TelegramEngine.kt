@@ -261,8 +261,11 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
             else client?.send(TdApi.GetChats(TdApi.ChatListMain(), 100)) { result ->
                 if (result is TdApi.Chats) result.chatIds.forEach { id ->
                     client?.send(TdApi.GetChat(id)) { chatResult ->
-                        if (chatResult is TdApi.Chat) _chats.value =
-                            (_chats.value.filterNot { it.id == chatResult.id } + chatResult).sortedBy { it.title.lowercase() }
+                        if (chatResult is TdApi.Chat) {
+                            updateStore.rememberChat(chatResult)
+                            _chats.value =
+                                (_chats.value.filterNot { it.id == chatResult.id } + chatResult).sortedBy { it.title.lowercase() }
+                        }
                     }
                 }
             }
