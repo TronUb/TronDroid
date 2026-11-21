@@ -27,6 +27,8 @@ import com.vikram.trondroid.automation.ProfileAutomationPlugin
 import com.vikram.trondroid.automation.ChatInfoAutomationPlugin
 import com.vikram.trondroid.automation.GroupInfoAutomationPlugin
 import com.vikram.trondroid.automation.QrAutomationPlugin
+import com.vikram.trondroid.automation.PurgeAutomationPlugin
+import com.vikram.trondroid.automation.StatsAutomationPlugin
 import com.vikram.trondroid.plugins.PluginSettings
 import com.vikram.trondroid.plugins.ExternalPluginLoader
 import android.net.Uri
@@ -115,6 +117,8 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
         nativePlugins += ProfileAutomationPlugin()
         nativePlugins += ChatInfoAutomationPlugin()
         nativePlugins += GroupInfoAutomationPlugin()
+        nativePlugins += PurgeAutomationPlugin()
+        nativePlugins += StatsAutomationPlugin()
         nativePlugins += WeatherAutomationPlugin()
         nativePlugins += CurrencyAutomationPlugin()
         nativePlugins += TemperatureAutomationPlugin()
