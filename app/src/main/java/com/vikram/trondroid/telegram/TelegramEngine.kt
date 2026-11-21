@@ -99,7 +99,7 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
     }
 
     fun loadExternalPlugins(uri: Uri): Int {
-        val loaded = ExternalPluginLoader.import(context, uri).filterIsInstance<AutomationPlugin>()
+        val loaded = ExternalPluginLoader.loadFromUri(context, uri).filterIsInstance<AutomationPlugin>()
         require(loaded.isNotEmpty()) { "No AutomationPlugin implementation was found in this file." }
         loaded.forEach(automation::register)
         log("Loaded ${loaded.size} external userbot plugin(s)")
