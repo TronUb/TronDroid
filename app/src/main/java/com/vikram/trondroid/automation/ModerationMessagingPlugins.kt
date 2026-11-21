@@ -100,23 +100,33 @@ class BroadcastAutomationPlugin : AutomationPlugin {
             gateway.send(TdApi.GetChats(TdApi.ChatListMain(), 1000)) { chatsResult ->
                 val chats = (chatsResult as? TdApi.Chats)?.chatIds?.distinct().orEmpty()
                 if (chats.isEmpty()) return@send context.reply("No main-dialog chats are available.")
-                val eligible = chats.filter { chatId ->
-                    when (gateway.cachedChat(chatId)?.type) {
-                        is TdApi.ChatTypePrivate, is TdApi.ChatTypeBasicGroup, is TdApi.ChatTypeSupergroup -> true
-                        else -> false
-                    }
-                }
-                if (eligible.isEmpty()) return@send context.reply("No eligible private or group chats were found.")
-                context.reply("Broadcast started for ${eligible.size} chats.")
-                val completed = java.util.concurrent.atomic.AtomicInteger(0)
-                val sent = java.util.concurrent.atomic.AtomicInteger(0)
-                val failed = java.util.concurrent.atomic.AtomicInteger(0)
-                eligible.forEach { chatId ->
-                    val input = TdApi.InputMessageText(TdApi.FormattedText(text.take(4000), emptyArray()), null, true)
-                    gateway.send(TdApi.SendMessage(chatId, null, null, null, null, input)) { result ->
-                        if (result is TdApi.Error) failed.incrementAndGet() else sent.incrementAndGet()
-                        if (completed.incrementAndGet() == eligible.size) {
-                            context.reply("Broadcast finished. Sent: ${sent.get()}, failed: ${failed.get()}.")
+                val loaded = java.util.concurrent.ConcurrentLinkedQueue<TdApi.Chat>()
+                val loadCompleted = java.util.concurrent.atomic.AtomicInteger(0)
+                chats.forEach { chatId ->
+                    gateway.send(TdApi.GetChat(chatId)) { chatResult ->
+                        val chat = chatResult as? TdApi.Chat
+                        if (chat != null) loaded.add(chat)
+                        if (loadCompleted.incrementAndGet() == chats.size) {
+                            val eligible = loaded.filter { chat ->
+                                when (chat.type) {
+                                    is TdApi.ChatTypePrivate, is TdApi.ChatTypeBasicGroup, is TdApi.ChatTypeSupergroup -> true
+                                    else -> false
+                                }
+                            }
+                            if (eligible.isEmpty()) return@send context.reply("No eligible private or group chats were found.")
+                            context.reply("Broadcast started for ${eligible.size} chats.")
+                            val completed = java.util.concurrent.atomic.AtomicInteger(0)
+                            val sent = java.util.concurrent.atomic.AtomicInteger(0)
+                            val failed = java.util.concurrent.atomic.AtomicInteger(0)
+                            eligible.forEach { chat ->
+                                val input = TdApi.InputMessageText(TdApi.FormattedText(text.take(4000), emptyArray()), null, true)
+                                gateway.send(TdApi.SendMessage(chat.id, null, null, null, null, input)) { result ->
+                                    if (result is TdApi.Error) failed.incrementAndGet() else sent.incrementAndGet()
+                                    if (completed.incrementAndGet() == eligible.size) {
+                                        context.reply("Broadcast finished. Sent: ${sent.get()}, failed: ${failed.get()}.")
+                                    }
+                                }
+                            }
                         }
                     }
                 }
