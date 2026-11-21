@@ -102,7 +102,7 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
         nativePlugins += AnimeAutomationPlugin()
         nativePlugins += FunAutomationPlugin()
         nativePlugins += HelpAutomationPlugin({ pluginSettings.handler() }) { nativePlugins }
-        nativePlugins += AfkAutomationPlugin({ pluginSettings.handler() }) { _account.value?.id }
+        nativePlugins += AfkAutomationPlugin({ pluginSettings.handler() }, { _account.value?.id }) { _account.value?.username }
         nativePlugins += NotesAutomationPlugin(context.getSharedPreferences("trondroid.userbot.notes", Context.MODE_PRIVATE))
         nativePlugins += WeatherAutomationPlugin()
         nativePlugins += CurrencyAutomationPlugin()
@@ -230,7 +230,7 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
 
     private fun updateAccount(user: TdApi.User) {
         updateStore.rememberUser(user)
-        val username = ""
+        val username = user.usernames?.activeUsernames?.firstOrNull().orEmpty()
         val name = listOf(user.firstName, user.lastName).filter { it.isNotBlank() }.joinToString(" ")
         _account.value = TelegramAccountInfo(user.id, name, username, user.phoneNumber, user.isPremium, false)
         user.profilePhoto?.small?.let { photo ->
