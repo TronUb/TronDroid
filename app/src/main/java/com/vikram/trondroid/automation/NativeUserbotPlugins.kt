@@ -442,25 +442,28 @@ class AfkAutomationPlugin : AutomationPlugin {
         AutomationCommand("afk", "Set an away status and optional reason.", "afk <reason>"),
         AutomationCommand("unafk", "Clear the away status.", "unafk")
     )
-    @Volatile private var reason: String? = null
+    @Volatile private var reason: String = ""
+    @Volatile private var active: Boolean = false
     @Volatile private var startedAt: Long = 0L
     override fun onCommand(context: AutomationContext) {
         when (context.command) {
             "afk" -> {
-                reason = context.arguments.joinToString(" ").ifBlank { null }
+                reason = context.arguments.joinToString(" ").trim()
+                active = true
                 startedAt = System.currentTimeMillis()
-                context.reply("AFK enabled" + (reason?.let { ": $it" } ?: "."))
+                context.reply("AFK enabled" + (reason.takeIf { it.isNotBlank() }?.let { ": $it" } ?: "."))
             }
             "unafk" -> {
-                reason = null
+                reason = ""
+                active = false
                 startedAt = 0L
                 context.reply("AFK disabled.")
             }
         }
     }
     override fun onMessage(context: AutomationContext) {
-        val awayReason = reason ?: return
-        if (!context.message.isOutgoing) {
+        if (active && !context.message.isOutgoing) {
+            val awayReason = reason.ifBlank { "No reason provided" }
             val minutes = ((System.currentTimeMillis() - startedAt) / 60000).coerceAtLeast(0)
             context.reply("This user is currently away (" + minutes + "m). Reason: " + awayReason)
         }
