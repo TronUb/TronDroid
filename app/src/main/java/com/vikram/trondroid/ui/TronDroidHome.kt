@@ -383,7 +383,7 @@ private fun UserbotDetailScreen(
                                                 style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onTertiaryContainer)
                                         }
                                     }
-                                    Text(if (bot.botEnabled) "Running in the background" else "Bot session paused",
+                                    Text(if (!bot.botEnabled) "Bot session paused" else if (bot.botName != null) "Connected · running in the background" else "Connecting to Telegram Bot API",
                                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                                 Switch(checked = bot.botEnabled, onCheckedChange = { onBotToggle(bot.id, it) })
@@ -1019,11 +1019,7 @@ private fun CredentialDetailScreen(
                         Spacer(Modifier.width(6.dp))
                         Text("Add more")
                     }
-                    if (customCredentials.isNotEmpty()) {
-                        TextButton(onClick = { onSaveCustomCredentials(emptyMap()) }) {
-                            Text("Clear all", color = MaterialTheme.colorScheme.error)
-                        }
-                    }
+
                 }
                 if (customCredentials.isEmpty()) {
                     ElevatedCard(shape = RoundedCornerShape(18.dp)) {
@@ -1033,6 +1029,11 @@ private fun CredentialDetailScreen(
                 } else {
                     customCredentials.toSortedMap().forEach { (key, value) ->
                         CustomCredentialField(key, value)
+                    }
+                }
+                if (customCredentials.isNotEmpty()) {
+                    TextButton(onClick = { onSaveCustomCredentials(emptyMap()) }, modifier = Modifier.align(Alignment.End)) {
+                        Text("Clear all credentials", color = MaterialTheme.colorScheme.error)
                     }
                 }
             }
@@ -1143,7 +1144,7 @@ private fun CustomCredentialsDialog(
         confirmButton = {
             Button(onClick = {
                 val filled = rows.filter { it.first.isNotBlank() && it.second.isNotBlank() }
-                val duplicate = filled.groupBy { it.first.trim() }.any { it.value.size > 1 }
+                val duplicate = filled.groupBy { it.first.trim().uppercase() }.any { it.value.size > 1 }
                 when {
                     filled.isEmpty() -> error = "Enter at least one key and value."
                     duplicate -> error = "Key names must be unique."
