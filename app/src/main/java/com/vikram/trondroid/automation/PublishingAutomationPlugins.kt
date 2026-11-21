@@ -95,7 +95,7 @@ class PublishingAutomationPlugin(private val cacheDir: File) : AutomationPlugin 
         context.reply("Preparing Telegraph page…")
         val publish: (String?) -> Unit = { mediaPath ->
             Thread({
-                runCatching {
+                runCatching<String> {
                     val nodes = org.json.JSONArray()
                     if (text.isNotBlank()) nodes.put(JSONObject().put("tag", "p").put("children", org.json.JSONArray().put(text)))
                     if (mediaPath != null) {
@@ -111,7 +111,7 @@ class PublishingAutomationPlugin(private val cacheDir: File) : AutomationPlugin 
                     val pageBody = "access_token=" + URLEncoder.encode(token, "UTF-8") +
                         "&title=" + URLEncoder.encode("Telegram message", "UTF-8") +
                         "&author_name=TronDroid&content=" + URLEncoder.encode(nodes.toString(), "UTF-8")
-                    val page = JSONObject(PluginHttp.request("https://api.telegra.ph/createPage", "POST", pageBody, "application/x-www-form-urlencoded"))
+                    val page = JSONObject(TelegraphHttp.request("https://api.telegra.ph/createPage", "POST", pageBody, "application/x-www-form-urlencoded"))
                     require(page.optBoolean("ok")) { page.optJSONObject("error")?.optString("message") ?: "Unable to publish page." }
                     page.getJSONObject("result").getString("url")
                 }.onSuccess { context.reply("Telegraph page: " + it) }
