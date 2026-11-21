@@ -39,7 +39,7 @@ object PluginCatalog {
                 "currency", "cur" -> "$name 100 USD INR"
                 "qrcode" -> "qrcode https://example.com"
                 "afk" -> "afk Having lunch"
-                "ping", "alive", "ialive", "help", "stats", "today", "time", "date" -> name
+                "ping","pong", "alive", "ialive", "help", "stats", "today", "time", "date" -> name
                 else -> usage
             }
             PluginCommand(name, "$title command. $summary", usage, example)
@@ -48,8 +48,8 @@ object PluginCatalog {
 
     val userbot = listOf(
         plugin("userbot:admin","Admin","Group moderation, member management and permission controls.","Moderation",PluginOwner.USERBOT,"main/userbot/modules/plugins/admin.py",false,"ban","banall","unban","mute","unmute","kick","pin","unpin","promote","demote"),
-        plugin("userbot:afk","AFK","Automatically manage away status and reply to mentions.","Automation",PluginOwner.USERBOT,"main/userbot/modules/plugins/afk.py",true,"afk","offlinemention","unafk"),
-        plugin("userbot:alive","Alive","Show connected account and app runtime status.","Status",PluginOwner.USERBOT,"main/userbot/modules/plugins/alive.py",true,"alive","ialive"),
+        plugin("userbot:afk","AFK","Automatically manage away status and reply to mentions.","Automation",PluginOwner.USERBOT,"main/userbot/modules/plugins/afk.py",true,"afk","unafk"),
+        plugin("userbot:alive","Alive","Show connected account and app runtime status.","Status",PluginOwner.USERBOT,"main/userbot/modules/plugins/alive.py",true,"alive"),
         plugin("userbot:anime","Anime","Fetch anime images and GIFs by action.","Entertainment",PluginOwner.USERBOT,"main/userbot/modules/plugins/anime.py",true,"animelist","nekopic","npic","animegif"),
         plugin("userbot:broadcast","Broadcast","Send an announcement to selected chats.","Messaging",PluginOwner.USERBOT,"main/userbot/modules/plugins/broadcast.py",false,"broadcast"),
         plugin("userbot:carbon","Carbon","Create syntax-highlighted code images. The upstream implementation is broken and remains unavailable until it is replaced.","Media",PluginOwner.USERBOT,"main/userbot/modules/plugins/carbon.py",false,"carbon","carblist"),
@@ -61,7 +61,7 @@ object PluginCatalog {
         plugin("userbot:fun","Fun","Jokes, advice, text effects and lightweight entertainment.","Entertainment",PluginOwner.USERBOT,"main/userbot/modules/plugins/fun.py",true,"slap","upcase","type","insult","advice","uadvice","qs","wtd","mqt","joke"),
         plugin("userbot:google","Google & images","Search the web and find image sources.","Search",PluginOwner.USERBOT,"main/userbot/modules/plugins/google.py",false,"sauce","pic","img"),
         plugin("userbot:group","Group info","Inspect group, supergroup, channel and unread chat details.","Information",PluginOwner.USERBOT,"main/userbot/modules/plugins/group.py",false,"basicgroup","supergroup","unreadchat","channel"),
-        plugin("userbot:help","Help","List commands currently implemented in TronDroid.","Utilities",PluginOwner.USERBOT,"main/userbot/modules/plugins/help.py",true,"help","uplugs","bplugs","inline"),
+        plugin("userbot:help","Help","List commands currently implemented in TronDroid.","Utilities",PluginOwner.USERBOT,"main/userbot/modules/plugins/help.py",true,"help"),
         plugin("userbot:image","Image tools","Generate QR codes and fetch image or profile-picture content.","Media",PluginOwner.USERBOT,"main/userbot/modules/plugins/image.py",false,"stoi","itos","qrcode","colourtemplate","cat","waifu","pfp","dog"),
         plugin("userbot:imdb","IMDb","Find movies and series using IMDb title search.","Search",PluginOwner.USERBOT,"main/userbot/modules/plugins/imdb.py",true,"imdb"),
         plugin("userbot:info","Media & chat info","Inspect media metadata and chat information.","Information",PluginOwner.USERBOT,"main/userbot/modules/plugins/info.py",false,"minfo","chatinfo"),
@@ -86,7 +86,7 @@ object PluginCatalog {
         plugin("userbot:telegraph","Telegraph","Publish text or media to Telegraph pages.","Publishing",PluginOwner.USERBOT,"main/userbot/modules/plugins/telegraph.py",false,"telegraph"),
         plugin("userbot:time","Time & date","Show local time, date and weekday.","Utilities",PluginOwner.USERBOT,"main/userbot/modules/plugins/time.py",true,"today","time","date"),
         plugin("userbot:tools","Tools","Currency, temperature, saved messages and message utilities.","Utilities",PluginOwner.USERBOT,"main/userbot/modules/plugins/tools.py",false,"wlink","currency","temperature","json","mlink","saved","forward","speedtest","commonchat"),
-        plugin("userbot:translate","Translate","Translate text using the selected target language.","Utilities",PluginOwner.USERBOT,"main/userbot/modules/plugins/translate.py",true,"translate","translatelang"),
+        plugin("userbot:translate","Translate","Translate text using the selected target language.","Utilities",PluginOwner.USERBOT,"main/userbot/modules/plugins/translate.py",true,"translate","tr","tl","trlist","tllist","translatelist","translatelang"),
         plugin("userbot:update","Update","The original update workflow targets its server deployment; Android app updates are handled separately.","System",PluginOwner.USERBOT,"main/userbot/modules/plugins/update.py",false,"update"),
         plugin("userbot:utils","Group utilities","Group administration helpers for titles, invites, member lists, reporting and chat controls.","Groups",PluginOwner.USERBOT,"main/userbot/modules/plugins/utils.py",false,"settitle","invite","inviteall","admins","report","all","bots","kickme","members","join","slowmo"),
         plugin("userbot:utube","YouTube","Search videos, inspect video information and download media.","Media",PluginOwner.USERBOT,"main/userbot/modules/plugins/utube.py",false,"ytsearch","ytinfo","ytmdl"),
