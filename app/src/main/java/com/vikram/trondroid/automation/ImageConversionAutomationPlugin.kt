@@ -28,7 +28,7 @@ class ImageConversionAutomationPlugin(private val context: Context) : Automation
                     if (downloaded == null || error != null) return@downloadFile context.reply("Sticker download failed: ${error ?: "unknown error"}")
                     val bitmap = BitmapFactory.decodeFile(downloaded.local.path)
                         ?: return@downloadFile context.reply("Unable to decode this sticker format.")
-                    val output = File(context.cacheDir, "sticker_${System.currentTimeMillis()}.jpg")
+                    val output = File(this.context.cacheDir, "sticker_${System.currentTimeMillis()}.jpg")
                     runCatching {
                         output.outputStream().use { bitmap.compress(Bitmap.CompressFormat.JPEG, 92, it) }
                         bitmap.recycle()
