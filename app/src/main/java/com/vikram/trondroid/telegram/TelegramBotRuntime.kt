@@ -35,7 +35,7 @@ object TelegramBotRuntime {
         }
         eligible.forEach { (id, token) ->
             val current = workers[id]
-            if (current == null || !current.isRunning()) {
+            if (current == null || !current.isRunning() || !current.usesToken(token)) {
                 workers[id]?.stopWorker()
                 workers[id] = BotWorker(app, id, token).also { it.start() }
             }
@@ -58,7 +58,9 @@ object TelegramBotRuntime {
         private val app = context.applicationContext
         private val running = AtomicBoolean(true)
         private val store = BotStore(app)
+        private val preferences = app.getSharedPreferences("trondroid.settings", Context.MODE_PRIVATE)
 
+        fun usesToken(value: String) = token == value
         fun isRunning() = running.get() && isAlive
         fun stopWorker() {
             running.set(false)
@@ -81,12 +83,14 @@ object TelegramBotRuntime {
                             mutableNames.value = mutableNames.value + (profileId to name)
                             identityLoaded = true
                         } else {
+                            if (!preferences.getBoolean("auto_reconnect_bots", true)) break
                             Thread.sleep(10_000)
                             continue
                         }
                     }
                     val updates = request("getUpdates?timeout=25&offset=$offset")
                     if (!updates.optBoolean("ok")) {
+                        if (!preferences.getBoolean("auto_reconnect_bots", true)) break
                         Thread.sleep(5_000)
                         continue
                     }
@@ -98,6 +102,7 @@ object TelegramBotRuntime {
                 } catch (_: InterruptedException) {
                     break
                 } catch (_: Exception) {
+                    if (!preferences.getBoolean("auto_reconnect_bots", true)) break
                     try { Thread.sleep(5_000) } catch (_: InterruptedException) { break }
                 }
             }
