@@ -337,17 +337,59 @@ class AnimeAutomationPlugin : AutomationPlugin {
 class FunAutomationPlugin : AutomationPlugin {
     override val id = "userbot:fun"
     override val commands = listOf(
-        AutomationCommand("upcase", "Convert supplied text to uppercase.", "upcase <text>"),
+        AutomationCommand("slap", "Generate a playful slap message for a replied user.", "slap (reply to a user)"),
+        AutomationCommand("upcase", "Convert supplied or replied text to uppercase.", "upcase <text>"),
+        AutomationCommand("type", "Animate typing by progressively editing the command.", "type <text>"),
+        AutomationCommand("insult", "Fetch a random insult for a replied user.", "insult (reply to a user) [language]"),
         AutomationCommand("joke", "Fetch a random joke.", "joke"),
-        AutomationCommand("advice", "Fetch a random piece of advice.", "advice"),
-        AutomationCommand("uadvice", "Alias for advice.", "uadvice")
+        AutomationCommand("advice", "Fetch a random piece of advice.", "advice (reply to a user)"),
+        AutomationCommand("uadvice", "Fetch a random useless fact.", "uadvice (reply to a user)"),
+        AutomationCommand("qs", "Ask a random trivia question and save the answer in Telegram.", "qs (reply to a user)")
     )
 
     override fun onCommand(context: AutomationContext) {
+        val source = context.message.tdMessage
+        val replied = source?.let { context.telegram?.repliedMessage(it) }
         when (context.command) {
             "upcase" -> {
-                val text = context.arguments.joinToString(" ")
-                context.reply(if (text.isBlank()) "Usage: .upcase <text>" else text.uppercase(Locale.ROOT))
+                val text = context.arguments.joinToString(" ").ifBlank { replied?.let(::extractText).orEmpty() }
+                context.reply(if (text.isBlank()) "Reply to a text message or use .upcase <text>." else text.uppercase(Locale.ROOT))
+            }
+            "slap" -> {
+                if (replied == null) return context.reply("Reply to someone to use .slap.")
+                val sender = replied.senderId as? TdApi.MessageSenderUser
+                val user = sender?.let { context.telegram?.cachedUser(it.userId) }
+                val name = user?.firstName?.takeIf { it.isNotBlank() } ?: "that user"
+                if (sender?.userId == source?.senderId.let { (it as? TdApi.MessageSenderUser)?.userId }) {
+                    return context.reply("You cannot slap yourself.")
+                }
+                val actions = listOf(
+                    "slaps $name with a giant cardboard box",
+                    "bonks $name with a rubber chicken",
+                    "challenges $name to a pillow fight",
+                    "gently pats $name on the head",
+                    "launches a foam slipper at $name"
+                )
+                context.reply(actions.random())
+            }
+            "type" -> {
+                val text = context.arguments.joinToString(" ").take(60)
+                if (text.isBlank()) return context.reply("Usage: .type <text>")
+                val current = StringBuilder()
+                text.forEachIndexed { index, char ->
+                    current.append(char)
+                    context.replyAfter((index + 1L) * 180L, current.toString())
+                }
+            }
+            "insult" -> {
+                if (replied == null) return context.reply("Reply to someone to use .insult.")
+                val language = context.arguments.firstOrNull()?.lowercase(Locale.ROOT) ?: "en"
+                if (!language.matches(Regex("[a-z]{2,3}"))) return context.reply("Use a valid language code, e.g. en.")
+                context.reply("Finding an insult…")
+                PluginHttp.run(context) {
+                    val json = JSONObject(PluginHttp.get("https://evilinsult.com/generate_insult.php?lang=$language&type=json"))
+                    json.optString("insult").ifBlank { "No insult was returned." }
+                }
             }
             "joke" -> {
                 context.reply("Getting a joke…")
@@ -356,17 +398,58 @@ class FunAutomationPlugin : AutomationPlugin {
                     json.optString("setup") + "\n" + json.optString("punchline")
                 }
             }
-            "advice", "uadvice" -> {
-                context.reply("Getting advice…")
+            "advice" -> {
+                if (replied == null) return context.reply("Reply to someone to use .advice.")
+                context.reply("Finding advice…")
                 PluginHttp.run(context) {
-                    val json = JSONObject(PluginHttp.get("https://api.adviceslip.com/advice"))
-                    json.optJSONObject("slip")?.optString("advice") ?: "No advice found."
+                    JSONObject(PluginHttp.get("https://api.adviceslip.com/advice"))
+                        .optJSONObject("slip")?.optString("advice") ?: "No advice found."
+                }
+            }
+            "uadvice" -> {
+                if (replied == null) return context.reply("Reply to someone to use .uadvice.")
+                context.reply("Finding a useless fact…")
+                PluginHttp.run(context) {
+                    JSONObject(PluginHttp.get("https://uselessfacts.jsph.pl/api/v2/facts/random?language=en"))
+                        .optString("text").ifBlank { "No fact found." }
+                }
+            }
+            "qs" -> {
+                if (replied == null) return context.reply("Reply to someone to use .qs.")
+                context.reply("Finding a trivia question…")
+                PluginHttp.run(context) {
+                    val root = JSONObject(PluginHttp.get("https://opentdb.com/api.php?amount=1&type=multiple"))
+                    val item = root.optJSONArray("results")?.optJSONObject(0) ?: return@run "No question found."
+                    val question = item.optString("question")
+                    val correct = item.optString("correct_answer")
+                    val options = mutableListOf<String>()
+                    val wrong = item.optJSONArray("incorrect_answers")
+                    if (wrong != null) for (i in 0 until wrong.length()) options += wrong.optString(i)
+                    options.add(correct)
+                    options.shuffle()
+                    val formatted = options.mapIndexed { i, value -> "${i + 1}. $value" }.joinToString("\n")
+                    context.telegram?.send(
+                        TdApi.SendMessage(
+                            context.message.chatId, null, null, null, null,
+                            TdApi.InputMessageText(
+                                TdApi.FormattedText("Correct answer: $correct", emptyArray()), null, true
+                            )
+                        )
+                    ) { }
+                    "Trivia question:\n$question\n\n$formatted\n\nAnswer sent to your Saved Messages is not supported yet."
                 }
             }
         }
     }
-}
 
+    private fun extractText(message: TdApi.Message): String = when (val content = message.content) {
+        is TdApi.MessageText -> content.text.text
+        is TdApi.MessagePhoto -> content.caption.text
+        is TdApi.MessageVideo -> content.caption.text
+        is TdApi.MessageDocument -> content.caption.text
+        else -> ""
+    }
+}
 
 class WeatherAutomationPlugin : AutomationPlugin {
     override val id = "userbot:weather"
