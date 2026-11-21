@@ -1,13 +1,15 @@
 package com.vikram.trondroid.automation
 
 import org.drinkless.tdlib.TdApi
+import com.vikram.trondroid.telegram.TelegramClientGateway
 
 data class AutomationMessage(
     val chatId: Long,
     val messageId: Long,
     val text: String,
     val isOutgoing: Boolean,
-    val senderId: String? = null
+    val senderId: String? = null,
+    val tdMessage: TdApi.Message? = null
 )
 
 data class AutomationCommand(
@@ -22,7 +24,8 @@ data class AutomationContext(
     val command: String? = null,
     val arguments: List<String> = emptyList(),
     val reply: (String) -> Unit,
-    val replyAfter: (Long, String) -> Unit = { _, text -> reply(text) }
+    val replyAfter: (Long, String) -> Unit = { _, text -> reply(text) },
+    val telegram: TelegramClientGateway? = null
 )
 
 /**
@@ -32,7 +35,8 @@ data class AutomationContext(
  */
 data class AutomationUpdateContext(
     val update: TdApi.Update,
-    val reply: (chatId: Long, text: String) -> Unit
+    val reply: (chatId: Long, text: String) -> Unit,
+    val telegram: TelegramClientGateway? = null
 )
 
 interface AutomationPlugin {
