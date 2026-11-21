@@ -20,6 +20,7 @@ class ProfileAutomationPlugin : AutomationPlugin {
 
     override fun onCommand(context: AutomationContext) {
         val gateway = context.telegram
+        val message = context.message.tdMessage
         when (context.command) {
             "id" -> {
                 val message = context.message.tdMessage
