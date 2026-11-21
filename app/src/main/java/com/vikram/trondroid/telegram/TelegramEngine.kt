@@ -62,7 +62,7 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
     val logs: StateFlow<List<EngineLog>> = _logs.asStateFlow()
     private val pluginSettings = PluginSettings(context)
     val updateStore = TelegramUpdateStore()
-    private val telegramGateway = TelegramClientGateway({ client }, updateStore)
+    private val telegramGateway = TelegramClientGateway({ client }, updateStore, context.cacheDir)
     private val automation = AutomationDispatcher(
         commandPrefix = { pluginSettings.handler() },
         isPluginEnabled = { pluginSettings.enabled(it) },
@@ -231,6 +231,7 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
         updateSubscription.close()
         updateHub.close()
         updateStore.clear()
+        telegramGateway.shutdown()
         automation.shutdown()
     }
     private fun loadAccount() {
