@@ -98,6 +98,7 @@ object TelegramBotRuntime {
                     for (index in 0 until results.length()) {
                         val update = results.optJSONObject(index) ?: continue
                         offset = maxOf(offset, update.optLong("update_id") + 1L)
+                        handleUpdate(update)
                     }
                 } catch (_: InterruptedException) {
                     break
@@ -105,6 +106,26 @@ object TelegramBotRuntime {
                     if (!preferences.getBoolean("auto_reconnect_bots", true)) break
                     try { Thread.sleep(5_000) } catch (_: InterruptedException) { break }
                 }
+            }
+        }
+
+        private fun handleUpdate(update: JSONObject) {
+            val message = update.optJSONObject("message") ?: return
+            val text = message.optString("text").trim()
+            if (!text.startsWith("/")) return
+            val token = text.substringBefore(' ').substringBefore('@').removePrefix("/").lowercase()
+            val chatId = message.optJSONObject("chat")?.optLong("id") ?: return
+            val reply = when (token) {
+                "start" -> "Welcome! TronDroid bot is online. Send /help to see available commands."
+                "help" -> "Available commands:\n/start — Start the bot\n/help — Show this help\n/ping — Check bot response"
+                "ping" -> "Pong! Telegram Bot API is responding."
+                else -> return
+            }
+            runCatching {
+                request("sendMessage?chat_id=$chatId&text=" +
+                    java.net.URLEncoder.encode(reply, Charsets.UTF_8.name()))
+            }.onFailure {
+                android.util.Log.e("TronDroidBot", "Unable to reply to /$token", it)
             }
         }
 
