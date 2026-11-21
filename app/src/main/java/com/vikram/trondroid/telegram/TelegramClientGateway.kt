@@ -60,7 +60,12 @@ class TelegramClientGateway(
                 val directory = File(cacheDirectory, "trondroid/plugin-media").apply { mkdirs() }
                 directory.listFiles()?.filter { System.currentTimeMillis() - it.lastModified() > 48L * 60 * 60 * 1000 }
                     ?.forEach { it.delete() }
-                val suffix = if (animation) ".mp4" else ".jpg"
+                val urlPath = URL(url).path.lowercase()
+                val suffix = if (animation) {
+                    if (urlPath.endsWith(".gif")) ".gif" else ".mp4"
+                } else {
+                    listOf(".jpg", ".jpeg", ".png", ".webp").firstOrNull { urlPath.endsWith(it) } ?: ".jpg"
+                }
                 val destination = File.createTempFile("plugin_media_", suffix, directory)
                 val connection = URL(url).openConnection() as HttpURLConnection
                 connection.connectTimeout = 15_000
