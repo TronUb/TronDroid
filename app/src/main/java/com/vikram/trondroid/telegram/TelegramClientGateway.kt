@@ -112,7 +112,7 @@ class TelegramClientGateway(
                     )
                 } else {
                     TdApi.InputMessagePhoto(
-                        TdApi.InputFileLocal(destination.absolutePath), null, intArrayOf(),
+                        TdApi.InputFileLocal(destination.absolutePath), null, null, intArrayOf(),
                         0, 0, formattedCaption, false, null, false
                     )
                 }
