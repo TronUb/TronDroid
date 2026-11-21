@@ -24,7 +24,7 @@ object PluginCatalog {
         id, title, summary, category, owner, source,
         commands.map { name ->
             val usage = when (name) {
-                in setOf("wiki", "imdb", "reddit", "r", "translate", "tr", "tl", "upcase", "joke", "weather", "currency", "paste", "google", "img", "download", "upload", "ytsearch", "song", "lyrics", "whois", "id", "qrcode", "tts", "ud", "short", "unshort", "telegraph", "carbon", "search", "pic", "pfp", "deezer", "spotify") -> "$name <query>"
+                in setOf("wiki", "imdb", "reddit", "r", "translate", "tr", "tl", "upcase", "joke", "weather", "currency", "paste", "google", "img", "download", "upload", "ytsearch", "song", "lyrics", "whois", "id", "qrcode", "tts", "ud", "short", "unshort", "telegraph", "carbon", "search", "pic", "pfp", "deezer", "spotify", "webshot") -> "$name <query>"
                 in setOf("ban", "mute", "kick", "promote", "demote", "pin", "unpin", "block", "unblock", "approve", "disapprove") -> "$name <reply or user>"
                 in setOf("afk", "setwelcome", "welcome", "save", "setdv", "filter", "schedule", "settitle") -> "$name <text>"
                 in setOf("purge", "purgecount", "spam", "dspam", "vcut", "vspeed") -> "$name <count or options>"
@@ -82,7 +82,7 @@ object PluginCatalog {
         plugin("userbot:stats","Stats","Show Telegram dialog and chat statistics from loaded dialogs.","Information",PluginOwner.USERBOT,"main/userbot/modules/plugins/stats.py",true,"stats"),
         plugin("userbot:stickers","Stickers","Create stickers from media and inspect sticker metadata.","Media",PluginOwner.USERBOT,"main/userbot/modules/plugins/stickers.py",false,"kang","stinfo"),
         plugin("userbot:sudo","Sudo users","Manage trusted user IDs allowed to run privileged commands.","Security",PluginOwner.USERBOT,"main/userbot/modules/plugins/sudo.py",true,"addsudo","listsudo","delsudo"),
-        plugin("userbot:supertools","Super tools","Text-to-speech, dictionary, link, weather and web utilities.","Utilities",PluginOwner.USERBOT,"main/userbot/modules/plugins/supertools.py",false,"tts","ud","short","unshort","weather","webshot","undlt"),
+        plugin("userbot:supertools","Super tools","Dictionary, link shortening, weather and webpage screenshot utilities.","Utilities",PluginOwner.USERBOT,"main/userbot/modules/plugins/supertools.py",false,"tts","ud","short","unshort","weather","webshot","undlt"),
         plugin("userbot:telegraph","Telegraph","Publish text or media to Telegraph pages.","Publishing",PluginOwner.USERBOT,"main/userbot/modules/plugins/telegraph.py",false,"telegraph"),
         plugin("userbot:time","Time & date","Show local time, date and weekday.","Utilities",PluginOwner.USERBOT,"main/userbot/modules/plugins/time.py",true,"today","time","date"),
         plugin("userbot:tools","Tools","Currency, temperature, saved messages and message utilities.","Utilities",PluginOwner.USERBOT,"main/userbot/modules/plugins/tools.py",false,"wlink","currency","temperature","json","mlink","saved","forward","speedtest","commonchat"),
