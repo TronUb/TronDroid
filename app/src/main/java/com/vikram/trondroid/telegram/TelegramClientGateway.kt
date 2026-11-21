@@ -132,6 +132,17 @@ class TelegramClientGateway(
         send(TdApi.SendMessage(chatId, null, null, null, null, content), callback)
     }
 
+
+    /** Ask TDLib to download a Telegram file and return its completed local path. */
+    fun downloadFile(fileId: Int, callback: (TdApi.File?, String?) -> Unit) {
+        send(TdApi.DownloadFile(fileId, 16, 0, 0, true)) { result ->
+            val file = result as? TdApi.File
+            if (file == null) callback(null, (result as? TdApi.Error)?.message ?: "TDLib did not return a file.")
+            else if (file.local.isDownloadingCompleted && file.local.path.isNotBlank()) callback(file, null)
+            else callback(file, "Download has not completed. Retry after TDLib finishes downloading.")
+        }
+    }
+
     fun cachedMessage(chatId: Long, messageId: Long): TdApi.Message? =
         updates.messages.value[chatId to messageId]
 
