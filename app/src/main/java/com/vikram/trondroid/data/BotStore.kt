@@ -38,6 +38,17 @@ class BotStore(private val context: Context) {
         return p
     }
 
+    fun rename(id: String, name: String) {
+        val clean = name.trim().take(48)
+        if (clean.isBlank()) return
+        val json = JSONArray()
+        all().forEach { bot ->
+            json.put(JSONObject().put("id", bot.id).put("name", if (bot.id == id) clean else bot.name)
+                .put("phone", bot.phoneNumber).put("apiId", bot.apiId))
+        }
+        prefs.edit().putString("bots", json.toString()).apply()
+    }
+
     fun setEnabled(id: String, enabled: Boolean) {
         prefs.edit().putBoolean("enabled.$id", enabled).apply()
     }
