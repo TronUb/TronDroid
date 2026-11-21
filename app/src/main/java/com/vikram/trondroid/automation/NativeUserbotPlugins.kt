@@ -1,6 +1,7 @@
 package com.vikram.trondroid.automation
 
 import org.json.JSONObject
+import org.json.JSONArray
 import org.drinkless.tdlib.TdApi
 import java.net.HttpURLConnection
 import java.net.URL
@@ -162,30 +163,54 @@ class RedditAutomationPlugin : AutomationPlugin {
 
 class TranslateAutomationPlugin : AutomationPlugin {
     override val id = "userbot:translate"
+    private val commonLanguages = listOf("en", "hi", "mr", "de", "ja", "fr", "es", "it", "pt", "ru", "ar", "zh-CN", "ko", "bn", "ur", "ta", "te")
+
     override val commands = listOf(
-        AutomationCommand("tr", "Translate text to the requested language.", "tr <language> <text>"),
+        AutomationCommand("tr", "Translate command text or a replied text message.", "tr <language> <text>"),
         AutomationCommand("tl", "Alias for translate.", "tl <language> <text>"),
         AutomationCommand("translate", "Alias for translate.", "translate <language> <text>"),
-        AutomationCommand("trlist", "Show common supported language codes.", "trlist")
+        AutomationCommand("trlist", "Show common supported language codes.", "trlist"),
+        AutomationCommand("tllist", "Alias for language list.", "tllist"),
+        AutomationCommand("translatelist", "Alias for language list.", "translatelist")
     )
 
     override fun onCommand(context: AutomationContext) {
-        if (context.command == "trlist") {
-            return context.reply("Common language codes: en, hi, mr, de, ja, fr, es, it, pt, ru, ar, zh, ko")
+        if (context.command in setOf("trlist", "tllist", "translatelist")) {
+            return context.reply("Common language codes: " + commonLanguages.joinToString(", "))
         }
-        if (context.arguments.size < 2) return context.reply("Usage: .tr <language code> <text>")
-        val language = context.arguments.first().lowercase(Locale.ROOT)
-        val text = context.arguments.drop(1).joinToString(" ")
-        if (!language.matches(Regex("[a-z]{2,3}"))) return context.reply("Use a valid language code, e.g. hi, mr, de or ja.")
-        context.reply("Translating…")
+
+        val source = context.message.tdMessage
+        val replied = source?.let { context.telegram?.repliedMessage(it) }
+        val repliedText = replied?.let(::extractText).orEmpty()
+        val language = context.arguments.firstOrNull()?.lowercase(Locale.ROOT) ?: "en"
+        val inlineText = context.arguments.drop(1).joinToString(" ").trim()
+        val text = repliedText.ifBlank { inlineText }
+        if (text.isBlank()) return context.reply("Usage: .tr <language code> <text> or reply to text with .tr [language]")
+        if (!language.matches(Regex("[a-z]{2,3}(-[a-zA-Z]{2,4})?"))) {
+            return context.reply("Use a valid language code, e.g. en, hi, mr, de or ja.")
+        }
+
+        context.reply("Translating to $language…")
         PluginHttp.run(context) {
-            val pair = "auto|$language"
-            val json = JSONObject(PluginHttp.get(
-                "https://api.mymemory.translated.net/get?q=${PluginHttp.encode(text)}&langpair=${PluginHttp.encode(pair)}"
-            ))
-            val translated = json.optJSONObject("responseData")?.optString("translatedText").orEmpty()
+            val url = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${PluginHttp.encode(language)}&dt=t&q=${PluginHttp.encode(text)}"
+            val root = JSONArray(PluginHttp.get(url))
+            val segments = root.optJSONArray(0) ?: return@run "No translation was returned."
+            val translated = buildString {
+                for (index in 0 until segments.length()) {
+                    append(segments.optJSONArray(index)?.optString(0).orEmpty())
+                }
+            }
             translated.ifBlank { "No translation was returned. Check the language code and try again." }
         }
+    }
+
+    private fun extractText(message: TdApi.Message): String = when (val content = message.content) {
+        is TdApi.MessageText -> content.text.text
+        is TdApi.MessagePhoto -> content.caption.text
+        is TdApi.MessageVideo -> content.caption.text
+        is TdApi.MessageAnimation -> content.caption.text
+        is TdApi.MessageDocument -> content.caption.text
+        else -> ""
     }
 }
 
