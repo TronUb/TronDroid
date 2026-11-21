@@ -12,6 +12,7 @@ class ImageConversionAutomationPlugin(private val context: Context) : Automation
     override val id = "userbot:image-conversion"
     override val commands = listOf(
         AutomationCommand("stoi", "Convert a static replied sticker into a photo.", "stoi (reply to sticker)"),
+        AutomationCommand("itos", "Convert a replied image into a static Telegram sticker.", "itos (reply to photo or image document)"),
         AutomationCommand("colourtemplate", "Generate a solid-color image.", "colourtemplate <color name or #RRGGBB>"),
         AutomationCommand("pfp", "Download the profile photo of a replied user or your own account.", "pfp (reply to a user)")
     )
@@ -56,6 +57,51 @@ class ImageConversionAutomationPlugin(private val context: Context) : Automation
                     } else {
                         gateway.sendPhotoPath(context.message.chatId, downloaded.local.path, "Profile photo") { result ->
                             context.reply(if (result is TdApi.Error) "Unable to send profile photo: ${result.message}" else "Profile photo sent.")
+                        }
+                    }
+                }
+            }
+            "itos" -> {
+                val replied = context.message.tdMessage?.let(gateway::repliedMessage)
+                    ?: return context.reply("Reply to a photo or image document with .itos")
+                val fileId = when (val media = replied.content) {
+                    is TdApi.MessagePhoto -> media.photo.sizes.maxByOrNull { it.width.toLong() * it.height }?.photo?.id
+                    is TdApi.MessageDocument -> media.document.takeIf {
+                        it.mimeType.startsWith("image/") && it.mimeType != "image/gif"
+                    }?.document?.id
+                    else -> null
+                } ?: return context.reply("The replied message is not a supported image.")
+                context.reply("Converting image to sticker…")
+                gateway.downloadFile(fileId) { downloaded, error ->
+                    if (downloaded == null || error != null) {
+                        context.reply("Image download failed: ${error ?: "unknown error"}")
+                    } else {
+                        val bitmap = BitmapFactory.decodeFile(downloaded.local.path)
+                        if (bitmap == null) {
+                            context.reply("Unable to decode this image.")
+                        } else {
+                            val scaled = Bitmap.createScaledBitmap(bitmap, 512, 512, true)
+                            if (scaled !== bitmap) bitmap.recycle()
+                            val output = File(this.context.cacheDir, "sticker_${System.currentTimeMillis()}.webp")
+                            runCatching {
+                                output.outputStream().use { scaled.compress(Bitmap.CompressFormat.WEBP, 90, it) }
+                                scaled.recycle()
+                            }.onSuccess {
+                                gateway.send(
+                                    TdApi.SendMessage(
+                                        context.message.chatId, null, null, null, null,
+                                        TdApi.InputMessageSticker(
+                                            TdApi.InputFileLocal(output.absolutePath), null, 512, 512, "🙂"
+                                        )
+                                    )
+                                ) { result ->
+                                    context.reply(if (result is TdApi.Error) "Sticker send failed: ${result.message}" else "Sticker sent.")
+                                    output.delete()
+                                }
+                            }.onFailure {
+                                context.reply("Sticker conversion failed: ${it.message}")
+                                output.delete()
+                            }
                         }
                     }
                 }
