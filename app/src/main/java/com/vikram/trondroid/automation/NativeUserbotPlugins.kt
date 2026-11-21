@@ -563,35 +563,83 @@ class QrAutomationPlugin : AutomationPlugin {
 class NotesAutomationPlugin(private val preferences: SharedPreferences) : AutomationPlugin {
     override val id = "userbot:notes"
     override val commands = listOf(
-        AutomationCommand("save", "Save a text note under a name.", "save <name> <text>"),
-        AutomationCommand("getnote", "Retrieve a saved note.", "getnote <name>"),
+        AutomationCommand("save", "Save text or a replied Telegram message under a name.", "save <name> <text> (or reply with .save <name>)"),
+        AutomationCommand("getnote", "Retrieve a saved text or media note.", "getnote <name>"),
         AutomationCommand("notes", "List saved note names.", "notes"),
         AutomationCommand("notelist", "Alias for saved note names.", "notelist"),
         AutomationCommand("clear", "Delete a saved note.", "clear <name>")
     )
+
     override fun onCommand(context: AutomationContext) {
         val name = context.arguments.firstOrNull().orEmpty()
         when (context.command) {
             "save" -> {
-                if (context.arguments.size < 2) return context.reply("Usage: .save <name> <text>")
-                val value = context.arguments.drop(1).joinToString(" ")
-                preferences.edit().putString("note.$name", value).apply()
+                if (name.isBlank()) return context.reply("Usage: .save <name> <text> or reply to a message with .save <name>")
+                val source = context.message.tdMessage
+                val replied = source?.let { context.telegram?.repliedMessage(it) }
+                val value = context.arguments.drop(1).joinToString(" ").trim()
+                    .ifBlank { replied?.let(::extractText).orEmpty() }
+
+                if (value.isNotBlank()) {
+                    preferences.edit()
+                        .putString("note.$name", value)
+                        .remove("noteMedia.$name.chat")
+                        .remove("noteMedia.$name.message")
+                        .apply()
+                } else if (replied != null) {
+                    preferences.edit()
+                        .remove("note.$name")
+                        .putLong("noteMedia.$name.chat", replied.chatId)
+                        .putLong("noteMedia.$name.message", replied.id)
+                        .apply()
+                } else {
+                    return context.reply("Provide note text or reply to a Telegram message to save it.")
+                }
                 context.reply("Saved note: $name")
             }
             "getnote" -> {
                 if (name.isBlank()) return context.reply("Usage: .getnote <name>")
-                context.reply(preferences.getString("note.$name", null) ?: "No note named $name.")
+                val text = preferences.getString("note.$name", null)
+                if (text != null) return context.reply(text)
+                val chatId = preferences.getLong("noteMedia.$name.chat", 0L)
+                val messageId = preferences.getLong("noteMedia.$name.message", 0L)
+                if (chatId == 0L || messageId == 0L) return context.reply("No note named $name.")
+                val gateway = context.telegram ?: return context.reply("Telegram session is unavailable.")
+                gateway.send(
+                    TdApi.CopyMessages(context.message.chatId, chatId, longArrayOf(messageId), null, true, false)
+                ) { result ->
+                    if (result is TdApi.Error) context.reply("Unable to restore note: ${result.message}")
+                }
             }
             "notes", "notelist" -> {
-                val names = preferences.all.keys.filter { it.startsWith("note.") }.map { it.removePrefix("note.") }.sorted()
-                context.reply(names.takeIf { it.isNotEmpty() }?.joinToString("\\n") ?: "No saved notes.")
+                val names = preferences.all.keys.mapNotNull { key ->
+                    when {
+                        key.startsWith("noteMedia.") -> key.removePrefix("noteMedia.").substringBefore(".")
+                        key.startsWith("note.") -> key.removePrefix("note.")
+                        else -> null
+                    }
+                }.distinct().sorted()
+                context.reply(names.takeIf { it.isNotEmpty() }?.joinToString("\n") ?: "No saved notes.")
             }
             "clear" -> {
                 if (name.isBlank()) return context.reply("Usage: .clear <name>")
-                preferences.edit().remove("note.$name").apply()
+                preferences.edit()
+                    .remove("note.$name")
+                    .remove("noteMedia.$name.chat")
+                    .remove("noteMedia.$name.message")
+                    .apply()
                 context.reply("Deleted note: $name")
             }
         }
+    }
+
+    private fun extractText(message: TdApi.Message): String = when (val content = message.content) {
+        is TdApi.MessageText -> content.text.text
+        is TdApi.MessagePhoto -> content.caption.text
+        is TdApi.MessageVideo -> content.caption.text
+        is TdApi.MessageAnimation -> content.caption.text
+        is TdApi.MessageDocument -> content.caption.text
+        else -> ""
     }
 }
 
