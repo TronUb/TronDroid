@@ -83,6 +83,9 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
         },
         logger = { message, error -> log(message, error) }
     )
+    /** Shared TDLib update stream used by every native and external plugin. */
+    val updateHub = TelegramUpdateHub { message, isError -> log(message, isError) }
+    private val updateSubscription = updateHub.subscribe(automation::dispatchUpdate)
 
     init {
         val nativePlugins = mutableListOf<AutomationPlugin>()
@@ -138,6 +141,9 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
         }.onFailure { _error.value = it.message ?: "Unable to initialize TDLib"; log(_error.value!!, true) }
     }
     override fun onResult(result: TdApi.Object) {
+        // TDLib is the single source of truth: forward every Update subtype to the
+        // shared plugin pipeline, not just new text messages.
+        if (result is TdApi.Update) updateHub.publish(result)
         when (result.constructor) {
             TdApi.UpdateAuthorizationState.CONSTRUCTOR -> onAuthorizationState((result as TdApi.UpdateAuthorizationState).authorizationState)
             TdApi.UpdateNewMessage.CONSTRUCTOR -> {
@@ -198,6 +204,8 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
         log("Closing Telegram session")
         active.send(TdApi.Close()) {}
         client = null
+        updateSubscription.close()
+        updateHub.close()
         automation.shutdown()
     }
     private fun loadAccount() {
