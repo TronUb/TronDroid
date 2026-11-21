@@ -977,38 +977,62 @@ private fun AboutScreen(modifier: Modifier) {
         item {
             Card(shape = RoundedCornerShape(28.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
                 Column(Modifier.fillMaxWidth().padding(22.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Icon(Icons.Rounded.Send, null, Modifier.size(38.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
+                    Surface(shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.surface.copy(alpha = 0.55f), modifier = Modifier.size(58.dp)) {
+                        Box(contentAlignment = Alignment.Center) { Icon(Icons.Rounded.Send, null, Modifier.size(32.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer) }
+                    }
                     Text("TronDroid", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
                     Text("A Telegram account, userbot and bot automation manager for Android.",
                         style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                    Text("Version 1.0.0", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                    Text("Version " + com.vikram.trondroid.BuildConfig.VERSION_NAME,
+                        style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onPrimaryContainer)
                 }
             }
         }
         item {
-            Text("About the app", style = MaterialTheme.typography.titleMedium)
-            Card(shape = RoundedCornerShape(22.dp)) {
+            Text("What is TronDroid?", style = MaterialTheme.typography.titleMedium)
+            Card(shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Manage multiple TDLib userbot sessions, Telegram Bot API connections, command plugins and account credentials from one place.")
-                    Text("Credentials are stored locally and encrypted using Android Keystore.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("One place to manage multiple Telegram userbot sessions, connect Bot API accounts, run command plugins and inspect account activity.")
+                    Text("Userbot sessions run on TDLib. Bot accounts use the official Telegram Bot API. Account credentials are encrypted locally with Android Keystore.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
         item {
             Text("Developer", style = MaterialTheme.typography.titleMedium)
-            Card(shape = RoundedCornerShape(22.dp)) {
-                ListItem(headlineContent = { Text("Vikram Vishwakarma") },
-                    supportingContent = { Text("Android · Kotlin · React and UI engineering") },
-                    leadingContent = { Icon(Icons.Rounded.Code, null, tint = MaterialTheme.colorScheme.primary) })
+            Card(shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
+                Column {
+                    ListItem(headlineContent = { Text("Vikram Vishwakarma") },
+                        supportingContent = { Text("Android and software developer · UI/UX engineering") },
+                        leadingContent = { Icon(Icons.Rounded.Person, null, tint = MaterialTheme.colorScheme.primary) })
+                    HorizontalDivider(Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outlineVariant)
+                    TextButton(onClick = {
+                        context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://github.com/hustlewithvikram")))
+                    }, modifier = Modifier.align(Alignment.End).padding(end = 8.dp)) {
+                        Icon(Icons.Rounded.OpenInNew, null)
+                        Spacer(Modifier.width(6.dp))
+                        Text("Developer profile")
+                    }
+                }
             }
         }
         item {
             Text("Project", style = MaterialTheme.typography.titleMedium)
-            Card(shape = RoundedCornerShape(22.dp)) {
+            Card(shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
                 ListItem(headlineContent = { Text("TronDroid on GitHub") },
                     supportingContent = { Text("Source code, issues and development updates") },
-                    leadingContent = { Icon(Icons.Rounded.OpenInNew, null) },
-                    modifier = Modifier.clickable { context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://github.com/TronUb/TronDroid"))) })
+                    leadingContent = { Icon(Icons.Rounded.Code, null, tint = MaterialTheme.colorScheme.primary) },
+                    trailingContent = { Icon(Icons.Rounded.OpenInNew, null) },
+                    modifier = Modifier.clickable {
+                        context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://github.com/TronUb/TronDroid")))
+                    })
+            }
+        }
+        item {
+            Card(shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+                ListItem(headlineContent = { Text("Application ID") },
+                    supportingContent = { Text(com.vikram.trondroid.BuildConfig.APPLICATION_ID) },
+                    leadingContent = { Icon(Icons.Rounded.Android, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) })
             }
         }
     }
