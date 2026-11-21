@@ -40,6 +40,7 @@ private sealed interface Page {
     data object Home : Page
     data class Userbot(val id: String) : Page
     data object GeneralSettings : Page
+    data object About : Page
     data object Updater : Page
     data class PluginDetail(val id: String) : Page
 }
@@ -71,6 +72,7 @@ fun TronDroidHome(
         Page.Home -> when (tab) { Tab.USERBOTS -> "Userbots"; Tab.PLUGINS -> "Plugins"; Tab.SETTINGS -> "Settings" }
         is Page.Userbot -> bots.firstOrNull { it.id == p.id }?.name ?: "Userbot"
         Page.GeneralSettings -> "General"
+        Page.About -> "About TronDroid"
         Page.Updater -> "App updates"
         is Page.PluginDetail -> PluginCatalog.find(p.id)?.title ?: "Plugin"
     }
@@ -118,7 +120,7 @@ fun TronDroidHome(
                 }, onToggle = { id, enabled -> onToggle(id, enabled) })
                 Tab.PLUGINS -> PluginsScreen(Modifier.padding(padding), onOpen = { navigate(Page.PluginDetail(it)) })
                 Tab.SETTINGS -> SettingsScreen(Modifier.padding(padding),
-                    onGeneral = { navigate(Page.GeneralSettings) }, onUpdater = { navigate(Page.Updater) }, themeMode = themeMode, onThemeChange = onThemeChange,
+                    onGeneral = { navigate(Page.GeneralSettings) }, onAbout = { navigate(Page.About) }, onUpdater = { navigate(Page.Updater) }, themeMode = themeMode, onThemeChange = onThemeChange,
                     dynamicColors = dynamicColors, onDynamicColorsChange = onDynamicColorsChange)
             }
             is Page.Userbot -> {
@@ -133,11 +135,13 @@ fun TronDroidHome(
                     onSaveCustomCredentials = { values -> bot?.let { onSaveCustomCredentials(it.id, values) } },
                     onDelete = { if (bot != null) pendingDelete = bot },
                     onLogout = { if (bot != null) pendingLogout = bot },
+                    onRename = { name -> bot?.let { onRename(it.id, name) } },
                     onToggle = onToggle,
                     onBotToggle = onBotToggle
                 )
             }
             Page.GeneralSettings -> GeneralSettingsScreen(Modifier.padding(padding))
+            Page.About -> AboutScreen(Modifier.padding(padding))
             Page.Updater -> AppUpdaterScreen(Modifier.padding(padding))
             is Page.PluginDetail -> PluginDetailScreen(Modifier.padding(padding), current.id)
         } }
@@ -200,7 +204,7 @@ private fun UserbotsScreen(modifier: Modifier, bots: List<BotProfile>, onOpen: (
 }
 
 private enum class UserbotSection(val label: String) {
-    GENERAL("General"), LOGS("Logs"), CREDENTIALS("Credentials"), INSIGHTS("Insights"), DANGER("Danger zone")
+    GENERAL("General"), LOGS("Logs"), CREDENTIALS("Credentials"), INSIGHTS("Insights"), SETTINGS("Settings")
 }
 
 @Composable
@@ -214,6 +218,7 @@ private fun UserbotDetailScreen(
     onSaveCustomCredentials: (Map<String, String>) -> Unit,
     onDelete: () -> Unit,
     onLogout: () -> Unit,
+    onRename: (String) -> Unit,
     onToggle: (String, Boolean) -> Unit,
     onBotToggle: (String, Boolean) -> Unit
 ) {
@@ -224,6 +229,8 @@ private fun UserbotDetailScreen(
     val ready = auth?.constructor == TdApi.AuthorizationStateReady.CONSTRUCTOR
     var section by remember(bot.id) { mutableStateOf(UserbotSection.GENERAL) }
     var recentChatsExpanded by remember(bot.id) { mutableStateOf(false) }
+    var showRenameDialog by remember(bot.id) { mutableStateOf(false) }
+    var renamedProfile by remember(bot.id, bot.name) { mutableStateOf(bot.name) }
     val terminal = androidx.compose.ui.graphics.Color(0xFF050705)
     val terminalText = androidx.compose.ui.graphics.Color(0xFFB8D8C0)
     val terminalAccent = androidx.compose.ui.graphics.Color(0xFF9BE7B0)
@@ -246,7 +253,7 @@ private fun UserbotDetailScreen(
                                 UserbotSection.LOGS -> Icons.Rounded.Terminal
                                 UserbotSection.CREDENTIALS -> Icons.Rounded.Key
                                 UserbotSection.INSIGHTS -> Icons.Rounded.Insights
-                                UserbotSection.DANGER -> Icons.Rounded.WarningAmber
+                                UserbotSection.SETTINGS -> Icons.Rounded.Settings
                             },
                             contentDescription = null
                         )
@@ -573,14 +580,28 @@ private fun UserbotDetailScreen(
                     }
             }
             }
-            UserbotSection.DANGER -> LazyColumn(
+            UserbotSection.SETTINGS -> LazyColumn(
                 Modifier.fillMaxSize().padding(horizontal = 18.dp),
                 contentPadding = PaddingValues(top = 20.dp, bottom = 32.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 item {
-                    Text("Danger zone", style = MaterialTheme.typography.headlineSmall)
-                    Text("These actions affect this userbot account and its local Telegram session.",
+                    ElevatedCard(shape = RoundedCornerShape(22.dp), colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
+                        ListItem(headlineContent = { Text("Profile name") }, supportingContent = { Text(bot.name) },
+                            leadingContent = { Icon(Icons.Rounded.Edit, null) },
+                            trailingContent = { TextButton(onClick = { renamedProfile = bot.name; showRenameDialog = true }) { Text("Rename") } })
+                    }
+                }
+                item {
+                    ElevatedCard(shape = RoundedCornerShape(22.dp), colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
+                        ListItem(headlineContent = { Text("Telegram session") }, supportingContent = { Text("Log out from this account on this device.") },
+                            leadingContent = { Icon(Icons.Rounded.Logout, null) },
+                            trailingContent = { TextButton(onClick = onLogout) { Text("Log out") } })
+                    }
+                }
+                item {
+                    Text("Userbot settings", style = MaterialTheme.typography.headlineSmall)
+                    Text("Manage this account profile and its session.",
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 item {
@@ -603,6 +624,15 @@ private fun UserbotDetailScreen(
             }
         }
         }
+    }
+    if (showRenameDialog) {
+        AlertDialog(
+            onDismissRequest = { showRenameDialog = false },
+            title = { Text("Rename userbot") },
+            text = { OutlinedTextField(renamedProfile, { renamedProfile = it.take(48) }, label = { Text("Display name") }, singleLine = true) },
+            confirmButton = { Button(onClick = { onRename(renamedProfile.trim()); showRenameDialog = false }, enabled = renamedProfile.isNotBlank() && renamedProfile.trim() != bot.name) { Text("Save") } },
+            dismissButton = { TextButton(onClick = { showRenameDialog = false }) { Text("Cancel") } }
+        )
     }
 }
 
@@ -847,7 +877,7 @@ private fun PluginDetailScreen(modifier: Modifier, id: String) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SettingsScreen(modifier: Modifier, onGeneral: () -> Unit, onUpdater: () -> Unit, themeMode: String, onThemeChange: (String) -> Unit, dynamicColors: Boolean, onDynamicColorsChange: (Boolean) -> Unit) {
+private fun SettingsScreen(modifier: Modifier, onGeneral: () -> Unit, onAbout: () -> Unit, onUpdater: () -> Unit, themeMode: String, onThemeChange: (String) -> Unit, dynamicColors: Boolean, onDynamicColorsChange: (Boolean) -> Unit) {
     Column(modifier.fillMaxSize().padding(18.dp).verticalScroll(rememberScrollState())) {
         Text("Appearance", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 18.dp, bottom = 8.dp))
         ElevatedCard(shape = RoundedCornerShape(20.dp)) {
@@ -864,7 +894,7 @@ private fun SettingsScreen(modifier: Modifier, onGeneral: () -> Unit, onUpdater:
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text("Dynamic color", style = MaterialTheme.typography.titleSmall)
-                        Text("Use your device wallpaper colors on Android 12 and newer.",
+                        Text("Match the app to your wallpaper.",
                             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Switch(checked = dynamicColors, onCheckedChange = onDynamicColorsChange)
@@ -883,17 +913,58 @@ private fun SettingsScreen(modifier: Modifier, onGeneral: () -> Unit, onUpdater:
             "Application",
             listOf(
                 Triple("App updates", "Check and install the latest APK", Icons.Rounded.SystemUpdate),
-                Triple("About TronDroid", "Build variants and application information", Icons.Rounded.Info)
+                Triple("About TronDroid", "App details, project links and developer information", Icons.Rounded.Info)
             ),
-            listOf(onUpdater, onGeneral)
+            listOf(onUpdater, onAbout)
         )
-        Text("Security", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 20.dp))
-        ElevatedCard(shape = RoundedCornerShape(20.dp)) {
-            ListItem(headlineContent = { Text("Local credential storage") },
-                supportingContent = { Text("API hashes are encrypted with Android Keystore") },
-                leadingContent = { Icon(Icons.Rounded.Security, null, tint = MaterialTheme.colorScheme.primary) })
+
+    }
+}
+
+
+@Composable
+private fun AboutScreen(modifier: Modifier) {
+    LazyColumn(modifier.fillMaxSize().padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp),
+        contentPadding = PaddingValues(bottom = 28.dp)) {
+        item {
+            ElevatedCard(shape = RoundedCornerShape(28.dp), colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
+                Column(Modifier.fillMaxWidth().padding(22.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Icon(Icons.Rounded.Send, null, Modifier.size(38.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
+                    Text("TronDroid", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                    Text("A Telegram account, userbot and bot automation manager for Android.",
+                        style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                    Text("Version 1.0.0", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                }
+            }
         }
-        Text("TronDroid 1.0.0 · Telegram session manager", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 22.dp))
+        item {
+            Text("About the app", style = MaterialTheme.typography.titleMedium)
+            ElevatedCard(shape = RoundedCornerShape(22.dp)) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Manage multiple TDLib userbot sessions, Telegram Bot API connections, command plugins and account credentials from one place.")
+                    Text("Credentials are stored locally and encrypted using Android Keystore.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
+        item {
+            Text("Developer", style = MaterialTheme.typography.titleMedium)
+            ElevatedCard(shape = RoundedCornerShape(22.dp)) {
+                ListItem(headlineContent = { Text("Vikram Vishwakarma") },
+                    supportingContent = { Text("Android · Kotlin · React and UI engineering") },
+                    leadingContent = { Icon(Icons.Rounded.Code, null, tint = MaterialTheme.colorScheme.primary) })
+            }
+        }
+        item {
+            Text("Project", style = MaterialTheme.typography.titleMedium)
+            ElevatedCard(shape = RoundedCornerShape(22.dp)) {
+                ListItem(headlineContent = { Text("TronDroid on GitHub") },
+                    supportingContent = { Text("Source code, issues and development updates") },
+                    leadingContent = { Icon(Icons.Rounded.OpenInNew, null) },
+                    modifier = Modifier.clickable { 
+                        val context = androidx.compose.ui.platform.LocalContext.current
+                    })
+            }
+        }
     }
 }
 
