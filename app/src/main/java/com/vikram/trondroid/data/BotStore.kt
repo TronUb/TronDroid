@@ -22,7 +22,9 @@ class BotStore(private val context: Context) {
                     apiId = o.optInt("apiId"),
                     enabled = prefs.getBoolean("enabled.$id", true),
                     botEnabled = prefs.getBoolean("botEnabled.$id", false),
-                    botName = prefs.getString("botName.$id", null)
+                    botName = prefs.getString("botName.$id", null),
+                    botUsername = prefs.getString("botUsername.$id", null),
+                    botTelegramId = prefs.getString("botTelegramId.$id", null)?.toLongOrNull()
                 ))
             }
         }
@@ -88,6 +90,14 @@ class BotStore(private val context: Context) {
         prefs.edit().putBoolean("botEnabled.$id", enabled).apply()
     }
 
+    fun setBotIdentity(id: String, name: String?, username: String?, telegramId: Long?) {
+        val editor = prefs.edit()
+        if (name.isNullOrBlank()) editor.remove("botName.$id") else editor.putString("botName.$id", name)
+        if (username.isNullOrBlank()) editor.remove("botUsername.$id") else editor.putString("botUsername.$id", username)
+        if (telegramId == null || telegramId <= 0) editor.remove("botTelegramId.$id") else editor.putString("botTelegramId.$id", telegramId.toString())
+        editor.apply()
+    }
+
     fun setBotName(id: String, name: String?) {
         val editor = prefs.edit()
         if (name.isNullOrBlank()) editor.remove("botName.$id")
@@ -101,7 +111,8 @@ class BotStore(private val context: Context) {
             .put("name", b.name).put("phone", b.phoneNumber).put("apiId", b.apiId)) }
         prefs.edit().putString("bots", json.toString())
             .remove("apiHash.$id").remove("enabled.$id")
-            .remove("customCredentials.$id").remove("botEnabled.$id").remove("botName.$id").apply()
+            .remove("customCredentials.$id").remove("botEnabled.$id").remove("botName.$id")
+            .remove("botUsername.$id").remove("botTelegramId.$id").apply()
         context.filesDir.resolve("tdlib/$id").deleteRecursively()
     }
 }
