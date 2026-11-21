@@ -787,11 +787,19 @@ private fun CredentialsScreen(modifier: Modifier, bots: List<BotProfile>, onOpen
 }
 
 @Composable
-private fun CredentialDetailScreen(modifier: Modifier, bot: BotProfile, apiHash: String, onSaveApiHash: (String) -> Unit) {
+private fun CredentialDetailScreen(
+    modifier: Modifier,
+    bot: BotProfile,
+    apiHash: String,
+    onSaveApiHash: (String) -> Unit,
+    customCredentials: Map<String, String>,
+    onSaveCustomCredentials: (Map<String, String>) -> Unit
+) {
     val context = androidx.compose.ui.platform.LocalContext.current
     var editing by remember { mutableStateOf(false) }
     var reveal by remember { mutableStateOf(false) }
     var hash by remember(bot.id, apiHash) { mutableStateOf(apiHash) }
+    var showCustomCredentialsDialog by remember { mutableStateOf(false) }
     LazyColumn(modifier.fillMaxSize().padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         item {
             Text("Saved credentials", style = MaterialTheme.typography.titleMedium)
@@ -819,8 +827,152 @@ private fun CredentialDetailScreen(modifier: Modifier, bot: BotProfile, apiHash:
                 }
             }
         }
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Custom credentials", style = MaterialTheme.typography.titleMedium)
+                        Text("Extra key/value pairs stored securely for this account.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    FilledTonalButton(onClick = { showCustomCredentialsDialog = true }) {
+                        Icon(Icons.Rounded.Add, null)
+                        Spacer(Modifier.width(6.dp))
+                        Text("Add more")
+                    }
+                }
+                if (customCredentials.isEmpty()) {
+                    ElevatedCard(shape = RoundedCornerShape(18.dp)) {
+                        Text("No custom credentials added.", Modifier.fillMaxWidth().padding(16.dp),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                } else {
+                    customCredentials.toSortedMap().forEach { (key, value) ->
+                        CustomCredentialField(key, value)
+                    }
+                }
+            }
+        }
         item { CredentialField("TDLib session", context.filesDir.resolve("tdlib/" + bot.id).absolutePath) }
     }
+    if (showCustomCredentialsDialog) {
+        CustomCredentialsDialog(
+            existing = customCredentials,
+            onDismiss = { showCustomCredentialsDialog = false },
+            onConfirm = { values ->
+                onSaveCustomCredentials(values)
+                showCustomCredentialsDialog = false
+            }
+        )
+    }
+}
+
+@Composable
+private fun CustomCredentialField(keyName: String, value: String) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var reveal by remember(keyName) { mutableStateOf(false) }
+    val sensitive = keyName.contains("TOKEN", true) || keyName.contains("HASH", true) ||
+        keyName.contains("SECRET", true) || keyName.contains("PASSWORD", true)
+    ElevatedCard(shape = RoundedCornerShape(18.dp)) {
+        Column(Modifier.fillMaxWidth().padding(14.dp)) {
+            Text(keyName, style = MaterialTheme.typography.labelLarge)
+            Text(
+                if (sensitive && !reveal) "••••••••••••••••" else value,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 6.dp)
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                if (sensitive) TextButton(onClick = { reveal = !reveal }) { Text(if (reveal) "Hide" else "Show") }
+                IconButton(onClick = {
+                    (context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager)
+                        .setPrimaryClip(android.content.ClipData.newPlainText(keyName, value))
+                }) { Icon(Icons.Rounded.ContentCopy, "Copy $keyName") }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CustomCredentialsDialog(
+    existing: Map<String, String>,
+    onDismiss: () -> Unit,
+    onConfirm: (Map<String, String>) -> Unit
+) {
+    val rows = remember(existing) {
+        androidx.compose.runtime.mutableStateListOf<Pair<String, String>>().apply {
+            addAll(existing.toSortedMap().map { it.key to it.value })
+            if (isEmpty()) add("" to "")
+        }
+    }
+    var error by remember { mutableStateOf<String?>(null) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Add custom credentials") },
+        text = {
+            Column(
+                Modifier.fillMaxWidth().heightIn(max = 460.dp).verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Text("Add one or more key/value pairs. Values are encrypted locally on this device.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                rows.forEachIndexed { index, pair ->
+                    ElevatedCard(shape = RoundedCornerShape(16.dp)) {
+                        Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedTextField(
+                                value = pair.first,
+                                onValueChange = { rows[index] = rows[index].copy(first = it); error = null },
+                                modifier = Modifier.fillMaxWidth(),
+                                label = { Text("Key name") },
+                                singleLine = true
+                            )
+                            OutlinedTextField(
+                                value = pair.second,
+                                onValueChange = { rows[index] = rows[index].copy(second = it); error = null },
+                                modifier = Modifier.fillMaxWidth(),
+                                label = { Text("Value") },
+                                minLines = 1,
+                                maxLines = 3
+                            )
+                            if (rows.size > 1) {
+                                TextButton(onClick = { rows.removeAt(index) }, modifier = Modifier.align(Alignment.End)) {
+                                    Icon(Icons.Rounded.DeleteOutline, null)
+                                    Spacer(Modifier.width(4.dp))
+                                    Text("Remove")
+                                }
+                            }
+                        }
+                    }
+                }
+                OutlinedButton(
+                    onClick = { rows.add("" to "") },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Rounded.Add, null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Add more")
+                }
+                error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            }
+        },
+        confirmButton = {
+            Button(onClick = {
+                val filled = rows.filter { it.first.isNotBlank() && it.second.isNotBlank() }
+                val duplicate = filled.groupBy { it.first.trim() }.any { it.value.size > 1 }
+                when {
+                    filled.isEmpty() -> error = "Enter at least one key and value."
+                    duplicate -> error = "Key names must be unique."
+                    rows.any { it.first.isBlank() != it.second.isBlank() } -> error = "Complete both fields for every row."
+                    else -> onConfirm(filled.associate { it.first.trim() to it.second.trim() })
+                }
+            }) { Text("Confirm") }
+        },
+        dismissButton = {
+            OutlinedButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
 }
 
 @Composable
