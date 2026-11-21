@@ -1,4 +1,11 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/TronUb/Tron/master/main/others/resources/images/tron-horizontal.png" alt="Tron" width="520" />
+</p>
+
 # TronDroid
+
+**TronDroid is the Android-native continuation of [Tron](https://github.com/TronUb/Tron)** — bringing the Telegram userbot and assistant experience to Android with Kotlin, Jetpack Compose, Material 3 and TDLib.
+
 
 TronDroid is an Android Telegram userbot manager built with Kotlin, Jetpack Compose, Material 3 and TDLib through the EasyTDLib Android implementation.
 
@@ -68,15 +75,41 @@ The rolling debug pre-release is intentionally published only from `master`, so 
 - Settings: grouped Android-style categories and a Credentials manager with copy controls. API hashes are editable and re-encrypted; TDLib session files are generated and not editable.
 - Plugin tab: command prefix/handler setting (default `.`) and per-plugin command reference pages.
 
-## Plugin catalogue and command reference
-- **AFK:** `.afk`, `.back`, `.afkstatus`
-- **Admin tools:** `.ban`, `.unban`, `.mute`, `.unmute`, `.kick`, `.purge`
-- **Downloads:** `.download`, `.autodownload`, `.downloadstatus`
-- **Welcome:** `.setwelcome`, `.delwelcome`, `.testwelcome`
-- **Filters:** `.filter`, `.stop`, `.filters`
-- **Scheduler:** `.schedule`, `.scheduled`, `.unschedule`
+## Tron feature migration
 
-The prefix can be changed to a short custom handler. The current release includes the plugin catalogue, command documentation and persisted enable/disable switches. The commands are reference/configuration entries; the incoming-message command dispatcher and the actual Telegram-side automation handlers are not yet connected. Administrative commands must enforce Telegram permissions and operate only where the logged-in account has the necessary rights.
+TronDroid follows the original project's userbot-first approach: command-driven Telegram automation, a companion bot, plugin modules, account status and configurable behaviour. The Android implementation is native Kotlin and uses TDLib rather than embedding the original Python/Pyrogram runtime.
+
+The original Tron repository contains userbot modules for moderation, AFK, profile and group tools, downloads, media conversion, stickers, notes, privacy, search, utilities, welcome messages and diagnostics, plus assistant-bot modules for help, ping, start, broadcast and utility commands. These are the migration reference, not a claim that every original Python handler already runs on Android.
+
+### Command usage
+
+The Plugins screen documents each command with its syntax and a concrete example. The userbot prefix is configurable (default: `.`); bot commands use Telegram's `/` prefix.
+
+| Command | Usage | Example |
+|---|---|---|
+| Wikipedia | `.wiki <query>` | `.wiki quantum mechanics` |
+| IMDb | `.imdb <title>` | `.imdb Interstellar` |
+| Reddit | `.reddit <query>` | `.reddit android` |
+| Translate | `.translate <language> <text>` | `.translate en नमस्ते` |
+| Weather | `.weather <city>` | `.weather Pune` |
+| Currency | `.currency <amount> <from> <to>` | `.currency 100 USD INR` |
+| QR code | `.qrcode <text or URL>` | `.qrcode https://example.com` |
+| AFK | `.afk [reason]` | `.afk Having lunch` |
+| Ping | `.ping` | `.ping` |
+| Notes | `.save <text>` | `.save Remember this idea` |
+
+### Port status
+
+A plugin marked **Native Android implementation** has a Kotlin handler registered in TronDroid. **Not yet ported** means the original module is catalogued for migration but its Telegram-side behaviour is not implemented; it must not be treated as an active command. Some source features depend on server hosting, Python packages, external API credentials or desktop/host operating-system access and need Android-specific replacements rather than a direct code copy.
+
+Dangerous or abuse-prone source capabilities (for example unrestricted shell/eval, mass messaging, unsolicited spam, or permission-bypass behaviour) are not enabled as-is. Administrative actions must validate Telegram permissions, scope and rate limits before being ported.
+
+### Runtime and reliability
+
+- Telegram sessions are maintained by an Android foreground service while enabled.
+- Android may still restrict background work; users should allow notifications and, where the device offers it, set battery usage to unrestricted for reliable long-running sessions.
+- Network requests use bounded connection/read timeouts and should fail with a user-visible error rather than block the UI.
+- Keep API credentials and session data private. Credentials are encrypted with Android Keystore; never commit session databases, API hashes or bot tokens.
 
 ## Architecture
 ```
