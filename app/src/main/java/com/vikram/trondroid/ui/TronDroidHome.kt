@@ -120,9 +120,16 @@ fun TronDroidHome(
             }
             is Page.Userbot -> {
                 val bot = bots.firstOrNull { it.id == current.id }
-                UserbotDetailScreen(Modifier.padding(padding), bot,
+                UserbotDetailScreen(
+                    Modifier.padding(padding),
+                    bot,
                     engine = if (selected?.id == current.id) engine else null,
-                    onDelete = { if (bot != null) pendingDelete = bot }, onLogout = { if (bot != null) pendingLogout = bot }, onToggle = onToggle)
+                    apiHash = bot?.let { onReadApiHash(it.id) }.orEmpty(),
+                    onSaveApiHash = { value -> bot?.let { onUpdateApiHash(it.id, value) } },
+                    onDelete = { if (bot != null) pendingDelete = bot },
+                    onLogout = { if (bot != null) pendingLogout = bot },
+                    onToggle = onToggle
+                )
             }
             Page.Credentials -> CredentialsScreen(Modifier.padding(padding), bots, onOpen = { navigate(Page.CredentialDetail(it)) })
             is Page.CredentialDetail -> {
@@ -193,140 +200,345 @@ private fun UserbotsScreen(modifier: Modifier, bots: List<BotProfile>, onOpen: (
     }
 }
 
+private enum class UserbotSection(val label: String) {
+    GENERAL("General"), LOGS("Logs"), CREDENTIALS("Credentials"), INSIGHTS("Insights")
+}
+
 @Composable
-private fun UserbotDetailScreen(modifier: Modifier, bot: BotProfile?, engine: TelegramEngine?, onDelete: () -> Unit, onLogout: () -> Unit, onToggle: (String, Boolean) -> Unit) {
+private fun UserbotDetailScreen(
+    modifier: Modifier,
+    bot: BotProfile?,
+    engine: TelegramEngine?,
+    apiHash: String,
+    onSaveApiHash: (String) -> Unit,
+    onDelete: () -> Unit,
+    onLogout: () -> Unit,
+    onToggle: (String, Boolean) -> Unit
+) {
     if (bot == null) return
     val auth = engine?.authorization?.collectAsState()?.value
     val logs = engine?.logs?.collectAsState()?.value.orEmpty()
     val chats = engine?.chats?.collectAsState()?.value.orEmpty()
     val ready = auth?.constructor == TdApi.AuthorizationStateReady.CONSTRUCTOR
-    var logsFullscreen by remember(bot.id) { mutableStateOf(false) }
+    var section by remember(bot.id) { mutableStateOf(UserbotSection.GENERAL) }
+    var recentChatsExpanded by remember(bot.id) { mutableStateOf(false) }
     val terminal = androidx.compose.ui.graphics.Color(0xFF050705)
     val terminalText = androidx.compose.ui.graphics.Color(0xFFB8D8C0)
     val terminalAccent = androidx.compose.ui.graphics.Color(0xFF9BE7B0)
 
-    LazyColumn(modifier.fillMaxSize().padding(horizontal = 18.dp),
-        contentPadding = PaddingValues(top = 12.dp, bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        item {
-            ElevatedCard(shape = RoundedCornerShape(22.dp)) {
-                Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Rounded.AccountCircle, null, Modifier.size(42.dp), tint = MaterialTheme.colorScheme.primary)
-                        Spacer(Modifier.width(12.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(bot.name, style = MaterialTheme.typography.titleLarge)
-                            Text(bot.phoneNumber, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
+    Column(modifier.fillMaxSize()) {
+        ScrollableTabRow(
+            selectedTabIndex = UserbotSection.entries.indexOf(section),
+            edgePadding = 16.dp,
+            divider = { HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)) }
+        ) {
+            UserbotSection.entries.forEach { item ->
+                Tab(
+                    selected = section == item,
+                    onClick = { section = item },
+                    text = { Text(item.label, maxLines = 1) },
+                    icon = {
+                        Icon(
+                            when (item) {
+                                UserbotSection.GENERAL -> Icons.Rounded.Tune
+                                UserbotSection.LOGS -> Icons.Rounded.Terminal
+                                UserbotSection.CREDENTIALS -> Icons.Rounded.Key
+                                UserbotSection.INSIGHTS -> Icons.Rounded.Insights
+                            },
+                            contentDescription = null
+                        )
                     }
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        AssistChip(onClick = {}, label = { Text(if (!bot.enabled) "Turned off" else if (ready) "Connected" else authLabel(auth)) },
-                            leadingIcon = { Icon(if (bot.enabled && ready) Icons.Rounded.CheckCircle else Icons.Rounded.Sync, null) })
-                        Spacer(Modifier.weight(1f))
-                        Text(if (bot.enabled) "On" else "Off", style = MaterialTheme.typography.labelMedium)
-                        Switch(checked = bot.enabled, onCheckedChange = { onToggle(bot.id, it) })
-                    }
-                    if (bot.enabled) when (auth?.constructor) {
-                        TdApi.AuthorizationStateWaitPhoneNumber.CONSTRUCTOR -> AuthInput("Phone number", KeyboardType.Phone, "Continue") { engine?.submitPhone(it) }
-                        TdApi.AuthorizationStateWaitCode.CONSTRUCTOR -> AuthInput("Telegram login code", KeyboardType.Number, "Verify code") { engine?.submitCode(it) }
-                        TdApi.AuthorizationStateWaitPassword.CONSTRUCTOR -> AuthInput("Two-step verification password", KeyboardType.Password, "Unlock account", true) { engine?.submitPassword(it) }
-                    }
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        OutlinedButton(onClick = onLogout, modifier = Modifier.weight(1f)) { Text("Log out") }
-                        Button(onClick = onDelete, modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error,
-                                contentColor = MaterialTheme.colorScheme.onError)) {
-                            Icon(Icons.Rounded.DeleteOutline, null)
-                            Spacer(Modifier.width(6.dp))
-                            Text("Delete")
-                        }
-                    }
-                }
+                )
             }
         }
-        item {
-            Text("Live logs", style = MaterialTheme.typography.titleMedium)
-            Card(modifier = Modifier.fillMaxWidth().heightIn(min = 250.dp).padding(top = 4.dp),
-                colors = CardDefaults.cardColors(containerColor = terminal), shape = RoundedCornerShape(20.dp)) {
-                Column(Modifier.fillMaxWidth().padding(14.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Rounded.Code, null, tint = terminalAccent)
-                        Spacer(Modifier.width(8.dp))
-                        Text("TRONDROID / SESSION", color = terminalAccent, style = MaterialTheme.typography.labelLarge)
-                        Spacer(Modifier.weight(1f))
-                        Text("LIVE", color = terminalAccent, style = MaterialTheme.typography.labelSmall)
-                        IconButton(onClick = { logsFullscreen = true }) {
-                            Icon(Icons.Rounded.Fullscreen, "Expand logs", tint = terminalAccent)
-                        }
-                    }
-                    HorizontalDivider(Modifier.padding(vertical = 10.dp), color = androidx.compose.ui.graphics.Color(0xFF26352A))
-                    if (logs.isEmpty()) Text("> waiting for events…", color = terminalText)
-                    else Column(Modifier.heightIn(max = 260.dp).verticalScroll(rememberScrollState())) {
-                        logs.takeLast(100).forEach { entry ->
-                            Text("[${entry.time}] ${if (entry.isError) "ERROR" else "INFO"}  ${entry.message}",
-                                color = if (entry.isError) androidx.compose.ui.graphics.Color(0xFFFF8A80) else terminalText,
-                                style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(vertical = 3.dp))
-                        }
-                    }
-                }
-            }
-        }
-        item {
-            val users = chats.count { it.type is TdApi.ChatTypePrivate }
-            val groups = chats.count { it.type is TdApi.ChatTypeBasicGroup }
-            val supergroups = chats.count { it.type is TdApi.ChatTypeSupergroup && !(it.type as TdApi.ChatTypeSupergroup).isChannel }
-            val channels = chats.count { it.type is TdApi.ChatTypeSupergroup && (it.type as TdApi.ChatTypeSupergroup).isChannel }
-            val stats = listOf("All chats" to chats.size, "Users" to users, "Groups" to groups, "Supergroups" to supergroups, "Channels" to channels)
-            Text("Account insights", style = MaterialTheme.typography.titleMedium)
-            Column(Modifier.fillMaxWidth().padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                stats.chunked(2).forEach { rowStats ->
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        rowStats.forEach { (label, count) ->
-                            ElevatedCard(Modifier.weight(1f), shape = RoundedCornerShape(18.dp),
-                                colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
-                                Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp)) {
-                                    Text(count.toString(), style = MaterialTheme.typography.headlineSmall,
-                                        color = MaterialTheme.colorScheme.primary)
-                                    Text(label, style = MaterialTheme.typography.labelMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+        when (section) {
+            UserbotSection.GENERAL -> LazyColumn(
+                Modifier.fillMaxSize().padding(horizontal = 18.dp),
+                contentPadding = PaddingValues(top = 14.dp, bottom = 28.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                item {
+                    ElevatedCard(shape = RoundedCornerShape(24.dp)) {
+                        Column(
+                            Modifier.fillMaxWidth().padding(18.dp),
+                            verticalArrangement = Arrangement.spacedBy(14.dp)
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Surface(
+                                    shape = RoundedCornerShape(18.dp),
+                                    color = MaterialTheme.colorScheme.primaryContainer,
+                                    modifier = Modifier.size(56.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            Icons.Rounded.Person,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                            modifier = Modifier.size(34.dp)
+                                        )
+                                    }
+                                }
+                                Spacer(Modifier.width(14.dp))
+                                Column(Modifier.weight(1f)) {
+                                    Text(bot.name, style = MaterialTheme.typography.titleLarge)
+                                    Text(
+                                        bot.phoneNumber,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                Surface(
+                                    shape = RoundedCornerShape(50),
+                                    color = if (bot.enabled && ready) MaterialTheme.colorScheme.primaryContainer
+                                    else MaterialTheme.colorScheme.surfaceContainerHighest
+                                ) {
+                                    Row(
+                                        Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            if (bot.enabled && ready) Icons.Rounded.CheckCircle else Icons.Rounded.Circle,
+                                            null,
+                                            Modifier.size(12.dp),
+                                            tint = if (bot.enabled && ready) MaterialTheme.colorScheme.primary
+                                            else MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        Spacer(Modifier.width(6.dp))
+                                        Text(
+                                            if (!bot.enabled) "Disabled" else if (ready) "Connected" else authLabel(auth),
+                                            style = MaterialTheme.typography.labelSmall
+                                        )
+                                    }
+                                }
+                            }
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Column(Modifier.weight(1f)) {
+                                    Text("Userbot", style = MaterialTheme.typography.titleSmall)
+                                    Text(
+                                        if (bot.enabled) "Running in the background" else "Paused · no background activity",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                Switch(checked = bot.enabled, onCheckedChange = { onToggle(bot.id, it) })
+                            }
+                            if (bot.enabled) when (auth?.constructor) {
+                                TdApi.AuthorizationStateWaitPhoneNumber.CONSTRUCTOR ->
+                                    AuthInput("Phone number", KeyboardType.Phone, "Continue") { engine?.submitPhone(it) }
+                                TdApi.AuthorizationStateWaitCode.CONSTRUCTOR ->
+                                    AuthInput("Telegram login code", KeyboardType.Number, "Verify code") { engine?.submitCode(it) }
+                                TdApi.AuthorizationStateWaitPassword.CONSTRUCTOR ->
+                                    AuthInput("Two-step verification password", KeyboardType.Password, "Unlock account", true) { engine?.submitPassword(it) }
+                            }
+                            Row(
+                                Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                OutlinedButton(
+                                    onClick = onLogout,
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(14.dp)
+                                ) {
+                                    Icon(Icons.Rounded.Logout, null)
+                                    Spacer(Modifier.width(7.dp))
+                                    Text("Log out")
+                                }
+                                Button(
+                                    onClick = onDelete,
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(14.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.errorContainer,
+                                        contentColor = MaterialTheme.colorScheme.onErrorContainer
+                                    )
+                                ) {
+                                    Icon(Icons.Rounded.DeleteOutline, null)
+                                    Spacer(Modifier.width(7.dp))
+                                    Text("Delete")
                                 }
                             }
                         }
-                        if (rowStats.size == 1) Spacer(Modifier.weight(1f))
+                    }
+                }
+
+                item {
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Recent chats", style = MaterialTheme.typography.titleMedium)
+                            Text(
+                                if (!ready) "Connect to load recent chats"
+                                else if (chats.isEmpty()) "No recent chats loaded"
+                                else "${chats.size} chats available",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        IconButton(onClick = { recentChatsExpanded = !recentChatsExpanded }) {
+                            Icon(
+                                if (recentChatsExpanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+                                contentDescription = if (recentChatsExpanded) "Collapse recent chats" else "Expand recent chats"
+                            )
+                        }
+                    }
+                }
+                if (recentChatsExpanded) {
+                    if (!ready || chats.isEmpty()) {
+                        item {
+                            ElevatedCard(shape = RoundedCornerShape(16.dp)) {
+                                Text(
+                                    if (!ready) "This account is not connected yet."
+                                    else "Your recent chats will appear here when Telegram finishes loading them.",
+                                    Modifier.fillMaxWidth().padding(16.dp),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    } else {
+                        items(chats.take(20), key = { it.id }) { chat ->
+                            ElevatedCard(shape = RoundedCornerShape(16.dp)) {
+                                ListItem(
+                                    headlineContent = {
+                                        Text(chat.title.ifBlank { "Chat ${chat.id}" }, maxLines = 1)
+                                    },
+                                    supportingContent = {
+                                        Text(
+                                            when (chat.type) {
+                                                is TdApi.ChatTypePrivate -> "Personal chat"
+                                                is TdApi.ChatTypeBasicGroup -> "Group"
+                                                is TdApi.ChatTypeSupergroup ->
+                                                    if ((chat.type as TdApi.ChatTypeSupergroup).isChannel) "Channel" else "Supergroup"
+                                                is TdApi.ChatTypeSecret -> "Secret chat"
+                                                else -> "Telegram chat"
+                                            },
+                                            maxLines = 1
+                                        )
+                                    },
+                                    leadingContent = {
+                                        Icon(Icons.Rounded.ChatBubbleOutline, null, tint = MaterialTheme.colorScheme.primary)
+                                    },
+                                    trailingContent = { Icon(Icons.Rounded.ChevronRight, null) }
+                                )
+                            }
+                        }
                     }
                 }
             }
-        }
-        item { Text("Recent chats", style = MaterialTheme.typography.titleMedium) }
-        if (!ready) item { Text("Connect this account to load recent chats.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
-        else if (chats.isEmpty()) item { Text("No recent chats have been loaded yet.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
-        else items(chats.take(20)) { chat ->
-            ListItem(headlineContent = { Text(chat.title, maxLines = 1) },
-                leadingContent = { Icon(Icons.Rounded.ChatBubbleOutline, null) })
-        }
-    }
 
-    if (logsFullscreen) {
-        Dialog(onDismissRequest = { logsFullscreen = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-            Surface(Modifier.fillMaxSize(), color = terminal) {
-                Column(Modifier.fillMaxSize().padding(18.dp)) {
+            UserbotSection.LOGS -> Card(
+                Modifier.fillMaxSize().padding(horizontal = 14.dp, vertical = 12.dp),
+                colors = CardDefaults.cardColors(containerColor = terminal),
+                shape = RoundedCornerShape(22.dp)
+            ) {
+                Column(Modifier.fillMaxSize().padding(16.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Rounded.Code, null, tint = terminalAccent)
-                        Spacer(Modifier.width(10.dp))
+                        Spacer(Modifier.width(9.dp))
                         Column(Modifier.weight(1f)) {
-                            Text("TRONDROID / SESSION", color = terminalAccent, style = MaterialTheme.typography.titleMedium)
-                            Text("LIVE LOG STREAM · ${logs.size} EVENTS", color = terminalText, style = MaterialTheme.typography.labelSmall)
+                            Text("TRONDROID / SESSION", color = terminalAccent, style = MaterialTheme.typography.titleSmall)
+                            Text(
+                                "LIVE LOG STREAM · ${logs.size} EVENTS",
+                                color = terminalText.copy(alpha = 0.75f),
+                                style = MaterialTheme.typography.labelSmall
+                            )
                         }
-                        IconButton(onClick = { logsFullscreen = false }) {
-                            Icon(Icons.Rounded.FullscreenExit, "Exit fullscreen", tint = terminalAccent)
+                        Surface(
+                            shape = RoundedCornerShape(50),
+                            color = androidx.compose.ui.graphics.Color(0xFF14251A)
+                        ) {
+                            Text("LIVE", Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                                color = terminalAccent, style = MaterialTheme.typography.labelSmall)
                         }
                     }
-                    HorizontalDivider(Modifier.padding(vertical = 10.dp), color = androidx.compose.ui.graphics.Color(0xFF26352A))
-                    if (logs.isEmpty()) Text("> waiting for events…", color = terminalText)
-                    else LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(bottom = 24.dp)) {
-                        items(logs.takeLast(300)) { entry ->
-                            Text("[${entry.time}] ${if (entry.isError) "ERROR" else "INFO"}  ${entry.message}",
-                                color = if (entry.isError) androidx.compose.ui.graphics.Color(0xFFFF8A80) else terminalText,
-                                style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(vertical = 4.dp))
+                    HorizontalDivider(
+                        Modifier.padding(vertical = 12.dp),
+                        color = androidx.compose.ui.graphics.Color(0xFF26352A)
+                    )
+                    if (logs.isEmpty()) {
+                        Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                            Text("> waiting for events…", color = terminalText)
+                        }
+                    } else {
+                        LazyColumn(
+                            Modifier.weight(1f).fillMaxWidth(),
+                            contentPadding = PaddingValues(bottom = 18.dp)
+                        ) {
+                            items(logs.takeLast(500)) { entry ->
+                                Text(
+                                    "[${entry.time}] ${if (entry.isError) "ERROR" else "INFO"}  ${entry.message}",
+                                    color = if (entry.isError) androidx.compose.ui.graphics.Color(0xFFFF8A80) else terminalText,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            UserbotSection.CREDENTIALS -> CredentialDetailScreen(
+                Modifier.fillMaxSize(),
+                bot = bot,
+                apiHash = apiHash,
+                onSaveApiHash = onSaveApiHash
+            )
+
+            UserbotSection.INSIGHTS -> {
+                val users = chats.count { it.type is TdApi.ChatTypePrivate }
+                val groups = chats.count { it.type is TdApi.ChatTypeBasicGroup }
+                val supergroups = chats.count {
+                    it.type is TdApi.ChatTypeSupergroup && !(it.type as TdApi.ChatTypeSupergroup).isChannel
+                }
+                val channels = chats.count {
+                    it.type is TdApi.ChatTypeSupergroup && (it.type as TdApi.ChatTypeSupergroup).isChannel
+                }
+                val stats = listOf(
+                    "All chats" to chats.size,
+                    "Users" to users,
+                    "Groups" to groups,
+                    "Supergroups" to supergroups,
+                    "Channels" to channels
+                )
+                LazyColumn(
+                    Modifier.fillMaxSize().padding(horizontal = 18.dp),
+                    contentPadding = PaddingValues(top = 16.dp, bottom = 28.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    item {
+                        Text("Account insights", style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            "A breakdown of chats available to this Telegram account.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+                    }
+                    items(stats.chunked(2)) { rowStats ->
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            rowStats.forEach { (label, count) ->
+                                ElevatedCard(
+                                    Modifier.weight(1f),
+                                    shape = RoundedCornerShape(20.dp),
+                                    colors = CardDefaults.elevatedCardColors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                                    )
+                                ) {
+                                    Column(Modifier.fillMaxWidth().padding(16.dp)) {
+                                        Text(
+                                            count.toString(),
+                                            style = MaterialTheme.typography.headlineMedium,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                        Text(label, style = MaterialTheme.typography.labelLarge,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                }
+                            }
+                            if (rowStats.size == 1) Spacer(Modifier.weight(1f))
                         }
                     }
                 }
@@ -478,7 +690,6 @@ private fun SettingsScreen(modifier: Modifier, onCredentials: () -> Unit, onGene
             }
         }
         SettingsGroup("General", listOf(Triple("General settings", "Appearance and app behaviour", Icons.Rounded.Tune)), listOf(onGeneral))
-        SettingsGroup("Account", listOf(Triple("Credentials", "API keys, account details and local sessions", Icons.Rounded.Key)), listOf(onCredentials))
         SettingsGroup("Application", listOf(Triple("App updates", "Check and install the latest APK", Icons.Rounded.SystemUpdate)), listOf(onUpdater))
         Text("Security", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 20.dp))
         ElevatedCard(shape = RoundedCornerShape(20.dp)) {
