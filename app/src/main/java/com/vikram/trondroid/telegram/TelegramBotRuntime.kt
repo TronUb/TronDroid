@@ -30,7 +30,7 @@ object TelegramBotRuntime {
     private val externalPlugins = CopyOnWriteArrayList<BotCommandPlugin>()
 
     fun loadExternalPlugins(context: Context, uri: Uri): Int {
-        val plugins = ExternalPluginLoader.import(context.applicationContext, uri).filterIsInstance<BotCommandPlugin>()
+        val plugins = ExternalPluginLoader.loadFromUri(context.applicationContext, uri).filterIsInstance<BotCommandPlugin>()
         require(plugins.isNotEmpty()) { "The selected file contains no BotCommandPlugin implementation." }
         plugins.forEach { plugin -> externalPlugins.removeAll { it.id == plugin.id }; externalPlugins += plugin }
         return plugins.size
