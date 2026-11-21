@@ -33,7 +33,7 @@ class DownloadAutomationPlugin(context: Context) : AutomationPlugin {
                         context.reply("Download failed: ${error ?: "unknown error"}")
                     } else {
                         val source = File(file.local.path)
-                        val safe = safeName(source.name.ifBlank { "telegram_${file.id}" })
+                        val safe = safeName(source.name.ifBlank { "telegram_${file.id}" }) ?: "telegram_${file.id}"
                         val destination = File(directory, safe)
                         runCatching {
                             if (source.absolutePath != destination.absolutePath) source.copyTo(destination, overwrite = true)
