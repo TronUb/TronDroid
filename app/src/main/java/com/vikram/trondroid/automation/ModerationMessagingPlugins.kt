@@ -36,7 +36,7 @@ class AdminAutomationPlugin : AutomationPlugin {
                 val sender = TdApi.MessageSenderUser(targetId)
                 val request: TdApi.Function<*> = when (context.command) {
                     "unban" -> TdApi.SetChatMemberStatus(context.message.chatId, sender, TdApi.ChatMemberStatusLeft())
-                    else -> TdApi.BanChatMember(context.message.chatId, sender, 0, true)
+                    else -> TdApi.SetChatMemberStatus(context.message.chatId, sender, TdApi.ChatMemberStatusBanned(0))
                 }
                 gateway.send(request) { result ->
                     if (result is TdApi.Error) {
