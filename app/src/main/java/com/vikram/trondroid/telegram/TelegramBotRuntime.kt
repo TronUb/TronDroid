@@ -2,6 +2,9 @@ package com.vikram.trondroid.telegram
 
 import android.content.Context
 import com.vikram.trondroid.data.BotStore
+import com.vikram.trondroid.plugins.ExternalPluginLoader
+import android.net.Uri
+import java.util.concurrent.CopyOnWriteArrayList
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -11,12 +14,27 @@ import java.net.URL
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 
+data class BotPluginCommand(val name: String, val description: String, val usage: String = name)
+interface BotCommandPlugin {
+    val id: String
+    val commands: List<BotPluginCommand>
+    fun onCommand(command: String, arguments: List<String>, chatId: Long, reply: (String) -> Unit)
+}
+
 /**
  * Keeps Telegram Bot API sessions alive using long polling. Each bot token is isolated
  * under the userbot profile that owns it.
  */
 object TelegramBotRuntime {
     private val workers = ConcurrentHashMap<String, BotWorker>()
+    private val externalPlugins = CopyOnWriteArrayList<BotCommandPlugin>()
+
+    fun loadExternalPlugins(context: Context, uri: Uri): Int {
+        val plugins = ExternalPluginLoader.import(context.applicationContext, uri).filterIsInstance<BotCommandPlugin>()
+        require(plugins.isNotEmpty()) { "The selected file contains no BotCommandPlugin implementation." }
+        plugins.forEach { plugin -> externalPlugins.removeAll { it.id == plugin.id }; externalPlugins += plugin }
+        return plugins.size
+    }
     private val mutableNames = MutableStateFlow<Map<String, String>>(emptyMap())
     val botNames: StateFlow<Map<String, String>> = mutableNames.asStateFlow()
 
@@ -115,18 +133,26 @@ object TelegramBotRuntime {
             if (!text.startsWith("/")) return
             val token = text.substringBefore(' ').substringBefore('@').removePrefix("/").lowercase()
             val chatId = message.optJSONObject("chat")?.optLong("id") ?: return
-            val reply = when (token) {
+            val builtInReply = when (token) {
                 "start" -> "Welcome! TronDroid bot is online. Send /help to see available commands."
                 "help" -> "Available commands:\n/start — Start the bot\n/help — Show this help\n/ping — Check bot response"
                 "ping" -> "Pong! Telegram Bot API is responding."
-                else -> return
+                else -> null
             }
+            if (builtInReply != null) {
+                sendReply(chatId, builtInReply)
+                return
+            }
+            val plugin = externalPlugins.firstOrNull { candidate -> candidate.commands.any { it.name.equals(token, true) } }
+                ?: return
             runCatching {
-                request("sendMessage?chat_id=$chatId&text=" +
-                    java.net.URLEncoder.encode(reply, Charsets.UTF_8.name()))
-            }.onFailure {
-                android.util.Log.e("TronDroidBot", "Unable to reply to /$token", it)
-            }
+                val arguments = text.substringAfter(' ', "").trim().split(Regex("\\s+")).filter { it.isNotBlank() }
+                plugin.onCommand(token, arguments, chatId) { response -> sendReply(chatId, response) }
+            }.onFailure { android.util.Log.e("TronDroidBot", "External plugin command failed", it) }
+        }
+
+        private fun sendReply(chatId: Long, reply: String) {
+            request("sendMessage?chat_id=" + chatId + "&text=" + java.net.URLEncoder.encode(reply.take(4000), Charsets.UTF_8.name()))
         }
 
         private fun request(method: String): JSONObject {
