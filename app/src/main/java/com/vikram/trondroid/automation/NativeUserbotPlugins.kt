@@ -345,7 +345,7 @@ class WeatherAutomationPlugin : AutomationPlugin {
 
 class CurrencyAutomationPlugin : AutomationPlugin {
     override val id = "userbot:currency"
-    override val commands = listOf(AutomationCommand("currency", "Convert an amount between currencies.", "currency <amount> <from> <to>"))
+    override val commands = listOf(AutomationCommand("currency", "Convert an amount between currencies.", "currency <amount> <from> <to>"), AutomationCommand("cur", "Alias for currency conversion.", "cur <amount> <from> <to>"))
     override fun onCommand(context: AutomationContext) {
         if (context.arguments.size < 3) return context.reply("Usage: .currency <amount> <from> <to>")
         val amount = context.arguments[0].toDoubleOrNull() ?: return context.reply("Enter a valid amount.")
@@ -379,7 +379,7 @@ class TemperatureAutomationPlugin : AutomationPlugin {
 
 class PasteAutomationPlugin : AutomationPlugin {
     override val id = "userbot:pastebin"
-    override val commands = listOf(AutomationCommand("paste", "Upload text to paste.rs and return its link.", "paste <text>"))
+    override val commands = listOf(AutomationCommand("paste", "Upload text to paste.rs and return its link.", "paste <text>"), AutomationCommand("bin", "Alias for paste.", "bin <text>"))
     override fun onCommand(context: AutomationContext) {
         val text = context.arguments.joinToString(" ").trim()
         if (text.isBlank()) return context.reply("Usage: .paste <text>")
