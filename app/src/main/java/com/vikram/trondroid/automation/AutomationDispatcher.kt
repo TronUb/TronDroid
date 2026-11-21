@@ -10,7 +10,8 @@ class AutomationDispatcher(
     private val isPluginEnabled: (String) -> Boolean,
     private val sendText: (Long, String) -> Unit,
     private val editText: (Long, Long, String) -> Unit,
-    private val logger: (String, Boolean) -> Unit
+    private val logger: (String, Boolean) -> Unit,
+    private val telegramGateway: () -> com.vikram.trondroid.telegram.TelegramClientGateway? = { null }
 ) {
     private data class MessageHandler(
         val pluginId: String,
@@ -50,9 +51,11 @@ class AutomationDispatcher(
     /** Dispatch every TDLib update to every enabled plugin. */
     fun dispatchUpdate(update: TdApi.Update) {
         executor.execute {
-            val context = AutomationUpdateContext(update) { chatId, text ->
-                if (text.isNotBlank()) sendText(chatId, text)
-            }
+            val context = AutomationUpdateContext(
+                update = update,
+                reply = { chatId, text -> if (text.isNotBlank()) sendText(chatId, text) },
+                telegram = telegramGateway()
+            )
             plugins.forEach { plugin ->
                 if (plugin.id == "core" || isPluginEnabled(plugin.id)) {
                     runCatching { plugin.onTelegramUpdate(context) }
@@ -88,7 +91,7 @@ class AutomationDispatcher(
                 handler.filter.matches(message)
             ) {
                 runCatching {
-                    handler.callback(AutomationContext(message, reply = sendReply))
+                    handler.callback(AutomationContext(message, reply = sendReply, telegram = telegramGateway()))
                 }.onFailure { logger("Plugin ${handler.pluginId} failed: ${it.message}", true) }
             }
         }
@@ -105,7 +108,7 @@ class AutomationDispatcher(
             logger("Command collision for '$name': ${matches.joinToString { it.id }}; using first registered plugin", true)
         }
         val plugin = matches.first()
-        val context = AutomationContext(message, name, arguments, editCommand, delayedEdit)
+        val context = AutomationContext(message, name, arguments, editCommand, delayedEdit, telegramGateway())
         runCatching { plugin.onCommand(context) }
             .onFailure { logger("Command $name in ${plugin.id} failed: ${it.message}", true) }
     }
