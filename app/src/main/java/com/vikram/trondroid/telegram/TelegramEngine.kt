@@ -23,6 +23,9 @@ import com.vikram.trondroid.automation.WeatherAutomationPlugin
 import com.vikram.trondroid.automation.CurrencyAutomationPlugin
 import com.vikram.trondroid.automation.TemperatureAutomationPlugin
 import com.vikram.trondroid.automation.PasteAutomationPlugin
+import com.vikram.trondroid.automation.ProfileAutomationPlugin
+import com.vikram.trondroid.automation.ChatInfoAutomationPlugin
+import com.vikram.trondroid.automation.GroupInfoAutomationPlugin
 import com.vikram.trondroid.automation.QrAutomationPlugin
 import com.vikram.trondroid.plugins.PluginSettings
 import com.vikram.trondroid.plugins.ExternalPluginLoader
