@@ -27,6 +27,15 @@ import java.util.Date
 import java.util.Locale
 
 data class EngineLog(val time: String, val message: String, val isError: Boolean = false)
+data class TelegramAccountInfo(
+    val id: Long,
+    val name: String,
+    val username: String,
+    val phone: String,
+    val isPremium: Boolean,
+    val isVerified: Boolean,
+    val photoPath: String? = null
+)
 
 class TelegramEngine(private val context: Context, private val profile: BotProfile, private val apiHash: String) : Client.ResultHandler {
     companion object { init { System.loadLibrary("tdjni") } }
@@ -37,6 +46,8 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
     val error: StateFlow<String?> = _error.asStateFlow()
     private val _chats = MutableStateFlow<List<TdApi.Chat>>(emptyList())
     val chats: StateFlow<List<TdApi.Chat>> = _chats.asStateFlow()
+    private val _account = MutableStateFlow<TelegramAccountInfo?>(null)
+    val account: StateFlow<TelegramAccountInfo?> = _account.asStateFlow()
     private val _logs = MutableStateFlow<List<EngineLog>>(emptyList())
     val logs: StateFlow<List<EngineLog>> = _logs.asStateFlow()
     private val pluginSettings = PluginSettings(context)
@@ -116,6 +127,14 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
                     chatId = message.chatId, messageId = message.id, text = text, isOutgoing = message.isOutgoing
                 ))
             }
+            TdApi.User.CONSTRUCTOR -> updateAccount(result as TdApi.User)
+            TdApi.File.CONSTRUCTOR -> {
+                val file = result as TdApi.File
+                val current = _account.value
+                if (current != null && file.local.isDownloadingCompleted && file.local.path.isNotBlank()) {
+                    _account.value = current.copy(photoPath = file.local.path)
+                }
+            }
             TdApi.UpdateNewChat.CONSTRUCTOR -> {
                 val chat = (result as TdApi.UpdateNewChat).chat
                 _chats.value = (_chats.value.filterNot { it.id == chat.id } + chat).sortedBy { it.title.lowercase() }
@@ -140,7 +159,7 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
             TdApi.AuthorizationStateWaitPhoneNumber.CONSTRUCTOR -> log("Waiting for phone number")
             TdApi.AuthorizationStateWaitCode.CONSTRUCTOR -> log("Telegram verification code required")
             TdApi.AuthorizationStateWaitPassword.CONSTRUCTOR -> log("Two-step verification password required")
-            TdApi.AuthorizationStateReady.CONSTRUCTOR -> { log("Telegram account connected"); loadChats() }
+            TdApi.AuthorizationStateReady.CONSTRUCTOR -> { log("Telegram account connected"); loadChats(); loadAccount() }
             TdApi.AuthorizationStateClosed.CONSTRUCTOR -> { log("Telegram session closed"); client = null }
         }
     }
@@ -157,6 +176,26 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
         client = null
         automation.shutdown()
     }
+    private fun loadAccount() {
+        client?.send(TdApi.GetMe()) { result ->
+            if (result is TdApi.User) updateAccount(result)
+            else if (result is TdApi.Error) log("Unable to load Telegram profile: " + result.message, true)
+        }
+    }
+
+    private fun updateAccount(user: TdApi.User) {
+        val username = user.username.takeIf { it.isNotBlank() }?.let { "@$it" }.orEmpty()
+        val name = listOf(user.firstName, user.lastName).filter { it.isNotBlank() }.joinToString(" ")
+        _account.value = TelegramAccountInfo(user.id, name, username, user.phoneNumber, user.isPremium, user.isVerified)
+        user.profilePhoto?.small?.let { photo ->
+            client?.send(TdApi.DownloadFile(photo.id, 32, 0, 0, true)) { fileResult ->
+                if (fileResult is TdApi.File && fileResult.local.isDownloadingCompleted && fileResult.local.path.isNotBlank()) {
+                    _account.value = _account.value?.copy(photoPath = fileResult.local.path)
+                }
+            }
+        }
+    }
+
     private fun loadChats() {
         log("Loading recent chats")
         client?.send(TdApi.LoadChats(TdApi.ChatListMain(), 100)) { r ->
