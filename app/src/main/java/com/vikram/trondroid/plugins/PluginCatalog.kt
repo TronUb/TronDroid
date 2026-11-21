@@ -64,7 +64,7 @@ object PluginCatalog {
         plugin("userbot:help","Help","List commands currently implemented in TronDroid.","Utilities",PluginOwner.USERBOT,"main/userbot/modules/plugins/help.py",true,"help"),
         plugin("userbot:image","Image tools","Generate QR codes and fetch image or profile-picture content.","Media",PluginOwner.USERBOT,"main/userbot/modules/plugins/image.py",false,"stoi","itos","qrcode","colourtemplate","cat","waifu","pfp","dog"),
         plugin("userbot:imdb","IMDb","Find movies and series using IMDb title search.","Search",PluginOwner.USERBOT,"main/userbot/modules/plugins/imdb.py",true,"imdb"),
-        plugin("userbot:info","Media & chat info","Inspect media metadata and chat information.","Information",PluginOwner.USERBOT,"main/userbot/modules/plugins/info.py",false,"minfo","chatinfo"),
+        plugin("userbot:info","Media & chat info","Inspect media metadata and chat information.","Information",PluginOwner.USERBOT,"main/userbot/modules/plugins/info.py",true,"minfo","chatinfo"),
         plugin("userbot:keyboard","Keyboard","Create custom reply keyboards.","Messaging",PluginOwner.USERBOT,"main/userbot/modules/plugins/keyboard.py",false,"keyboard"),
         plugin("userbot:notes","Notes","Save, retrieve, list and clear personal notes.","Productivity",PluginOwner.USERBOT,"main/userbot/modules/plugins/notes.py",true,"save","notes","getnote","notelist","clear"),
         plugin("userbot:pastebin","Pastebin","Publish text snippets and return shareable links.","Utilities",PluginOwner.USERBOT,"main/userbot/modules/plugins/pastebin.py",true,"paste","bin"),
