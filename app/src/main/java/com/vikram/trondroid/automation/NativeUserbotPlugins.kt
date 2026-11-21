@@ -171,11 +171,12 @@ class TranslateAutomationPlugin : AutomationPlugin {
         AutomationCommand("translate", "Alias for translate.", "translate <language> <text>"),
         AutomationCommand("trlist", "Show common supported language codes.", "trlist"),
         AutomationCommand("tllist", "Alias for language list.", "tllist"),
-        AutomationCommand("translatelist", "Alias for language list.", "translatelist")
+        AutomationCommand("translatelist", "Alias for language list.", "translatelist"),
+        AutomationCommand("translatelang", "Alias for language list.", "translatelang")
     )
 
     override fun onCommand(context: AutomationContext) {
-        if (context.command in setOf("trlist", "tllist", "translatelist")) {
+        if (context.command in setOf("trlist", "tllist", "translatelist", "translatelang")) {
             return context.reply("Common language codes: " + commonLanguages.joinToString(", "))
         }
 
@@ -565,6 +566,7 @@ class NotesAutomationPlugin(private val preferences: SharedPreferences) : Automa
         AutomationCommand("save", "Save a text note under a name.", "save <name> <text>"),
         AutomationCommand("getnote", "Retrieve a saved note.", "getnote <name>"),
         AutomationCommand("notes", "List saved note names.", "notes"),
+        AutomationCommand("notelist", "Alias for saved note names.", "notelist"),
         AutomationCommand("clear", "Delete a saved note.", "clear <name>")
     )
     override fun onCommand(context: AutomationContext) {
@@ -580,7 +582,7 @@ class NotesAutomationPlugin(private val preferences: SharedPreferences) : Automa
                 if (name.isBlank()) return context.reply("Usage: .getnote <name>")
                 context.reply(preferences.getString("note.$name", null) ?: "No note named $name.")
             }
-            "notes" -> {
+            "notes", "notelist" -> {
                 val names = preferences.all.keys.filter { it.startsWith("note.") }.map { it.removePrefix("note.") }.sorted()
                 context.reply(names.takeIf { it.isNotEmpty() }?.joinToString("\\n") ?: "No saved notes.")
             }
