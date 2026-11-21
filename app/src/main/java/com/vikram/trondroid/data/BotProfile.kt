@@ -5,5 +5,7 @@ data class BotProfile(
     val name: String,
     val phoneNumber: String,
     val apiId: Int,
-    val enabled: Boolean = true
+    val enabled: Boolean = true,
+    val botEnabled: Boolean = false,
+    val botName: String? = null
 )
