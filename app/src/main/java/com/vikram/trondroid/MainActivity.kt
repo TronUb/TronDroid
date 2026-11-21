@@ -1,10 +1,13 @@
 package com.vikram.trondroid
 
 import android.os.Bundle
+import android.os.Build
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.dynamicDarkColorScheme
+import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.*
@@ -24,6 +27,7 @@ class MainActivity : ComponentActivity() {
             var bots by remember { mutableStateOf(store.all()) }
             var selectedId by remember { mutableStateOf(bots.firstOrNull()?.id) }
             var themeMode by remember { mutableStateOf(preferences.getString("theme_mode", "system") ?: "system") }
+            var dynamicColors by remember { mutableStateOf(preferences.getBoolean("dynamic_colors", true)) }
             val engines by TelegramRuntime.engines.collectAsState()
             val botNames by TelegramBotRuntime.botNames.collectAsState()
             val systemDark = isSystemInDarkTheme()
@@ -34,7 +38,13 @@ class MainActivity : ComponentActivity() {
             LaunchedEffect(Unit) { TelegramBackgroundService.reconcile(applicationContext) }
             LaunchedEffect(botNames) { bots = store.all() }
 
-            MaterialTheme(colorScheme = if (dark) darkColorScheme() else lightColorScheme()) {
+            val colorScheme = when {
+                dynamicColors && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ->
+                    if (dark) dynamicDarkColorScheme(this@MainActivity) else dynamicLightColorScheme(this@MainActivity)
+                dark -> darkColorScheme()
+                else -> lightColorScheme()
+            }
+            MaterialTheme(colorScheme = colorScheme) {
                 SideEffect {
                     window.statusBarColor = if (dark) android.graphics.Color.BLACK else android.graphics.Color.WHITE
                     window.navigationBarColor = if (dark) android.graphics.Color.BLACK else android.graphics.Color.WHITE
@@ -50,6 +60,11 @@ class MainActivity : ComponentActivity() {
                     onThemeChange = {
                         themeMode = it
                         preferences.edit().putString("theme_mode", it).apply()
+                    },
+                    dynamicColors = dynamicColors,
+                    onDynamicColorsChange = {
+                        dynamicColors = it
+                        preferences.edit().putBoolean("dynamic_colors", it).apply()
                     },
                     onSelect = { selectedId = it },
                     onAdd = { name, phone, id, hash ->
