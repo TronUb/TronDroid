@@ -15,8 +15,15 @@ class BotStore(private val context: Context) {
             for (i in 0 until json.length()) {
                 val o = json.optJSONObject(i) ?: continue
                 val id = o.optString("id")
-                add(BotProfile(o.optString("id"), o.optString("name"), o.optString("phone"),
-                    o.optInt("apiId"), prefs.getBoolean("enabled.$id", true)))
+                add(BotProfile(
+                    id = id,
+                    name = o.optString("name"),
+                    phoneNumber = o.optString("phone"),
+                    apiId = o.optInt("apiId"),
+                    enabled = prefs.getBoolean("enabled.$id", true),
+                    botEnabled = prefs.getBoolean("botEnabled.$id", false),
+                    botName = prefs.getString("botName.$id", null)
+                ))
             }
         }
     }
@@ -42,11 +49,48 @@ class BotStore(private val context: Context) {
         prefs.edit().putString("apiHash." + id, vault.encrypt(value)).apply()
     }
 
+    fun customCredentials(id: String): Map<String, String> {
+        val encrypted = prefs.getString("customCredentials.$id", null) ?: return emptyMap()
+        val raw = runCatching { vault.decrypt(encrypted) }.getOrNull() ?: return emptyMap()
+        val json = runCatching { JSONObject(raw) }.getOrNull() ?: return emptyMap()
+        return buildMap {
+            val keys = json.keys()
+            while (keys.hasNext()) {
+                val key = keys.next()
+                val value = json.optString(key)
+                if (key.isNotBlank() && value.isNotBlank()) put(key, value)
+            }
+        }
+    }
+
+    fun updateCustomCredentials(id: String, values: Map<String, String>) {
+        val json = JSONObject()
+        values.filter { it.key.isNotBlank() && it.value.isNotBlank() }
+            .forEach { (key, value) -> json.put(key.trim(), value) }
+        val editor = prefs.edit()
+        if (values.isEmpty()) editor.remove("customCredentials.$id")
+        else editor.putString("customCredentials.$id", vault.encrypt(json.toString()))
+        editor.apply()
+    }
+
+    fun setBotEnabled(id: String, enabled: Boolean) {
+        prefs.edit().putBoolean("botEnabled.$id", enabled).apply()
+    }
+
+    fun setBotName(id: String, name: String?) {
+        val editor = prefs.edit()
+        if (name.isNullOrBlank()) editor.remove("botName.$id")
+        else editor.putString("botName.$id", name)
+        editor.apply()
+    }
+
     fun remove(id: String) {
         val json = JSONArray()
         all().filterNot { it.id == id }.forEach { b -> json.put(JSONObject().put("id", b.id)
             .put("name", b.name).put("phone", b.phoneNumber).put("apiId", b.apiId)) }
-        prefs.edit().putString("bots", json.toString()).remove("apiHash.$id").remove("enabled.$id").apply()
+        prefs.edit().putString("bots", json.toString())
+            .remove("apiHash.$id").remove("enabled.$id")
+            .remove("customCredentials.$id").remove("botEnabled.$id").remove("botName.$id").apply()
         context.filesDir.resolve("tdlib/$id").deleteRecursively()
     }
 }
