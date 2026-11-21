@@ -18,7 +18,7 @@ class StickerAutomationPlugin : AutomationPlugin {
         when (context.command) {
             "stinfo" -> context.reply(
                 "Sticker information\nEmoji: ${sticker.emoji.ifBlank { "—" }}\nSet ID: ${sticker.setId}\n" +
-                    "Dimensions: ${sticker.width} × ${sticker.height}\nAnimated: ${sticker.isAnimated}\nVideo sticker: ${sticker.isVideo}"
+                    "Dimensions: ${sticker.width} × ${sticker.height}"
             )
             "kang" -> {
                 val remoteId = sticker.sticker.remote.id
