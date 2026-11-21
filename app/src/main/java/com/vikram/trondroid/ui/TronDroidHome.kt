@@ -49,7 +49,7 @@ private sealed interface Page {
 @Composable
 fun TronDroidHome(
     bots: List<BotProfile>, selected: BotProfile?, engine: TelegramEngine?,
-    onSelect: (String) -> Unit, onAdd: (String, String, Int, String) -> Unit,
+    onSelect: (String) -> Unit, onRename: (String, String) -> Unit, onAdd: (String, String, Int, String) -> Unit,
     onRemove: (String) -> Unit, onToggle: (String, Boolean) -> Unit, onReadApiHash: (String) -> String?,
     onUpdateApiHash: (String, String) -> Unit,
     onReadCustomCredentials: (String) -> Map<String, String>,
@@ -540,16 +540,17 @@ private fun UserbotDetailScreen(
                         }
                     }
                     item {
-                        Text("Recent chats", style = MaterialTheme.typography.titleMedium)
-                        Text(
-                            if (!ready) "Connect this account to load recent chats"
-                            else if (chats.isEmpty()) "No recent chats are available yet"
-                            else "The latest ${minOf(chats.size, 20)} chats on this account",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        ElevatedCard(shape = RoundedCornerShape(20.dp), colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
+                            ListItem(
+                                modifier = Modifier.clickable { recentChatsExpanded = !recentChatsExpanded },
+                                headlineContent = { Text("Recent chats") },
+                                supportingContent = { Text(if (!ready) "Connect this account to load recent chats" else if (chats.isEmpty()) "No recent chats available" else "${minOf(chats.size, 20)} chats · tap to ${if (recentChatsExpanded) "hide" else "expand"}") },
+                                leadingContent = { Icon(Icons.Rounded.ChatBubbleOutline, null, tint = MaterialTheme.colorScheme.primary) },
+                                trailingContent = { Icon(if (recentChatsExpanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore, null) }
+                            )
+                        }
                     }
-                    if (!ready || chats.isEmpty()) {
+                    if (recentChatsExpanded && (!ready || chats.isEmpty())) {
                         item {
                             ElevatedCard(shape = RoundedCornerShape(18.dp)) {
                                 ListItem(
@@ -559,7 +560,7 @@ private fun UserbotDetailScreen(
                                 )
                             }
                         }
-                    } else {
+                    } else if (recentChatsExpanded) {
                         items(chats.take(20), key = { "insight-chat-${it.id}" }) { chat ->
                             ElevatedCard(shape = RoundedCornerShape(18.dp)) {
                                 ListItem(
@@ -924,6 +925,7 @@ private fun SettingsScreen(modifier: Modifier, onGeneral: () -> Unit, onAbout: (
 
 @Composable
 private fun AboutScreen(modifier: Modifier) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     LazyColumn(modifier.fillMaxSize().padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp),
         contentPadding = PaddingValues(bottom = 28.dp)) {
         item {
@@ -960,9 +962,7 @@ private fun AboutScreen(modifier: Modifier) {
                 ListItem(headlineContent = { Text("TronDroid on GitHub") },
                     supportingContent = { Text("Source code, issues and development updates") },
                     leadingContent = { Icon(Icons.Rounded.OpenInNew, null) },
-                    modifier = Modifier.clickable { 
-                        val context = androidx.compose.ui.platform.LocalContext.current
-                    })
+                    modifier = Modifier.clickable { context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://github.com/TronUb/TronDroid"))) })
             }
         }
     }
