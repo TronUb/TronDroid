@@ -45,6 +45,7 @@ import com.vikram.trondroid.automation.DownloadAutomationPlugin
 import com.vikram.trondroid.automation.ImageExtrasAutomationPlugin
 import com.vikram.trondroid.automation.GoogleExtrasAutomationPlugin
 import com.vikram.trondroid.automation.SudoAutomationPlugin
+import com.vikram.trondroid.automation.ToolsExtrasAutomationPlugin
 import com.vikram.trondroid.plugins.PluginSettings
 import com.vikram.trondroid.plugins.ExternalPluginLoader
 import android.net.Uri
@@ -151,6 +152,7 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
         nativePlugins += ImageExtrasAutomationPlugin()
         nativePlugins += GoogleExtrasAutomationPlugin()
         nativePlugins += SudoAutomationPlugin(context.getSharedPreferences("trondroid.userbot.sudo", Context.MODE_PRIVATE)) { _account.value?.id }
+        nativePlugins += ToolsExtrasAutomationPlugin()
         nativePlugins += WeatherAutomationPlugin()
         nativePlugins += CurrencyAutomationPlugin()
         nativePlugins += TemperatureAutomationPlugin()
