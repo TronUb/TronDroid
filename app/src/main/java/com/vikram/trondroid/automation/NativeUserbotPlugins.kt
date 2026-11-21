@@ -645,7 +645,8 @@ class NotesAutomationPlugin(private val preferences: SharedPreferences) : Automa
 
 class AfkAutomationPlugin(
     private val commandPrefix: () -> String = { "." },
-    private val ownerId: () -> Long? = { null }
+    private val ownerId: () -> Long? = { null },
+    private val ownerUsername: () -> String? = { null }
 ) : AutomationPlugin {
     override val id = "userbot:afk"
     override val commands = listOf(
@@ -689,11 +690,18 @@ class AfkAutomationPlugin(
         val tdMessage = message.tdMessage ?: return
         val isPrivate = context.telegram?.cachedChat(message.chatId)?.type is TdApi.ChatTypePrivate
         val expectedOwnerId = ownerId()
-        val isMention = (tdMessage.content as? TdApi.MessageText)?.text?.entities
-            ?.any { entity ->
-                val mention = entity.type as? TdApi.TextEntityTypeMentionName
-                mention != null && expectedOwnerId != null && mention.userId == expectedOwnerId
-            } == true
+        val formatted = (tdMessage.content as? TdApi.MessageText)?.text
+        val username = ownerUsername()?.removePrefix("@")?.lowercase(Locale.ROOT)
+        val isMention = formatted?.entities?.any { entity ->
+            val mentionName = entity.type as? TdApi.TextEntityTypeMentionName
+            val mentionById = mentionName != null && expectedOwnerId != null && mentionName.userId == expectedOwnerId
+            val mentionByUsername = entity.type is TdApi.TextEntityTypeMention &&
+                username != null && formatted.text.substring(
+                    entity.offset.coerceAtLeast(0).coerceAtMost(formatted.text.length),
+                    (entity.offset + entity.length).coerceAtLeast(0).coerceAtMost(formatted.text.length)
+                ).equals("@$username", true)
+            mentionById || mentionByUsername
+        } == true
         if (!isPrivate && !isMention) return
 
         val awayReason = reason.ifBlank { "No reason mentioned" }
