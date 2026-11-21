@@ -9,7 +9,8 @@ class UtilityExtrasAutomationPlugin : AutomationPlugin {
     override val commands = listOf(
         AutomationCommand("short", "Shorten an HTTP or HTTPS URL using is.gd.", "short <url>"),
         AutomationCommand("unshort", "Resolve a shortened URL without downloading its content.", "unshort <url>"),
-        AutomationCommand("ud", "Look up an English word definition.", "ud <word>")
+        AutomationCommand("ud", "Look up an English word definition.", "ud <word>"),
+        AutomationCommand("webshot", "Capture a webpage screenshot and send it as an image.", "webshot <https://url>")
     )
     override fun onCommand(context: AutomationContext) {
         val value = context.arguments.joinToString(" ").trim()
@@ -25,6 +26,17 @@ class UtilityExtrasAutomationPlugin : AutomationPlugin {
                     "unshort" -> {
                         require(value.startsWith("https://") || value.startsWith("http://")) { "Provide a valid HTTP(S) URL." }
                         resolve(value)
+                    }
+                    "webshot" -> {
+                        require(value.startsWith("https://") || value.startsWith("http://")) { "Provide a valid HTTP(S) URL." }
+                        val host = URL(value).host.lowercase()
+                        require(host.isNotBlank() && host !in setOf("localhost", "127.0.0.1", "0.0.0.0")) { "This host cannot be captured." }
+                        val gateway = context.telegram ?: return@runCatching "Telegram session is unavailable."
+                        val screenshot = "https://image.thum.io/get/width/1200/crop/900/noanimate/" + value
+                        gateway.sendPhotoUrl(context.message.chatId, screenshot, "Web screenshot: $value") { result ->
+                            if (result is org.drinkless.tdlib.TdApi.Error) context.reply("Screenshot send failed: ${result.message}")
+                        }
+                        "Capturing webpage…"
                     }
                     "ud" -> {
                         val json = org.json.JSONArray(get("https://api.dictionaryapi.dev/api/v2/entries/en/" + URLEncoder.encode(value, Charsets.UTF_8.name())))
