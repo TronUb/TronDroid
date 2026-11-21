@@ -583,12 +583,16 @@ class PasteAutomationPlugin : AutomationPlugin {
 
 class QrAutomationPlugin : AutomationPlugin {
     override val id = "userbot:qrcode"
-    override val commands = listOf(AutomationCommand("qrcode", "Create a QR code link for text or a URL.", "qrcode <text>"))
+    override val commands = listOf(AutomationCommand("qrcode", "Generate and send a QR code for text or a URL.", "qrcode <text>"))
     override fun onCommand(context: AutomationContext) {
         val value = context.arguments.joinToString(" ").trim()
         if (value.isBlank()) return context.reply("Usage: .qrcode <text>")
         val url = "https://api.qrserver.com/v1/create-qr-code/?size=512x512&data=" + PluginHttp.encode(value)
-        context.reply("QR code: $url")
+        val gateway = context.telegram ?: return context.reply("Telegram session is unavailable.")
+        context.reply("Generating QR code…")
+        gateway.sendPhotoUrl(context.message.chatId, url, "QR code") { response ->
+            if (response is TdApi.Error) context.reply("Unable to send QR code: ${response.message}")
+        }
     }
 }
 
