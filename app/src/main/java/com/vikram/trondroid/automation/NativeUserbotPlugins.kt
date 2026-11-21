@@ -344,7 +344,9 @@ class FunAutomationPlugin : AutomationPlugin {
         AutomationCommand("joke", "Fetch a random joke.", "joke"),
         AutomationCommand("advice", "Fetch a random piece of advice.", "advice (reply to a user)"),
         AutomationCommand("uadvice", "Fetch a random useless fact.", "uadvice (reply to a user)"),
-        AutomationCommand("qs", "Ask a random trivia question and save the answer in Telegram.", "qs (reply to a user)")
+        AutomationCommand("qs", "Ask a random trivia question.", "qs (reply to a user)"),
+        AutomationCommand("wtd", "Suggest a random activity.", "wtd"),
+        AutomationCommand("mqt", "Fetch a quote of the day.", "mqt")
     )
 
     override fun onCommand(context: AutomationContext) {
@@ -394,8 +396,24 @@ class FunAutomationPlugin : AutomationPlugin {
             "joke" -> {
                 context.reply("Getting a joke…")
                 PluginHttp.run(context) {
-                    val json = JSONObject(PluginHttp.get("https://official-joke-api.appspot.com/random_joke"))
-                    json.optString("setup") + "\n" + json.optString("punchline")
+                    val json = JSONObject(PluginHttp.get("https://icanhazdadjoke.com/slack"))
+                    json.optJSONArray("attachments")?.optJSONObject(0)?.optString("fallback")
+                        ?.takeIf { it.isNotBlank() } ?: "No joke was returned."
+                }
+            }
+            "wtd" -> {
+                context.reply("Finding an activity…")
+                PluginHttp.run(context) {
+                    val json = JSONObject(PluginHttp.get("https://bored-api.appbrewery.com/random"))
+                    "Activity: " + json.optString("activity") + "\nType: " + json.optString("type")
+                }
+            }
+            "mqt" -> {
+                context.reply("Finding a quote…")
+                PluginHttp.run(context) {
+                    val quote = JSONObject(PluginHttp.get("https://favqs.com/api/qotd")).optJSONObject("quote")
+                        ?: return@run "No quote found."
+                    "Quote:\n" + quote.optString("body") + "\n\nAuthor: " + quote.optString("author")
                 }
             }
             "advice" -> {
