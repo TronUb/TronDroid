@@ -50,6 +50,7 @@ import com.vikram.trondroid.automation.ZombieCleanupAutomationPlugin
 import com.vikram.trondroid.automation.MusicSearchAutomationPlugin
 import com.vikram.trondroid.automation.QuotlyAutomationPlugin
 import com.vikram.trondroid.automation.CloneAutomationPlugin
+import com.vikram.trondroid.automation.StickerAutomationPlugin
 import com.vikram.trondroid.plugins.PluginSettings
 import com.vikram.trondroid.plugins.ExternalPluginLoader
 import android.net.Uri
@@ -161,6 +162,7 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
         nativePlugins += MusicSearchAutomationPlugin()
         nativePlugins += QuotlyAutomationPlugin(context.cacheDir)
         nativePlugins += CloneAutomationPlugin(context.getSharedPreferences("trondroid.userbot.clone", Context.MODE_PRIVATE)) { _account.value?.id }
+        nativePlugins += StickerAutomationPlugin()
         nativePlugins += WeatherAutomationPlugin()
         nativePlugins += CurrencyAutomationPlugin()
         nativePlugins += TemperatureAutomationPlugin()
