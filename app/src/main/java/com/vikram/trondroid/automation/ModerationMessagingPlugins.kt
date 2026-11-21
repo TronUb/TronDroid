@@ -42,7 +42,7 @@ class AdminAutomationPlugin : AutomationPlugin {
                 } else {
                     val minutes = context.arguments.drop(1).firstOrNull()?.toIntOrNull() ?: 60
                     if (minutes !in 1..525600) return context.reply("Mute duration must be between 1 minute and 365 days.")
-                    val permissions = TdApi.ChatPermissions(false, false, false, false, false, false, false, false, false, false, false, false, false, false)
+                    val permissions = TdApi.ChatPermissions(false, false, false, false, false, false, false, false, false, false, false, false, false, false, false)
                     TdApi.ChatMemberStatusRestricted(true, (System.currentTimeMillis() / 1000L + minutes * 60L).toInt(), permissions)
                 }
                 gateway.send(TdApi.SetChatMemberStatus(context.message.chatId, TdApi.MessageSenderUser(targetId), status)) { result ->
@@ -55,7 +55,7 @@ class AdminAutomationPlugin : AutomationPlugin {
                     TdApi.ChatMemberStatusMember()
                 } else {
                     val rights = TdApi.ChatAdministratorRights().apply { canInviteUsers = true }
-                    TdApi.ChatMemberStatusAdministrator("", false, rights)
+                    TdApi.ChatMemberStatusAdministrator(false, rights)
                 }
                 gateway.send(TdApi.SetChatMemberStatus(context.message.chatId, TdApi.MessageSenderUser(targetId), status)) { result ->
                     context.reply(if (result is TdApi.Error) "Telegram error: ${result.message}" else if (context.command == "promote") "User promoted with invite-only administrator rights." else "User demoted.")
