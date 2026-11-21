@@ -21,6 +21,8 @@ import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.asImageBitmap
+import android.graphics.BitmapFactory
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
@@ -226,6 +228,8 @@ private fun UserbotDetailScreen(
     val auth = engine?.authorization?.collectAsState()?.value
     val logs = engine?.logs?.collectAsState()?.value.orEmpty()
     val chats = engine?.chats?.collectAsState()?.value.orEmpty()
+    val account = engine?.account?.collectAsState()?.value
+    val accountAvatar = remember(account?.photoPath) { account?.photoPath?.let { runCatching { BitmapFactory.decodeFile(it)?.asImageBitmap() }.getOrNull() } }
     val ready = auth?.constructor == TdApi.AuthorizationStateReady.CONSTRUCTOR
     var section by remember(bot.id) { mutableStateOf(UserbotSection.GENERAL) }
     var recentChatsExpanded by remember(bot.id) { mutableStateOf(false) }
@@ -292,28 +296,23 @@ private fun UserbotDetailScreen(
                             verticalArrangement = Arrangement.spacedBy(14.dp)
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Surface(
-                                    shape = RoundedCornerShape(18.dp),
-                                    color = MaterialTheme.colorScheme.primaryContainer,
-                                    modifier = Modifier.size(56.dp)
-                                ) {
-                                    Box(contentAlignment = Alignment.Center) {
-                                        Icon(
-                                            Icons.Rounded.Person,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                            modifier = Modifier.size(34.dp)
-                                        )
+                                if (accountAvatar != null) {
+                                    androidx.compose.foundation.Image(bitmap = accountAvatar, contentDescription = "Telegram profile photo",
+                                        modifier = Modifier.size(56.dp).clip(RoundedCornerShape(18.dp)))
+                                } else {
+                                    Surface(shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.primaryContainer,
+                                        modifier = Modifier.size(56.dp)) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Icon(Icons.Rounded.Person, contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(34.dp))
+                                        }
                                     }
                                 }
                                 Spacer(Modifier.width(14.dp))
                                 Column(Modifier.weight(1f)) {
-                                    Text(bot.name, style = MaterialTheme.typography.titleLarge)
-                                    Text(
-                                        bot.phoneNumber,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
+                                    Text(account?.name?.ifBlank { bot.name } ?: bot.name, style = MaterialTheme.typography.titleLarge)
+                                    Text(account?.username?.ifBlank { bot.phoneNumber } ?: bot.phoneNumber,
+                                        style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                                 Surface(
                                     shape = RoundedCornerShape(50),
@@ -336,6 +335,17 @@ private fun UserbotDetailScreen(
                                             if (!bot.enabled) "Disabled" else if (ready) "Connected" else authLabel(auth),
                                             style = MaterialTheme.typography.labelSmall
                                         )
+                                    }
+                                }
+                            }
+                            if (account != null) {
+                                Column(Modifier.fillMaxWidth().padding(start = 70.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Text("Telegram ID  " + account.id, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text("Phone  " + account.phone.ifBlank { bot.phoneNumber }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text("Data center  Managed by TDLib", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    if (account.isPremium || account.isVerified) {
+                                        Text(listOfNotNull(if (account.isPremium) "Premium" else null, if (account.isVerified) "Verified" else null).joinToString(" · "),
+                                            style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                                     }
                                 }
                             }
@@ -392,6 +402,8 @@ private fun UserbotDetailScreen(
                                     }
                                     Text(if (!bot.botEnabled) "Bot session paused" else if (bot.botName != null) "Connected · running in the background" else "Connecting to Telegram Bot API",
                                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    bot.botUsername?.let { Text("@$it", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                                    bot.botTelegramId?.let { Text("ID · $it", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                                 }
                                 Switch(checked = bot.botEnabled, onCheckedChange = { onBotToggle(bot.id, it) })
                             }
