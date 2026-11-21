@@ -29,7 +29,8 @@ class TelegramBackgroundService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         TelegramRuntime.reconcile(applicationContext)
-        if (TelegramRuntime.activeCount() == 0) {
+        TelegramBotRuntime.reconcile(applicationContext)
+        if (TelegramRuntime.activeCount() + TelegramBotRuntime.activeCount() == 0) {
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf(startId)
         } else {
@@ -43,6 +44,7 @@ class TelegramBackgroundService : Service() {
 
     override fun onDestroy() {
         TelegramRuntime.stopAll()
+        TelegramBotRuntime.stopAll()
         super.onDestroy()
     }
 
@@ -55,12 +57,17 @@ class TelegramBackgroundService : Service() {
     }
 
     private fun buildNotification(): Notification {
-        val count = TelegramRuntime.activeCount()
+        val userbotCount = TelegramRuntime.activeCount()
+        val botCount = TelegramBotRuntime.activeCount()
+        val count = userbotCount + botCount
         val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
             Notification.Builder(this, CHANNEL_ID) else Notification.Builder(this)
         return builder.setSmallIcon(android.R.drawable.stat_notify_sync)
             .setContentTitle("TronDroid is running")
-            .setContentText(if (count == 1) "1 Telegram userbot active" else "$count Telegram userbots active")
+            .setContentText(listOfNotNull(
+                if (userbotCount > 0) "$userbotCount userbot${if (userbotCount == 1) "" else "s"}" else null,
+                if (botCount > 0) "$botCount bot${if (botCount == 1) "" else "s"}" else null
+            ).joinToString(" · ") + " running in background")
             .setOngoing(true)
             .setCategory(Notification.CATEGORY_SERVICE)
             .build()
