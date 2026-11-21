@@ -1,6 +1,8 @@
 package com.vikram.trondroid.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -35,6 +37,8 @@ import com.vikram.trondroid.data.BotProfile
 import com.vikram.trondroid.plugins.PluginCatalog
 import com.vikram.trondroid.plugins.PluginSettings
 import com.vikram.trondroid.telegram.TelegramEngine
+import com.vikram.trondroid.telegram.TelegramBotRuntime
+import com.vikram.trondroid.plugins.PluginOwner
 import org.drinkless.tdlib.TdApi
 
 private enum class Tab { USERBOTS, PLUGINS, SETTINGS }
@@ -67,6 +71,17 @@ fun TronDroidHome(
     fun navigate(next: Page) { navigationDirection = 1; pageStack = pageStack + next }
     fun goBack() { if (pageStack.size > 1) { navigationDirection = -1; pageStack = pageStack.dropLast(1) } }
     var showAdd by remember { mutableStateOf(false) }
+    var pluginOwner by remember { mutableIntStateOf(0) }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val pluginPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            val result = runCatching {
+                if (pluginOwner == 0) (engine ?: error("Select an active userbot session first.")).loadExternalPlugins(uri)
+                else TelegramBotRuntime.loadExternalPlugins(context, uri)
+            }
+            android.widget.Toast.makeText(context, result.fold({ "Loaded " + it + " plugin(s)" }, { it.message ?: "Plugin load failed" }), android.widget.Toast.LENGTH_LONG).show()
+        }
+    }
     var pendingDelete by remember { mutableStateOf<BotProfile?>(null) }
     var pendingLogout by remember { mutableStateOf<BotProfile?>(null) }
     val isHome = page == Page.Home
@@ -107,6 +122,10 @@ fun TronDroidHome(
                 FloatingActionButton(onClick = { showAdd = true }) {
                     Icon(Icons.Rounded.Add, "Add userbot")
                 }
+            } else if (isHome && tab == Tab.PLUGINS) {
+                FloatingActionButton(onClick = { pluginPicker.launch(arrayOf("*/*")) }) {
+                    Icon(Icons.Rounded.Add, "Load plugin")
+                }
             }
         }
     ) { padding ->
@@ -120,7 +139,7 @@ fun TronDroidHome(
                 Tab.USERBOTS -> UserbotsScreen(Modifier.padding(padding), bots, onOpen = {
                     onSelect(it); navigate(Page.Userbot(it))
                 }, onToggle = { id, enabled -> onToggle(id, enabled) })
-                Tab.PLUGINS -> PluginsScreen(Modifier.padding(padding), onOpen = { navigate(Page.PluginDetail(it)) })
+                Tab.PLUGINS -> PluginsScreen(Modifier.padding(padding), selectedOwner = pluginOwner, onOwnerChange = { pluginOwner = it }, onOpen = { navigate(Page.PluginDetail(it)) })
                 Tab.SETTINGS -> SettingsScreen(Modifier.padding(padding),
                     onGeneral = { navigate(Page.GeneralSettings) }, onAbout = { navigate(Page.About) }, onUpdater = { navigate(Page.Updater) }, themeMode = themeMode, onThemeChange = onThemeChange,
                     dynamicColors = dynamicColors, onDynamicColorsChange = onDynamicColorsChange)
@@ -724,20 +743,19 @@ private fun AddBotDialog(onDismiss: () -> Unit, onSave: (String, String, Int, St
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun PluginsScreen(modifier: Modifier, onOpen: (String) -> Unit) {
+private fun PluginsScreen(modifier: Modifier, selectedOwner: Int, onOwnerChange: (Int) -> Unit, onOpen: (String) -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val settings = remember { PluginSettings(context) }
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
     val keyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
-    var selectedOwner by remember { mutableIntStateOf(0) }
     var handler by remember { mutableStateOf(settings.handler()) }
     var savedPrefix by remember { mutableStateOf(settings.handler()) }
 
     Column(modifier.fillMaxSize().padding(horizontal = 18.dp)) {
         PrimaryTabRow(selectedTabIndex = selectedOwner, modifier = Modifier.padding(top = 4.dp)) {
-            Tab(selected = selectedOwner == 0, onClick = { selectedOwner = 0 }, text = { Text("Userbot") },
+            Tab(selected = selectedOwner == 0, onClick = { onOwnerChange(0) }, text = { Text("Userbot") },
                 icon = { Icon(Icons.Rounded.Person, null) })
-            Tab(selected = selectedOwner == 1, onClick = { selectedOwner = 1 }, text = { Text("Bot") },
+            Tab(selected = selectedOwner == 1, onClick = { onOwnerChange(1) }, text = { Text("Bot") },
                 icon = { Icon(Icons.Rounded.SmartToy, null) })
         }
 
