@@ -156,6 +156,8 @@ class TelegramClientGateway(
     fun cachedUser(userId: Long): TdApi.User? = updates.users.value[userId]
     fun cachedFile(fileId: Int): TdApi.File? = updates.files.value[fileId]
 
+    fun currentUserId(): Long? = currentUserId()
+
     fun isConnected(): Boolean = clientProvider() != null
 
     fun shutdown() {
