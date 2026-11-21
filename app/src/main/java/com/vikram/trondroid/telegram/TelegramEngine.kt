@@ -208,10 +208,14 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
         if (r.constructor == TdApi.Error.CONSTRUCTOR) { _error.value = (r as TdApi.Error).message; log(_error.value!!, true) }
     } }
     fun close() {
-        val active = client ?: return
-        log("Closing Telegram session")
-        active.send(TdApi.Close()) {}
-        client = null
+        val active = client
+        if (active != null) {
+            log("Closing Telegram session")
+            active.send(TdApi.Close()) {}
+            client = null
+        }
+        // Tear down plugin infrastructure even if TDLib already transitioned
+        // to AuthorizationStateClosed or failed during initialization.
         updateSubscription.close()
         updateHub.close()
         updateStore.clear()
