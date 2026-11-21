@@ -21,7 +21,7 @@ class ToolsExtrasAutomationPlugin : AutomationPlugin {
                 gateway.send(TdApi.CreatePrivateChat(gateway.currentUserId() ?: return context.reply("Account ID unavailable."), false)) { chatResult ->
                     val saved = chatResult as? TdApi.Chat
                         ?: return@send context.reply(if (chatResult is TdApi.Error) chatResult.message else "Saved Messages unavailable.")
-                    gateway.send(TdApi.ForwardMessages(saved.id, replied.chatId, longArrayOf(replied.id), 0, null, false, false)) { result ->
+                    gateway.send(TdApi.ForwardMessages(saved.id, 0, replied.chatId, longArrayOf(replied.id), null, false, false)) { result ->
                         context.reply(if (result is TdApi.Error) "Forward failed: ${result.message}" else "Forwarded to Saved Messages.")
                     }
                 }
