@@ -12,15 +12,14 @@ class TelegramClientGateway(
     private val clientProvider: () -> Client?,
     val updates: TelegramUpdateStore
 ) {
-    fun <T : TdApi.Object> send(
-        function: TdApi.Function<T>,
-        callback: (T) -> Unit
+    fun send(
+        function: TdApi.Function<*>,
+        callback: (TdApi.Object) -> Unit
     ) {
         val activeClient = clientProvider() ?: return
-        activeClient.send(function) { result ->
-            @Suppress("UNCHECKED_CAST")
-            callback(result as T)
-        }
+        @Suppress("UNCHECKED_CAST")
+        val typedFunction = function as TdApi.Function<TdApi.Object>
+        activeClient.send(typedFunction) { result -> callback(result) }
     }
 
     fun cachedMessage(chatId: Long, messageId: Long): TdApi.Message? =
