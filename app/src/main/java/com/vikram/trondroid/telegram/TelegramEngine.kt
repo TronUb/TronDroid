@@ -63,6 +63,8 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
         nativePlugins += TranslateAutomationPlugin()
         nativePlugins += TimeAutomationPlugin()
         nativePlugins += AliveAutomationPlugin { profile.name }
+        nativePlugins += AnimeAutomationPlugin()
+        nativePlugins += FunAutomationPlugin()
         nativePlugins += HelpAutomationPlugin({ pluginSettings.handler() }) { nativePlugins }
         nativePlugins.forEach(automation::register)
         log("Loaded ${nativePlugins.size} native userbot plugins")
