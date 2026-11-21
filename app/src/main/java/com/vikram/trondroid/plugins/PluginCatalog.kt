@@ -102,12 +102,12 @@ object PluginCatalog {
 
     val bot = listOf(
         plugin("bot:botfun","Bot fun","Small group interaction and number game commands.","Entertainment",PluginOwner.BOT,"main/assistant/modules/plugins/botfun.py",true,"numbers"),
-        plugin("bot:broadcast","Bot broadcast","Broadcast updates and handle bot start tracking.","Messaging",PluginOwner.BOT,"main/assistant/modules/plugins/broadcast.py",false,"broadcast"),
+        plugin("bot:broadcast","Bot broadcast","Track users who start the bot and broadcast owner announcements to those users.","Messaging",PluginOwner.BOT,"main/assistant/modules/plugins/broadcast.py",true,"broadcast"),
         plugin("bot:eval","Bot evaluation","Owner-only code evaluation from the original server bot; not enabled in Android.","Developer",PluginOwner.BOT,"main/assistant/modules/plugins/eval.py",false,"eval"),
         plugin("bot:help","Help","Show the bot command list.","Utilities",PluginOwner.BOT,"main/assistant/modules/plugins/help.py",true,"help"),
         plugin("bot:ping","Ping","Check whether the Telegram bot is responding.","Diagnostics",PluginOwner.BOT,"main/assistant/modules/plugins/ping.py",true,"ping"),
         plugin("bot:start","Start","Show the bot welcome message and group-added notice.","Onboarding",PluginOwner.BOT,"main/assistant/modules/plugins/start.py",true,"start"),
-        plugin("bot:utils","Bot utilities","Return chat and user IDs or an anime quote.","Utilities",PluginOwner.BOT,"main/assistant/modules/plugins/utils.py",false,"id","quote")
+        plugin("bot:utils","Bot utilities","Return chat and user IDs or an anime quote.","Utilities",PluginOwner.BOT,"main/assistant/modules/plugins/utils.py",true,"id","quote")
     )
 
     val all: List<BotPlugin> = userbot + bot
