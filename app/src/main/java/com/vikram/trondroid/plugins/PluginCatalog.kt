@@ -38,6 +38,7 @@ object PluginCatalog {
         plugin("userbot:alive","Alive","Show connected account and app runtime status.","Status",PluginOwner.USERBOT,"main/userbot/modules/plugins/alive.py",true,"alive","ialive"),
         plugin("userbot:anime","Anime","Fetch anime images and GIFs by action.","Entertainment",PluginOwner.USERBOT,"main/userbot/modules/plugins/anime.py",true,"animelist","nekopic","npic","animegif"),
         plugin("userbot:broadcast","Broadcast","Send an announcement to selected chats.","Messaging",PluginOwner.USERBOT,"main/userbot/modules/plugins/broadcast.py",false,"broadcast"),
+        plugin("userbot:carbon","Carbon","Create syntax-highlighted code images. The upstream implementation is broken and remains unavailable until it is replaced.","Media",PluginOwner.USERBOT,"main/userbot/modules/plugins/carbon.py",false,"carbon","carblist"),
         plugin("userbot:clone","Clone","Copy and restore Telegram profile details.","Profile",PluginOwner.USERBOT,"main/userbot/modules/plugins/clone.py",false,"clone","revert"),
         plugin("userbot:dev","Developer tools","Developer utilities and code evaluation. Shell execution is intentionally not enabled.","Developer",PluginOwner.USERBOT,"main/userbot/modules/plugins/dev.py",false,"eval","terminal"),
         plugin("userbot:download","Downloads","Download and upload supported Telegram files.","Media",PluginOwner.USERBOT,"main/userbot/modules/plugins/download.py",false,"ls","download","upload","batchupload"),
@@ -85,7 +86,7 @@ object PluginCatalog {
     )
 
     val bot = listOf(
-        plugin("bot:botfun","Bot fun","Small group interaction and number game commands.","Entertainment",PluginOwner.BOT,"main/assistant/modules/plugins/botfun.py",false,"numbers"),
+        plugin("bot:botfun","Bot fun","Small group interaction and number game commands.","Entertainment",PluginOwner.BOT,"main/assistant/modules/plugins/botfun.py",true,"numbers"),
         plugin("bot:broadcast","Bot broadcast","Broadcast updates and handle bot start tracking.","Messaging",PluginOwner.BOT,"main/assistant/modules/plugins/broadcast.py",false,"broadcast"),
         plugin("bot:eval","Bot evaluation","Owner-only code evaluation from the original server bot; not enabled in Android.","Developer",PluginOwner.BOT,"main/assistant/modules/plugins/eval.py",false,"eval"),
         plugin("bot:help","Help","Show the bot command list.","Utilities",PluginOwner.BOT,"main/assistant/modules/plugins/help.py",true,"help"),
