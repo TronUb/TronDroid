@@ -54,7 +54,7 @@ class AdminAutomationPlugin : AutomationPlugin {
                 val status: TdApi.ChatMemberStatus = if (context.command == "demote") {
                     TdApi.ChatMemberStatusMember()
                 } else {
-                    val rights = TdApi.ChatAdministratorRights(false, false, false, false, false, true, false, false, false, false, false, false, false, false, false)
+                    val rights = TdApi.ChatAdministratorRights().apply { canInviteUsers = true }
                     TdApi.ChatMemberStatusAdministrator("", false, rights)
                 }
                 gateway.send(TdApi.SetChatMemberStatus(context.message.chatId, TdApi.MessageSenderUser(targetId), status)) { result ->
