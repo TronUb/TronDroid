@@ -3,6 +3,7 @@ package com.vikram.trondroid.telegram
 import android.content.Context
 import android.util.Log
 import com.vikram.trondroid.data.BotProfile
+import com.vikram.trondroid.automation.TelegramUpdateHub
 import com.vikram.trondroid.automation.AutomationDispatcher
 import com.vikram.trondroid.automation.AutomationMessage
 import com.vikram.trondroid.automation.AutomationPlugin
