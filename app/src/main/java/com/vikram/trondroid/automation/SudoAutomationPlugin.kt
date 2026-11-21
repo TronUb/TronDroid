@@ -20,7 +20,7 @@ class SudoAutomationPlugin(
         if (message.isOutgoing || message.chatId <= 0L) return false
         val sender = message.senderId?.toLongOrNull() ?: return false
         if (sender == ownerId()) return false
-        val first = message.text.trim().substringBefore(Regex("\\s+")).lowercase()
+        val first = message.text.trim().split(Regex("\\s+")).firstOrNull().orEmpty().lowercase()
         if (first in setOf(".addsudo", ".delsudo", ".listsudo")) return false
         return sender in ids()
     }
@@ -47,9 +47,11 @@ class SudoAutomationPlugin(
             }
             "delsudo" -> {
                 if (target == null || target <= 0L) return context.reply("Usage: .delsudo <user id> or reply to a user's message")
-                val updated = ids() - target
+                val previous = ids()
+                if (target !in previous) return context.reply("That user was not a sudo user.")
+                val updated = previous - target
                 preferences.edit().putStringSet("sudo_ids", updated.map(Long::toString).toSet()).apply()
-                context.reply(if (updated.size == ids().size) "That user was not a sudo user." else "Sudo access removed from $target.")
+                context.reply("Sudo access removed from $target.")
             }
         }
     }
