@@ -36,10 +36,10 @@ class WelcomeAutomationPlugin(private val prefs: SharedPreferences) : Automation
         val update = context.update as? TdApi.UpdateNewMessage ?: return
         val message = update.message
         val added = message.content as? TdApi.MessageChatAddMembers ?: return
-        if (added.memberUserIds.isEmpty()) return
+        if (added.memberUserIds.size == 0) return
         val template = prefs.getString("welcome:${message.chatId}", null) ?: return
         val chat = context.telegram?.cachedChat(message.chatId)
-        val names = added.memberUserIds.mapNotNull { id ->
+        val names = added.memberUserIds.toList().mapNotNull { id ->
             context.telegram?.cachedUser(id)?.let { user ->
                 listOf(user.firstName, user.lastName).filter { it.isNotBlank() }.joinToString(" ")
             }
