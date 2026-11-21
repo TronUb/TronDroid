@@ -2,7 +2,7 @@ package com.vikram.trondroid.plugins
 
 import android.content.Context
 
-data class PluginCommand(val name: String, val description: String, val usage: String)
+data class PluginCommand(val name: String, val description: String, val usage: String, val example: String)
 enum class PluginOwner(val label: String) { USERBOT("Userbot"), BOT("Bot") }
 
 data class BotPlugin(
@@ -23,12 +23,26 @@ object PluginCatalog {
     ) = BotPlugin(
         id, title, summary, category, owner, source,
         commands.map { name ->
-            val usage = when {
-                name in setOf("wiki", "imdb", "reddit", "r", "translate", "tr", "tl", "upcase", "joke", "weather", "currency", "paste", "google", "img", "download", "upload", "ytsearch", "song", "lyrics", "whois", "id") -> "$name <query/text>"
-                name in setOf("ban", "mute", "kick", "promote", "demote", "pin", "unpin") -> "$name <reply/user>"
+            val usage = when (name) {
+                in setOf("wiki", "imdb", "reddit", "r", "translate", "tr", "tl", "upcase", "joke", "weather", "currency", "paste", "google", "img", "download", "upload", "ytsearch", "song", "lyrics", "whois", "id", "qrcode", "tts", "ud", "short", "unshort", "telegraph", "carbon", "search", "pic") -> "$name <query>"
+                in setOf("ban", "mute", "kick", "promote", "demote", "pin", "unpin", "block", "unblock", "approve", "disapprove") -> "$name <reply or user>"
+                in setOf("afk", "setwelcome", "welcome", "save", "setdv", "filter", "schedule", "settitle") -> "$name <text>"
+                in setOf("purge", "purgecount", "spam", "dspam", "vcut", "vspeed") -> "$name <count or options>"
                 else -> name
             }
-            PluginCommand(name, "$title: $name command.", usage)
+            val example = when (name) {
+                "wiki" -> "wiki quantum mechanics"
+                "imdb" -> "imdb Interstellar"
+                "translate", "tr", "tl" -> "$name en Hello, how are you?"
+                "reddit", "r" -> "$name android"
+                "weather" -> "weather Pune"
+                "currency", "cur" -> "$name 100 USD INR"
+                "qrcode" -> "qrcode https://example.com"
+                "afk" -> "afk Having lunch"
+                "ping", "alive", "ialive", "help", "stats", "today", "time", "date" -> name
+                else -> usage
+            }
+            PluginCommand(name, "$title command. $summary", usage, example)
         }, ready
     )
 

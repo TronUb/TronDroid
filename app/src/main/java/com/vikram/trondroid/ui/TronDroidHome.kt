@@ -886,8 +886,12 @@ private fun PluginDetailScreen(modifier: Modifier, id: String) {
                     )
                     Text(command.description, style = MaterialTheme.typography.bodyMedium)
                     Text(
-                        "Usage: " + (if (isBot || command.usage.startsWith("/")) command.usage
-                            else PluginSettings(context).handler() + command.usage),
+                        "Usage: " + (if (isBot) "/" else PluginSettings(context).handler()) + command.usage,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        "Example: " + (if (isBot) "/" else PluginSettings(context).handler()) + command.example,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
