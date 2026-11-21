@@ -17,6 +17,8 @@ import com.vikram.trondroid.automation.AnimeAutomationPlugin
 import com.vikram.trondroid.automation.FunAutomationPlugin
 import com.vikram.trondroid.automation.HelpAutomationPlugin
 import com.vikram.trondroid.plugins.PluginSettings
+import com.vikram.trondroid.plugins.ExternalPluginLoader
+import android.net.Uri
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -94,6 +96,14 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
     fun registerAutomationPlugin(plugin: AutomationPlugin) {
         automation.register(plugin)
         log("Automation plugin registered: ${plugin.id}")
+    }
+
+    fun loadExternalPlugins(uri: Uri): Int {
+        val loaded = ExternalPluginLoader.import(context, uri).filterIsInstance<AutomationPlugin>()
+        require(loaded.isNotEmpty()) { "No AutomationPlugin implementation was found in this file." }
+        loaded.forEach(automation::register)
+        log("Loaded ${loaded.size} external userbot plugin(s)")
+        return loaded.size
     }
 
     fun unregisterAutomationPlugin(pluginId: String) {
