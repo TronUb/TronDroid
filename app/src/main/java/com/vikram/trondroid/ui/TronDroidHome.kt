@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -20,6 +21,7 @@ import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -37,8 +39,6 @@ private enum class Tab { USERBOTS, PLUGINS, SETTINGS }
 private sealed interface Page {
     data object Home : Page
     data class Userbot(val id: String) : Page
-    data object Credentials : Page
-    data class CredentialDetail(val id: String) : Page
     data object GeneralSettings : Page
     data object Updater : Page
     data class PluginDetail(val id: String) : Page
@@ -51,6 +51,9 @@ fun TronDroidHome(
     onSelect: (String) -> Unit, onAdd: (String, String, Int, String) -> Unit,
     onRemove: (String) -> Unit, onToggle: (String, Boolean) -> Unit, onReadApiHash: (String) -> String?,
     onUpdateApiHash: (String, String) -> Unit,
+    onReadCustomCredentials: (String) -> Map<String, String>,
+    onSaveCustomCredentials: (String, Map<String, String>) -> Unit,
+    onBotToggle: (String, Boolean) -> Unit,
     themeMode: String, onThemeChange: (String) -> Unit
 ) {
     var tab by remember { mutableStateOf(Tab.USERBOTS) }
@@ -66,8 +69,6 @@ fun TronDroidHome(
     val title = when (val p = page) {
         Page.Home -> when (tab) { Tab.USERBOTS -> "Userbots"; Tab.PLUGINS -> "Plugins"; Tab.SETTINGS -> "Settings" }
         is Page.Userbot -> bots.firstOrNull { it.id == p.id }?.name ?: "Userbot"
-        Page.Credentials -> "Credentials"
-        is Page.CredentialDetail -> bots.firstOrNull { it.id == p.id }?.name ?: "Credentials"
         Page.GeneralSettings -> "General"
         Page.Updater -> "App updates"
         is Page.PluginDetail -> PluginCatalog.all.firstOrNull { it.id == p.id }?.title ?: "Plugin"
@@ -116,7 +117,7 @@ fun TronDroidHome(
                 }, onToggle = { id, enabled -> onToggle(id, enabled) })
                 Tab.PLUGINS -> PluginsScreen(Modifier.padding(padding), onOpen = { navigate(Page.PluginDetail(it)) })
                 Tab.SETTINGS -> SettingsScreen(Modifier.padding(padding),
-                    onCredentials = { navigate(Page.Credentials) }, onGeneral = { navigate(Page.GeneralSettings) }, onUpdater = { navigate(Page.Updater) }, themeMode = themeMode, onThemeChange = onThemeChange)
+                    onGeneral = { navigate(Page.GeneralSettings) }, onUpdater = { navigate(Page.Updater) }, themeMode = themeMode, onThemeChange = onThemeChange)
             }
             is Page.Userbot -> {
                 val bot = bots.firstOrNull { it.id == current.id }
@@ -126,17 +127,13 @@ fun TronDroidHome(
                     engine = if (selected?.id == current.id) engine else null,
                     apiHash = bot?.let { onReadApiHash(it.id) }.orEmpty(),
                     onSaveApiHash = { value -> bot?.let { onUpdateApiHash(it.id, value) } },
+                    customCredentials = bot?.let { onReadCustomCredentials(it.id) }.orEmpty(),
+                    onSaveCustomCredentials = { values -> bot?.let { onSaveCustomCredentials(it.id, values) } },
                     onDelete = { if (bot != null) pendingDelete = bot },
                     onLogout = { if (bot != null) pendingLogout = bot },
-                    onToggle = onToggle
+                    onToggle = onToggle,
+                    onBotToggle = onBotToggle
                 )
-            }
-            Page.Credentials -> CredentialsScreen(Modifier.padding(padding), bots, onOpen = { navigate(Page.CredentialDetail(it)) })
-            is Page.CredentialDetail -> {
-                val bot = bots.firstOrNull { it.id == current.id }
-                if (bot != null) CredentialDetailScreen(Modifier.padding(padding), bot,
-                    apiHash = onReadApiHash(bot.id).orEmpty(),
-                    onSaveApiHash = { onUpdateApiHash(bot.id, it) })
             }
             Page.GeneralSettings -> GeneralSettingsScreen(Modifier.padding(padding))
             Page.Updater -> AppUpdaterScreen(Modifier.padding(padding))
@@ -201,7 +198,7 @@ private fun UserbotsScreen(modifier: Modifier, bots: List<BotProfile>, onOpen: (
 }
 
 private enum class UserbotSection(val label: String) {
-    GENERAL("General"), LOGS("Logs"), CREDENTIALS("Credentials"), INSIGHTS("Insights")
+    GENERAL("General"), LOGS("Logs"), CREDENTIALS("Credentials"), INSIGHTS("Insights"), DANGER("Danger zone")
 }
 
 @Composable
@@ -211,9 +208,12 @@ private fun UserbotDetailScreen(
     engine: TelegramEngine?,
     apiHash: String,
     onSaveApiHash: (String) -> Unit,
+    customCredentials: Map<String, String>,
+    onSaveCustomCredentials: (Map<String, String>) -> Unit,
     onDelete: () -> Unit,
     onLogout: () -> Unit,
-    onToggle: (String, Boolean) -> Unit
+    onToggle: (String, Boolean) -> Unit,
+    onBotToggle: (String, Boolean) -> Unit
 ) {
     if (bot == null) return
     val auth = engine?.authorization?.collectAsState()?.value
@@ -244,6 +244,7 @@ private fun UserbotDetailScreen(
                                 UserbotSection.LOGS -> Icons.Rounded.Terminal
                                 UserbotSection.CREDENTIALS -> Icons.Rounded.Key
                                 UserbotSection.INSIGHTS -> Icons.Rounded.Insights
+                                UserbotSection.DANGER -> Icons.Rounded.WarningAmber
                             },
                             contentDescription = null
                         )
