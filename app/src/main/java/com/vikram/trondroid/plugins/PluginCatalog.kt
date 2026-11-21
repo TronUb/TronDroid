@@ -34,7 +34,7 @@ object PluginCatalog {
 
     val userbot = listOf(
         plugin("userbot:admin","Admin","Group moderation, member management and permission controls.","Moderation",PluginOwner.USERBOT,"main/userbot/modules/plugins/admin.py",false,"ban","banall","unban","mute","unmute","kick","pin","unpin","promote","demote"),
-        plugin("userbot:afk","AFK","Automatically manage away status and reply to mentions.","Automation",PluginOwner.USERBOT,"main/userbot/modules/plugins/afk.py",false,"afk","offlinemention","unafk"),
+        plugin("userbot:afk","AFK","Automatically manage away status and reply to mentions.","Automation",PluginOwner.USERBOT,"main/userbot/modules/plugins/afk.py",true,"afk","offlinemention","unafk"),
         plugin("userbot:alive","Alive","Show connected account and app runtime status.","Status",PluginOwner.USERBOT,"main/userbot/modules/plugins/alive.py",true,"alive","ialive"),
         plugin("userbot:anime","Anime","Fetch anime images and GIFs by action.","Entertainment",PluginOwner.USERBOT,"main/userbot/modules/plugins/anime.py",true,"animelist","nekopic","npic","animegif"),
         plugin("userbot:broadcast","Broadcast","Send an announcement to selected chats.","Messaging",PluginOwner.USERBOT,"main/userbot/modules/plugins/broadcast.py",false,"broadcast"),
@@ -51,8 +51,8 @@ object PluginCatalog {
         plugin("userbot:imdb","IMDb","Find movies and series using IMDb title search.","Search",PluginOwner.USERBOT,"main/userbot/modules/plugins/imdb.py",true,"imdb"),
         plugin("userbot:info","Media & chat info","Inspect media metadata and chat information.","Information",PluginOwner.USERBOT,"main/userbot/modules/plugins/info.py",false,"minfo","chatinfo"),
         plugin("userbot:keyboard","Keyboard","Create custom reply keyboards.","Messaging",PluginOwner.USERBOT,"main/userbot/modules/plugins/keyboard.py",false,"keyboard"),
-        plugin("userbot:notes","Notes","Save, retrieve, list and clear personal notes.","Productivity",PluginOwner.USERBOT,"main/userbot/modules/plugins/notes.py",false,"save","notes","getnote","notelist","clear"),
-        plugin("userbot:pastebin","Pastebin","Publish text snippets and return shareable links.","Utilities",PluginOwner.USERBOT,"main/userbot/modules/plugins/pastebin.py",false,"paste"),
+        plugin("userbot:notes","Notes","Save, retrieve, list and clear personal notes.","Productivity",PluginOwner.USERBOT,"main/userbot/modules/plugins/notes.py",true,"save","notes","getnote","notelist","clear"),
+        plugin("userbot:pastebin","Pastebin","Publish text snippets and return shareable links.","Utilities",PluginOwner.USERBOT,"main/userbot/modules/plugins/pastebin.py",true,"paste"),
         plugin("userbot:ping","Ping","Check the userbot command response.","Diagnostics",PluginOwner.USERBOT,"main/userbot/modules/plugins/ping.py",true,"ping"),
         plugin("userbot:pmpermit","PM permit","Control private-message approval and allow-list behaviour.","Privacy",PluginOwner.USERBOT,"main/userbot/modules/plugins/pmpermit.py",false,"pmpermit","approve","disapprove"),
         plugin("userbot:power","Power","Device power actions from the original host environment are not available on Android.","System",PluginOwner.USERBOT,"main/userbot/modules/plugins/power.py",false,"reboot","sleep"),
@@ -76,6 +76,10 @@ object PluginCatalog {
         plugin("userbot:utube","YouTube","Search videos, inspect video information and download media.","Media",PluginOwner.USERBOT,"main/userbot/modules/plugins/utube.py",false,"ytsearch","ytinfo","ytmdl"),
         plugin("userbot:videotools","Video tools","Trim, mute, invert, speed and transform video or audio.","Media",PluginOwner.USERBOT,"main/userbot/modules/plugins/videotools.py",false,"vcut","vinvert","vmute","vsubclip","vafadein","vafadeout","vsetaudio","vspeed","vfadeout","vfadein"),
         plugin("userbot:welcome","Welcome","Configure and send group welcome messages.","Groups",PluginOwner.USERBOT,"main/userbot/modules/plugins/welcome.py",false,"welcome","setwelcome","delwelcome","getwelcome"),
+        plugin("userbot:weather","Weather","Show current weather for a city.","Utilities",PluginOwner.USERBOT,"main/userbot/modules/plugins/supertools.py",true,"weather"),
+        plugin("userbot:currency","Currency","Convert between supported currencies.","Utilities",PluginOwner.USERBOT,"main/userbot/modules/plugins/tools.py",true,"currency","cur"),
+        plugin("userbot:temperature","Temperature","Convert Celsius and Fahrenheit.","Utilities",PluginOwner.USERBOT,"main/userbot/modules/plugins/tools.py",true,"temp"),
+        plugin("userbot:qrcode","QR code","Create a QR code for text or a URL.","Utilities",PluginOwner.USERBOT,"main/userbot/modules/plugins/image.py",true,"qrcode"),
         plugin("userbot:wikipedia","Wikipedia","Search Wikipedia articles and read concise summaries.","Search",PluginOwner.USERBOT,"main/userbot/modules/plugins/wikipedia.py",true,"wiki"),
         plugin("userbot:zombies","Zombie cleanup","Find and remove deleted or inactive accounts from groups.","Moderation",PluginOwner.USERBOT,"main/userbot/modules/plugins/zombies.py",false,"zombies")
     )
