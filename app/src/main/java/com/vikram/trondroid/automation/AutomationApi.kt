@@ -1,5 +1,7 @@
 package com.vikram.trondroid.automation
 
+import org.drinkless.tdlib.TdApi
+
 data class AutomationMessage(
     val chatId: Long,
     val messageId: Long,
@@ -14,6 +16,7 @@ data class AutomationCommand(
     val usage: String = name
 )
 
+/** Context shared by command handlers and normal message handlers. */
 data class AutomationContext(
     val message: AutomationMessage,
     val command: String? = null,
@@ -22,11 +25,22 @@ data class AutomationContext(
     val replyAfter: (Long, String) -> Unit = { _, text -> reply(text) }
 )
 
+/**
+ * Every TDLib Update is delivered to registered plugins through this context.
+ * Keep the original TDLib object intact: plugin implementations can inspect the
+ * exact update subtype and request additional data through the engine gateway.
+ */
+data class AutomationUpdateContext(
+    val update: TdApi.Update,
+    val reply: (chatId: Long, text: String) -> Unit
+)
+
 interface AutomationPlugin {
     val id: String
     val commands: List<AutomationCommand> get() = emptyList()
     fun onMessage(context: AutomationContext) = Unit
     fun onCommand(context: AutomationContext) = Unit
+    fun onTelegramUpdate(context: AutomationUpdateContext) = Unit
 }
 
 fun interface AutomationFilter {
