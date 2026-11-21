@@ -10,7 +10,12 @@ class ProfileAutomationPlugin : AutomationPlugin {
     override val commands = listOf(
         AutomationCommand("id", "Show user and chat IDs, including the replied user.", "id (reply optional)"),
         AutomationCommand("whois", "Show the profile of a replied user or numeric Telegram user ID.", "whois <user id>"),
-        AutomationCommand("uinfo", "Alias for whois.", "uinfo <user id>")
+        AutomationCommand("uinfo", "Alias for whois.", "uinfo <user id>"),
+        AutomationCommand("mention", "Create a Telegram mention link for a user ID.", "mention <user id> <display text>"),
+        AutomationCommand("block", "Block a user by ID or replied message.", "block <user id> (or reply)"),
+        AutomationCommand("unblock", "Unblock a user by ID or replied message.", "unblock <user id> (or reply)"),
+        AutomationCommand("sg", "Send a replied user profile link and ID to Saved Messages.", "sg (reply optional)"),
+        AutomationCommand("repo", "Show the TronDroid source repository.", "repo")
     )
 
     override fun onCommand(context: AutomationContext) {
@@ -25,6 +30,30 @@ class ProfileAutomationPlugin : AutomationPlugin {
                 sender?.let { lines.add("Your ID: $it") }
                 replySender?.let { lines.add("Replied user ID: $it") }
                 context.reply(lines.joinToString("\n"))
+            }
+            "repo" -> context.reply("TronDroid source: https://github.com/TronUb/TronDroid")
+            "mention" -> {
+                val id = context.arguments.firstOrNull()?.toLongOrNull()
+                    ?: return context.reply("Usage: .mention <user id> <display text>")
+                val label = context.arguments.drop(1).joinToString(" ").ifBlank { "User" }
+                context.reply("$label (tg://user?id=$id)")
+            }
+            "block", "unblock" -> {
+                val replied = message?.let { gateway?.repliedMessage(it) }
+                val target = context.arguments.firstOrNull()?.toLongOrNull() ?: replied?.senderUserId()
+                    ?: return context.reply("Usage: .${context.command} <user id> or reply to a user message")
+                val blockList = if (context.command == "block") TdApi.BlockListMain() else null
+                gateway?.send(TdApi.SetMessageSenderBlockList(TdApi.MessageSenderUser(target), blockList)) { result ->
+                    context.reply(if (result is TdApi.Error) "Telegram error: ${result.message}" else if (context.command == "block") "User blocked." else "User unblocked.")
+                }
+            }
+            "sg" -> {
+                val replied = message?.let { gateway?.repliedMessage(it) }
+                val target = replied?.senderUserId() ?: message?.senderUserId()
+                val saved = if (target != null) "User ID: $target\nProfile: tg://user?id=$target" else "Current chat ID: ${context.message.chatId}"
+                gateway?.sendToSavedMessages(saved) { result ->
+                    context.reply(if (result is TdApi.Error) "Saved Messages failed: ${result.message}" else "Sent to Saved Messages.")
+                }
             }
             "whois", "uinfo" -> {
                 val message = context.message.tdMessage
