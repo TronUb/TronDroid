@@ -126,8 +126,8 @@ class TelegramClientGateway(
 
     fun sendDocumentPath(chatId: Long, path: String, caption: String = "", callback: (TdApi.Object) -> Unit = {}) {
         val content = TdApi.InputMessageDocument(
-            TdApi.InputFileLocal(path), null,
-            TdApi.FormattedText(caption.take(1024), emptyArray()), false
+            TdApi.InputFileLocal(path), null, false,
+            TdApi.FormattedText(caption.take(1024), emptyArray())
         )
         send(TdApi.SendMessage(chatId, null, null, null, null, content), callback)
     }
