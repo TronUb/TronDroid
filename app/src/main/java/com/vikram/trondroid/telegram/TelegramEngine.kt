@@ -88,7 +88,11 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
     )
     /** Shared TDLib update stream used by every native and external plugin. */
     val updateHub = TelegramUpdateHub { message, isError -> log(message, isError) }
-    private val updateSubscription = updateHub.subscribe(automation::dispatchUpdate)
+    private val updateSubscription = updateHub.subscribe { update ->
+        // Queue update callbacks before message handlers on the same automation executor.
+        automation.dispatchUpdate(update)
+        if (update is TdApi.UpdateNewMessage) dispatchNewMessage(update.message)
+    }
 
     init {
         val nativePlugins = mutableListOf<AutomationPlugin>()
@@ -152,17 +156,6 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
         }
         when (result.constructor) {
             TdApi.UpdateAuthorizationState.CONSTRUCTOR -> onAuthorizationState((result as TdApi.UpdateAuthorizationState).authorizationState)
-            TdApi.UpdateNewMessage.CONSTRUCTOR -> {
-                val message = (result as TdApi.UpdateNewMessage).message
-                val text = (message.content as? TdApi.MessageText)?.text?.text.orEmpty()
-                val direction = if (message.isOutgoing) "OUTGOING →" else "INCOMING ←"
-                val preview = text.ifBlank { "[${message.content.javaClass.simpleName}]" }.replace("\n", " ").take(180)
-                val chatName = _chats.value.firstOrNull { it.id == message.chatId }?.title ?: "chat ${message.chatId}"
-                log("$direction $chatName: $preview")
-                if (text.isNotBlank()) automation.dispatch(AutomationMessage(
-                    chatId = message.chatId, messageId = message.id, text = text, isOutgoing = message.isOutgoing
-                ))
-            }
             TdApi.User.CONSTRUCTOR -> updateAccount(result as TdApi.User)
             TdApi.File.CONSTRUCTOR -> {
                 val file = result as TdApi.File
@@ -185,6 +178,24 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
             }
         }
     }
+    private fun dispatchNewMessage(message: TdApi.Message) {
+        val text = (message.content as? TdApi.MessageText)?.text?.text.orEmpty()
+        val direction = if (message.isOutgoing) "OUTGOING →" else "INCOMING ←"
+        val preview = text.ifBlank { "[${message.content.javaClass.simpleName}]" }.replace("\n", " ").take(180)
+        val chatName = _chats.value.firstOrNull { it.id == message.chatId }?.title ?: "chat ${message.chatId}"
+        log("$direction $chatName: $preview")
+        if (text.isNotBlank()) automation.dispatch(
+            AutomationMessage(
+                chatId = message.chatId,
+                messageId = message.id,
+                text = text,
+                isOutgoing = message.isOutgoing,
+                senderId = (message.senderId as? TdApi.MessageSenderUser)?.userId?.toString(),
+                tdMessage = message
+            )
+        )
+    }
+
     private fun onAuthorizationState(state: TdApi.AuthorizationState) {
         _authorization.value = state
         when (state.constructor) {
