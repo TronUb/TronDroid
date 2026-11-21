@@ -483,8 +483,12 @@ class FunAutomationPlugin : AutomationPlugin {
                     if (wrong != null) for (i in 0 until wrong.length()) options += wrong.optString(i)
                     options.add(correct)
                     options.shuffle()
+                    val gateway = context.telegram ?: return@run "Telegram session is unavailable."
+                    gateway.sendToSavedMessages("Correct answer:\n$correct") { response ->
+                        if (response is TdApi.Error) context.reply("Unable to save the answer: ${response.message}")
+                    }
                     val formatted = options.mapIndexed { i, value -> "${i + 1}. $value" }.joinToString("\n")
-                    "Trivia question:\n$question\n\n$formatted\n\nCorrect answer: $correct"
+                    "Trivia question:\n$question\n\n$formatted\n\nAnswer saved in your Saved Messages."
                 }
             }
         }
