@@ -209,7 +209,7 @@ private fun UserbotsScreen(modifier: Modifier, bots: List<BotProfile>, onOpen: (
             }
         }
         items(bots, key = { it.id }) { bot ->
-            ElevatedCard(onClick = { onOpen(bot.id) }, shape = RoundedCornerShape(20.dp)) {
+            Card(onClick = { onOpen(bot.id) }, shape = RoundedCornerShape(20.dp)) {
                 Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Rounded.AccountCircle, null, Modifier.size(38.dp), tint = MaterialTheme.colorScheme.primary)
                     Spacer(Modifier.width(12.dp))
@@ -534,7 +534,7 @@ private fun UserbotDetailScreen(
                                 ElevatedCard(
                                     Modifier.weight(1f),
                                     shape = RoundedCornerShape(20.dp),
-                                    colors = CardDefaults.elevatedCardColors(
+                                    colors = CardDefaults.cardColors(
                                         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
                                     )
                                 ) {
@@ -823,7 +823,7 @@ private fun PluginsScreen(modifier: Modifier, selectedOwner: Int, onOwnerChange:
                         Column(Modifier.weight(1f)) {
                             Text(plugin.title, style = MaterialTheme.typography.titleMedium)
                             Text(
-                                plugin.category + " · " + plugin.commands.size + " commands",
+                                plugin.category + " · " + plugin.commands.size + " commands · " + (if (plugin.implemented) "Native" else "Not ported"),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -861,6 +861,15 @@ private fun PluginDetailScreen(modifier: Modifier, id: String) {
                     Text(plugin.summary, style = MaterialTheme.typography.bodyLarge)
                     Text(plugin.category, style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.primary)
+                    Surface(
+                        shape = RoundedCornerShape(50),
+                        color = if (plugin.implemented) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.tertiaryContainer
+                    ) {
+                        Text(if (plugin.implemented) "Native Android implementation" else "Not yet ported to Android",
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = if (plugin.implemented) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onTertiaryContainer)
+                    }
                 }
             }
         }
