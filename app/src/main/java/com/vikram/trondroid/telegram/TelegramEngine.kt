@@ -60,6 +60,7 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
     private val _logs = MutableStateFlow<List<EngineLog>>(emptyList())
     val logs: StateFlow<List<EngineLog>> = _logs.asStateFlow()
     private val pluginSettings = PluginSettings(context)
+    private val telegramGateway = TelegramClientGateway { client }
     private val automation = AutomationDispatcher(
         commandPrefix = { pluginSettings.handler() },
         isPluginEnabled = { pluginSettings.enabled(it) },
@@ -81,7 +82,8 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
                 } else log("Edited command message $messageId")
             }
         },
-        logger = { message, error -> log(message, error) }
+        logger = { message, error -> log(message, error) },
+        telegramGateway = { telegramGateway }
     )
     /** Shared TDLib update stream used by every native and external plugin. */
     val updateHub = TelegramUpdateHub { message, isError -> log(message, isError) }
