@@ -185,7 +185,9 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
         val preview = text.ifBlank { "[${message.content.javaClass.simpleName}]" }.replace("\n", " ").take(180)
         val chatName = _chats.value.firstOrNull { it.id == message.chatId }?.title ?: "chat ${message.chatId}"
         log("$direction $chatName: $preview")
-        if (text.isNotBlank()) automation.dispatch(
+        // Deliver media-only messages too; plugins such as AFK and download
+        // handlers need the original TDLib message even when it has no text.
+        automation.dispatch(
             AutomationMessage(
                 chatId = message.chatId,
                 messageId = message.id,
