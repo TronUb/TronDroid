@@ -10,6 +10,8 @@ class AdminAutomationPlugin : AutomationPlugin {
         AutomationCommand("kick", "Remove a replied user or numeric Telegram user ID from this chat.", "kick <user id> (or reply)"),
         AutomationCommand("mute", "Restrict a replied user or numeric user ID for a duration (default 1 hour).", "mute <user id> [minutes] (or reply)"),
         AutomationCommand("unmute", "Restore a restricted user permissions.", "unmute <user id> (or reply)"),
+        AutomationCommand("promote", "Grant a member limited administrator rights (invite users).", "promote <user id> (or reply)"),
+        AutomationCommand("demote", "Remove administrator rights from a member.", "demote <user id> (or reply)"),
         AutomationCommand("pin", "Pin a replied message.", "pin (reply required)"),
         AutomationCommand("unpin", "Unpin a replied message, or unpin all messages with no reply.", "unpin (reply optional)")
     )
@@ -45,6 +47,18 @@ class AdminAutomationPlugin : AutomationPlugin {
                 }
                 gateway.send(TdApi.SetChatMemberStatus(context.message.chatId, TdApi.MessageSenderUser(targetId), status)) { result ->
                     context.reply(if (result is TdApi.Error) "Telegram error: ${result.message}" else if (context.command == "mute") "User muted." else "User unmuted.")
+                }
+            }
+            "promote", "demote" -> {
+                if (targetId == null || targetId <= 0L) return context.reply("Usage: .${context.command} <user id> or reply to a user message")
+                val status: TdApi.ChatMemberStatus = if (context.command == "demote") {
+                    TdApi.ChatMemberStatusMember()
+                } else {
+                    val rights = TdApi.ChatAdministratorRights(false, false, false, false, false, true, false, false, false, false, false, false, false, false, false)
+                    TdApi.ChatMemberStatusAdministrator("", false, rights)
+                }
+                gateway.send(TdApi.SetChatMemberStatus(context.message.chatId, TdApi.MessageSenderUser(targetId), status)) { result ->
+                    context.reply(if (result is TdApi.Error) "Telegram error: ${result.message}" else if (context.command == "promote") "User promoted with invite-only administrator rights." else "User demoted.")
                 }
             }
             "ban", "kick", "unban" -> {
