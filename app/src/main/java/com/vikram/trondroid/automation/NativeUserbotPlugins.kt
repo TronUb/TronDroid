@@ -428,15 +428,7 @@ class FunAutomationPlugin : AutomationPlugin {
                     options.add(correct)
                     options.shuffle()
                     val formatted = options.mapIndexed { i, value -> "${i + 1}. $value" }.joinToString("\n")
-                    context.telegram?.send(
-                        TdApi.SendMessage(
-                            context.message.chatId, null, null, null, null,
-                            TdApi.InputMessageText(
-                                TdApi.FormattedText("Correct answer: $correct", emptyArray()), null, true
-                            )
-                        )
-                    ) { }
-                    "Trivia question:\n$question\n\n$formatted\n\nAnswer sent to your Saved Messages is not supported yet."
+                    "Trivia question:\n$question\n\n$formatted\n\nCorrect answer: $correct"
                 }
             }
         }
