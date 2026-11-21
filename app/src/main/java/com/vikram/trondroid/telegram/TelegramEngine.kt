@@ -33,6 +33,8 @@ import com.vikram.trondroid.automation.SpamAutomationPlugin
 import com.vikram.trondroid.automation.DigitalVaultAutomationPlugin
 import com.vikram.trondroid.automation.TextToolsAutomationPlugin
 import com.vikram.trondroid.automation.WelcomeAutomationPlugin
+import com.vikram.trondroid.automation.AdminAutomationPlugin
+import com.vikram.trondroid.automation.BroadcastAutomationPlugin
 import com.vikram.trondroid.plugins.PluginSettings
 import com.vikram.trondroid.plugins.ExternalPluginLoader
 import android.net.Uri
@@ -127,6 +129,8 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
         nativePlugins += DigitalVaultAutomationPlugin(context.getSharedPreferences("trondroid.userbot.digital_vault", Context.MODE_PRIVATE))
         nativePlugins += TextToolsAutomationPlugin()
         nativePlugins += WelcomeAutomationPlugin(context.getSharedPreferences("trondroid.userbot.welcome", Context.MODE_PRIVATE))
+        nativePlugins += AdminAutomationPlugin()
+        nativePlugins += BroadcastAutomationPlugin()
         nativePlugins += WeatherAutomationPlugin()
         nativePlugins += CurrencyAutomationPlugin()
         nativePlugins += TemperatureAutomationPlugin()
