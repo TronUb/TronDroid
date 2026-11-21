@@ -79,7 +79,7 @@ object TelegramBotRuntime {
                             val name = result.optString("first_name").ifBlank {
                                 result.optString("username").ifBlank { "Telegram bot" }
                             }
-                            store.setBotName(profileId, name)
+                            store.setBotIdentity(profileId, name, result.optString("username").takeIf { it.isNotBlank() }, result.optLong("id").takeIf { it > 0 })
                             mutableNames.value = mutableNames.value + (profileId to name)
                             identityLoaded = true
                         } else {
