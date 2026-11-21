@@ -141,11 +141,34 @@ object TelegramBotRuntime {
                 return
             }
             val token = text.substringBefore(' ').substringBefore('@').removePrefix("/").lowercase()
+            if (token == "start" && chat.optString("type") == "private") rememberStartedUser(chatId)
             val builtInReply = when (token) {
                 "start" -> "Welcome! TronDroid bot is online. Send /help to see available commands."
                 "help" -> "Available commands:\n/start — Start the bot\n/help — Show this help\n/ping — Check bot response\n/id — Show user and chat IDs" +
                     externalPlugins.flatMap { it.commands }.joinToString("") { "\n/" + it.name + " — " + it.description }
                 "ping" -> "Pong! Telegram Bot API is responding."
+                "quote" -> listOf(
+                    "“The world is not perfect. But it is there for us, doing the best it can.” — Roy Mustang",
+                    "“Whatever you lose, you'll find it again. But what you throw away you'll never get back.” — Kenshin Himura",
+                    "“If you don't take risks, you can't create a future.” — Monkey D. Luffy",
+                    "“A lesson without pain is meaningless.” — Edward Elric",
+                    "“Knowing you're different is only the beginning.” — Natsuki Subaru"
+                ).random()
+                "broadcast" -> {
+                    val senderId = message.optJSONObject("from")?.optLong("id") ?: 0L
+                    val configuredOwner = store.customCredentials(profileId).entries
+                        .firstOrNull { it.key.equals("OWNER_ID", true) }?.value?.toLongOrNull()
+                        ?: preferences.getLong("bot_owner_id.$profileId", 0L)
+                    val body = text.substringAfter(' ', "").trim()
+                    if (configuredOwner <= 0L || senderId != configuredOwner) {
+                        "This command is restricted to the configured bot owner. Set OWNER_ID in this bot profile's credentials."
+                    } else if (body.isBlank()) {
+                        "Usage: /broadcast <message>"
+                    } else {
+                        val sent = broadcastToStartedUsers(body)
+                        "Broadcast complete. Sent: $sent"
+                    }
+                }
                 "id" -> {
                     val sender = message.optJSONObject("from") ?: JSONObject()
                     val replySender = message.optJSONObject("reply_to_message")?.optJSONObject("from")
@@ -167,6 +190,32 @@ object TelegramBotRuntime {
             }.onFailure { android.util.Log.e("TronDroidBot", "External plugin command failed", it) }
         }
 
+        private fun rememberStartedUser(chatId: Long) {
+            val key = "bot_started_ids.$profileId"
+            val ids = app.getSharedPreferences("trondroid.bot.runtime", Context.MODE_PRIVATE)
+                .getString(key, "").orEmpty().split(',').mapNotNull { it.toLongOrNull() }.toMutableSet()
+            ids.add(chatId)
+            app.getSharedPreferences("trondroid.bot.runtime", Context.MODE_PRIVATE)
+                .edit().putString(key, ids.joinToString(",")).apply()
+        }
+
+        private fun broadcastToStartedUsers(text: String): Int {
+            val key = "bot_started_ids.$profileId"
+            val ids = app.getSharedPreferences("trondroid.bot.runtime", Context.MODE_PRIVATE)
+                .getString(key, "").orEmpty().split(',').mapNotNull { it.toLongOrNull() }
+            var sent = 0
+            ids.forEach { userId ->
+                runCatching {
+                    val response = request(
+                        "sendMessage?chat_id=$userId&text=" +
+                            java.net.URLEncoder.encode(text.take(4000), Charsets.UTF_8.name())
+                    )
+                    if (response.optBoolean("ok")) sent++
+                }
+            }
+            return sent
+        }
+
         private fun handleNumberGame(message: JSONObject, chat: JSONObject, text: String) {
             if (chat.optString("type") !in setOf("group", "supergroup")) return
             if (!text.matches(Regex("[+-][1-9]"))) return
@@ -178,7 +227,7 @@ object TelegramBotRuntime {
             val key = "$profileId:" + chat.optLong("id") + ":" + userId
             val delta = text.drop(1).toInt() * if (text.startsWith("+")) 1 else -1
             val score = numberGameScores.compute(key) { _, previous -> (previous ?: 0) + delta } ?: delta
-            sendReply(chat.optLong("id"), target.optString("first_name") + ": $score points")
+            sendReply(chat.optLong("id"), target.optString("first_name") + ": $score increments")
         }
 
         private fun loadBotPhoto(botId: Long): String? {
