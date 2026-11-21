@@ -72,7 +72,7 @@ fun TronDroidHome(
         is Page.Userbot -> bots.firstOrNull { it.id == p.id }?.name ?: "Userbot"
         Page.GeneralSettings -> "General"
         Page.Updater -> "App updates"
-        is Page.PluginDetail -> PluginCatalog.all.firstOrNull { it.id == p.id }?.title ?: "Plugin"
+        is Page.PluginDetail -> PluginCatalog.find(p.id)?.title ?: "Plugin"
     }
     Scaffold(
         topBar = {
@@ -686,9 +686,9 @@ private fun PluginsScreen(modifier: Modifier, onOpen: (String) -> Unit) {
     val settings = remember { PluginSettings(context) }
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
     val keyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
-    var refresh by remember { mutableIntStateOf(0) }
     var selectedOwner by remember { mutableIntStateOf(0) }
     var handler by remember { mutableStateOf(settings.handler()) }
+    var savedPrefix by remember { mutableStateOf(settings.handler()) }
 
     Column(modifier.fillMaxSize().padding(horizontal = 18.dp)) {
         PrimaryTabRow(selectedTabIndex = selectedOwner, modifier = Modifier.padding(top = 4.dp)) {
@@ -716,54 +716,58 @@ private fun PluginsScreen(modifier: Modifier, onOpen: (String) -> Unit) {
                         val saved = handler.trim().ifBlank { "." }
                         settings.setHandler(saved)
                         handler = saved
+                        savedPrefix = saved
                         focusManager.clearFocus()
                         keyboard?.hide()
                     },
-                    enabled = handler.isNotBlank()
+                    enabled = handler.isNotBlank() && handler.trim() != savedPrefix
                 ) { Text("Save") }
             }
-            Text("Userbot plugin library", style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(top = 12.dp, bottom = 8.dp))
-            LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp),
-                contentPadding = PaddingValues(bottom = 24.dp)) {
-                items(PluginCatalog.all, key = { it.id }) { plugin ->
-                    val checked = remember(refresh, plugin.id) { settings.enabled(plugin.id) }
-                    ElevatedCard(onClick = { onOpen(plugin.id) }, shape = RoundedCornerShape(20.dp)) {
-                        Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Column(Modifier.weight(1f)) {
-                                Text(plugin.title, style = MaterialTheme.typography.titleMedium)
-                                Text("${plugin.commands.size} commands · ${plugin.category}",
-                                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+
+        val plugins = if (selectedOwner == 0) PluginCatalog.userbot else PluginCatalog.bot
+        Text(
+            if (selectedOwner == 0) "Userbot plugin library · " + plugins.size
+            else "Bot plugin library · " + plugins.size,
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(top = 14.dp, bottom = 8.dp)
+        )
+        LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = PaddingValues(bottom = 24.dp)) {
+            items(plugins, key = { it.id }) { plugin ->
+                ElevatedCard(onClick = { onOpen(plugin.id) }, shape = RoundedCornerShape(20.dp)) {
+                    Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Surface(
+                            shape = RoundedCornerShape(14.dp),
+                            color = MaterialTheme.colorScheme.secondaryContainer,
+                            modifier = Modifier.size(42.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    if (plugin.owner == com.vikram.trondroid.plugins.PluginOwner.BOT)
+                                        Icons.Rounded.SmartToy else Icons.Rounded.Extension,
+                                    null,
+                                    tint = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
                             }
-                            Switch(checked, { settings.setEnabled(plugin.id, it); refresh++ })
-                            Icon(Icons.Rounded.ChevronRight, null)
                         }
-                    }
-                }
-            }
-        } else {
-            Text("Bot plugin library", style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(top = 18.dp, bottom = 8.dp))
-            LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp),
-                contentPadding = PaddingValues(bottom = 24.dp)) {
-                item {
-                    ElevatedCard(shape = RoundedCornerShape(22.dp)) {
-                        ListItem(
-                            headlineContent = { Text("Bot API connection") },
-                            supportingContent = {
-                                Text("Bot tokens can connect and receive updates in the background. Bot command execution is not implemented yet, so bot plugins are not shown as active features.")
-                            },
-                            leadingContent = { Icon(Icons.Rounded.SmartToy, null, tint = MaterialTheme.colorScheme.primary) }
-                        )
-                    }
-                }
-                item {
-                    ElevatedCard(shape = RoundedCornerShape(20.dp)) {
-                        ListItem(
-                            headlineContent = { Text("Bot plugins are coming next") },
-                            supportingContent = { Text("This library is separate from userbot plugins. Enabling a userbot plugin will never enable it for a bot.") },
-                            leadingContent = { Icon(Icons.Rounded.Extension, null, tint = MaterialTheme.colorScheme.secondary) }
-                        )
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(plugin.title, style = MaterialTheme.typography.titleMedium)
+                            Text(
+                                plugin.category + " · Python source",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                if (plugin.requiresReview) "Source imported · review required"
+                                else "Source imported · Android port pending",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (plugin.requiresReview) MaterialTheme.colorScheme.error
+                                    else MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        Icon(Icons.Rounded.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
@@ -773,21 +777,78 @@ private fun PluginsScreen(modifier: Modifier, onOpen: (String) -> Unit) {
 
 @Composable
 private fun PluginDetailScreen(modifier: Modifier, id: String) {
-    val plugin = PluginCatalog.all.firstOrNull { it.id == id } ?: return
-    val handler = PluginSettings(androidx.compose.ui.platform.LocalContext.current).handler()
-    LazyColumn(modifier.fillMaxSize().padding(horizontal = 18.dp), contentPadding = PaddingValues(vertical = 16.dp)) {
+    val plugin = PluginCatalog.find(id) ?: return
+    val isBot = plugin.owner == com.vikram.trondroid.plugins.PluginOwner.BOT
+    LazyColumn(
+        modifier.fillMaxSize().padding(horizontal = 18.dp),
+        contentPadding = PaddingValues(vertical = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
         item {
-            Text(plugin.summary, style = MaterialTheme.typography.bodyLarge)
-            Text("Commands", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 20.dp, bottom = 8.dp))
-        }
-        items(plugin.commands) { command ->
-            ElevatedCard(shape = RoundedCornerShape(16.dp), modifier = Modifier.padding(bottom = 8.dp)) {
-                Column(Modifier.fillMaxWidth().padding(16.dp)) {
-                    Text(handler + command.name, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-                    Text(command.description, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 4.dp))
-                    Text("Usage: " + handler + command.usage, style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 6.dp))
+            ElevatedCard(shape = RoundedCornerShape(22.dp)) {
+                Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            if (isBot) Icons.Rounded.SmartToy else Icons.Rounded.Extension,
+                            null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(plugin.owner.label + " plugin", style = MaterialTheme.typography.labelLarge)
+                    }
+                    Text(plugin.summary, style = MaterialTheme.typography.bodyLarge)
+                    Text(plugin.category, style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary)
                 }
+            }
+        }
+        item {
+            ElevatedCard(shape = RoundedCornerShape(22.dp)) {
+                ListItem(
+                    headlineContent = { Text("Source module") },
+                    supportingContent = { Text(plugin.sourcePath) },
+                    leadingContent = { Icon(Icons.Rounded.Code, null) }
+                )
+            }
+        }
+        item {
+            ElevatedCard(shape = RoundedCornerShape(22.dp)) {
+                Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Rounded.Info, null, tint = MaterialTheme.colorScheme.primary)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Android compatibility", style = MaterialTheme.typography.titleMedium)
+                    }
+                    Text(
+                        "This entry is imported from TronUb/Tron. Its Python/Pyrogram implementation is not executable inside the native TDLib runtime yet. It must be ported and tested before commands can be enabled.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    if (plugin.requiresReview) {
+                        HorizontalDivider()
+                        Text(
+                            "Review this module carefully before porting because it can perform sensitive account, moderation, or messaging actions.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+            }
+        }
+        item {
+            OutlinedButton(
+                onClick = {
+                    val intent = android.content.Intent(
+                        android.content.Intent.ACTION_VIEW,
+                        android.net.Uri.parse("https://github.com/TronUb/Tron/blob/master/" + plugin.sourcePath)
+                    )
+                    androidx.compose.ui.platform.LocalContext.current.startActivity(intent)
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Rounded.OpenInNew, null)
+                Spacer(Modifier.width(8.dp))
+                Text("View source on GitHub")
             }
         }
     }
