@@ -68,7 +68,7 @@ object PluginCatalog {
         plugin("userbot:keyboard","Keyboard","Create custom reply keyboards.","Messaging",PluginOwner.USERBOT,"main/userbot/modules/plugins/keyboard.py",false,"keyboard"),
         plugin("userbot:notes","Notes","Save, retrieve, list and clear personal notes.","Productivity",PluginOwner.USERBOT,"main/userbot/modules/plugins/notes.py",true,"save","notes","getnote","notelist","clear"),
         plugin("userbot:pastebin","Pastebin","Publish text snippets and return shareable links.","Utilities",PluginOwner.USERBOT,"main/userbot/modules/plugins/pastebin.py",true,"paste","bin"),
-        plugin("userbot:ping","Ping","Check the userbot command response.","Diagnostics",PluginOwner.USERBOT,"main/userbot/modules/plugins/ping.py",true,"ping"),
+        plugin("userbot:ping","Ping","Check the userbot command response.","Diagnostics",PluginOwner.USERBOT,"main/userbot/modules/plugins/ping.py",true,"ping","pong"),
         plugin("userbot:pmpermit","PM permit","Control private-message approval and allow-list behaviour.","Privacy",PluginOwner.USERBOT,"main/userbot/modules/plugins/pmpermit.py",false,"pmpermit","approve","disapprove"),
         plugin("userbot:power","Power","Device power actions from the original host environment are not available on Android.","System",PluginOwner.USERBOT,"main/userbot/modules/plugins/power.py",false,"reboot","sleep"),
         plugin("userbot:profile","Profile","Look up Telegram users, IDs and profile-related information.","Profile",PluginOwner.USERBOT,"main/userbot/modules/plugins/profile.py",false,"whois","id","mention","uinfo","block","unblock","sg","set","rem","repo"),
