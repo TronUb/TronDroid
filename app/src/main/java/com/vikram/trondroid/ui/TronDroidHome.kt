@@ -1114,6 +1114,39 @@ private fun GeneralSettingsScreen(modifier: Modifier) {
             }
         }
         Card(shape = RoundedCornerShape(22.dp)) {
+            Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("Background reliability", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    "Android can pause network activity when the app is restricted. Review these system settings to keep enabled Telegram sessions connected.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                OutlinedButton(
+                    onClick = {
+                        val intent = android.content.Intent(android.provider.Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+                        runCatching { context.startActivity(intent) }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Rounded.BatteryFull, null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Open battery optimization settings")
+                }
+                OutlinedButton(
+                    onClick = {
+                        val intent = android.content.Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                            .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName)
+                        runCatching { context.startActivity(intent) }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Rounded.Notifications, null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Open notification settings")
+                }
+            }
+        }
+        Card(shape = RoundedCornerShape(22.dp)) {
             Column(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
                 ListItem(
                     headlineContent = { Text("Userbot sessions") },
