@@ -79,33 +79,75 @@ class PublishingAutomationPlugin(private val cacheDir: File) : AutomationPlugin 
 
     private fun telegraph(context: AutomationContext) {
         val gateway = context.telegram ?: return context.reply("Telegram session is unavailable.")
-        val source = context.message.tdMessage
-        val replied = source?.let(gateway::repliedMessage)
-            ?: return context.reply("Reply to a text message with .telegraph")
-        val text = (replied.content as? TdApi.MessageText)?.text?.text
-            ?: return context.reply("Currently .telegraph publishes replied text messages. Media publishing is being added separately.")
-        if (text.isBlank() || text.length > 4000) return context.reply("Text must contain 1–4000 characters.")
-        context.reply("Publishing Telegraph page…")
-        Thread({
-            runCatching {
-                val account = JSONObject(PluginHttp.request(
-                    "https://api.telegra.ph/createAccount",
-                    "POST",
-                    JSONObject().put("short_name", "TronDroid").put("author_name", "TronDroid").toString()
-                ))
-                require(account.optBoolean("ok")) { account.optJSONObject("error")?.optString("message") ?: "Unable to create Telegraph account." }
-                val token = account.getJSONObject("result").getString("access_token")
-                val content = org.json.JSONArray().put(JSONObject().put("tag", "p").put("children", org.json.JSONArray().put(text)))
-                val pageBody = JSONObject().put("access_token", token)
-                    .put("title", "Telegram message")
-                    .put("author_name", "TronDroid")
-                    .put("content", content)
-                    .put("return_content", false)
-                val page = JSONObject(PluginHttp.request("https://api.telegra.ph/createPage", "POST", pageBody.toString()))
-                require(page.optBoolean("ok")) { page.optJSONObject("error")?.optString("message") ?: "Unable to publish page." }
-                page.getJSONObject("result").getString("url")
-            }.onSuccess { context.reply("Telegraph page: $it") }
-                .onFailure { context.reply("Telegraph failed: ${it.message ?: "unknown error"}") }
-        }, "TronDroid-Telegraph").apply { isDaemon = true }.start()
+        val replied = context.message.tdMessage?.let(gateway::repliedMessage)
+            ?: return context.reply("Reply to text or supported media with .telegraph")
+        val text = (replied.content as? TdApi.MessageText)?.text?.text.orEmpty()
+        val fileId = when (val media = replied.content) {
+            is TdApi.MessagePhoto -> media.photo.sizes.maxByOrNull { it.width.toLong() * it.height }?.photo?.id
+            is TdApi.MessageVideo -> media.video.video.id
+            is TdApi.MessageAnimation -> media.animation.animation.id
+            is TdApi.MessageDocument -> media.document.document.id
+            is TdApi.MessageSticker -> media.sticker.sticker.id
+            else -> null
+        }
+        if (text.isBlank() && fileId == null) return context.reply("Reply to text, photo, video, animation, sticker or document.")
+        if (text.length > 4000) return context.reply("Text must be 1–4000 characters.")
+        context.reply("Preparing Telegraph page…")
+        val publish: (String?) -> Unit = { mediaPath ->
+            Thread({
+                runCatching {
+                    val nodes = org.json.JSONArray()
+                    if (text.isNotBlank()) nodes.put(JSONObject().put("tag", "p").put("children", org.json.JSONArray().put(text)))
+                    if (mediaPath != null) {
+                        val uploaded = uploadMedia(File(mediaPath))
+                        val tag = if (mediaPath.endsWith(".mp4", true) || mediaPath.endsWith(".webm", true)) "video" else "img"
+                        nodes.put(JSONObject().put("tag", "figure").put("children", org.json.JSONArray().put(
+                            JSONObject().put("tag", tag).put("attrs", JSONObject().put("src", "https://telegra.ph" + uploaded)))))
+                    }
+                    val accountBody = "short_name=TronDroid&author_name=TronDroid"
+                    val account = JSONObject(PluginHttp.request("https://api.telegra.ph/createAccount", "POST", accountBody, "application/x-www-form-urlencoded"))
+                    require(account.optBoolean("ok")) { account.optJSONObject("error")?.optString("message") ?: "Unable to create Telegraph account." }
+                    val token = account.getJSONObject("result").getString("access_token")
+                    val pageBody = "access_token=" + URLEncoder.encode(token, "UTF-8") +
+                        "&title=" + URLEncoder.encode("Telegram message", "UTF-8") +
+                        "&author_name=TronDroid&content=" + URLEncoder.encode(nodes.toString(), "UTF-8")
+                    val page = JSONObject(PluginHttp.request("https://api.telegra.ph/createPage", "POST", pageBody, "application/x-www-form-urlencoded"))
+                    require(page.optBoolean("ok")) { page.optJSONObject("error")?.optString("message") ?: "Unable to publish page." }
+                    page.getJSONObject("result").getString("url")
+                }.onSuccess { context.reply("Telegraph page: " + it) }
+                    .onFailure { context.reply("Telegraph failed: " + (it.message ?: "unknown error")) }
+            }, "TronDroid-Telegraph").apply { isDaemon = true; start() }
+        }
+        if (fileId == null) publish(null) else {
+            context.reply("Downloading replied media…")
+            gateway.downloadFile(fileId) { file, error ->
+                if (file == null || error != null) context.reply("Media download failed: " + (error ?: "unknown error"))
+                else if (File(file.local.path).length() > 5L * 1024 * 1024) context.reply("Telegraph media must be 5 MB or smaller.")
+                else publish(file.local.path)
+            }
+        }
+    }
+
+    private fun uploadMedia(file: File): String {
+        val boundary = "----TronDroid" + System.currentTimeMillis()
+        val connection = URL("https://telegra.ph/upload").openConnection() as java.net.HttpURLConnection
+        connection.requestMethod = "POST"
+        connection.doOutput = true
+        connection.connectTimeout = 15000
+        connection.readTimeout = 45000
+        connection.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary)
+        try {
+            connection.outputStream.use { output ->
+                output.write(("--" + boundary + "\r\nContent-Disposition: form-data; name=\"file\"; filename=\"" + file.name + "\"\r\nContent-Type: application/octet-stream\r\n\r\n").toByteArray())
+                file.inputStream().use { it.copyTo(output) }
+                output.write(("\r\n--" + boundary + "--\r\n").toByteArray())
+            }
+            val code = connection.responseCode
+            val body = (if (code in 200..299) connection.inputStream else connection.errorStream)?.bufferedReader()?.use { it.readText() }.orEmpty()
+            require(code in 200..299) { "Telegraph upload HTTP " + code }
+            val path = org.json.JSONArray(body).optJSONObject(0)?.optString("src").orEmpty()
+            require(path.startsWith("/")) { "Telegraph returned an invalid media path." }
+            return path
+        } finally { connection.disconnect() }
     }
 }
