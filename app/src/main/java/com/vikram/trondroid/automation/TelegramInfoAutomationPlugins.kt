@@ -15,7 +15,9 @@ class ProfileAutomationPlugin : AutomationPlugin {
         AutomationCommand("block", "Block a user by ID or replied message.", "block <user id> (or reply)"),
         AutomationCommand("unblock", "Unblock a user by ID or replied message.", "unblock <user id> (or reply)"),
         AutomationCommand("sg", "Send a replied user profile link and ID to Saved Messages.", "sg (reply optional)"),
-        AutomationCommand("repo", "Show the TronDroid source repository.", "repo")
+        AutomationCommand("repo", "Show the TronDroid source repository.", "repo"),
+        AutomationCommand("set", "Update your first name, last name, bio or username.", "set <fname|lname|bio|uname> <value>"),
+        AutomationCommand("rem", "Clear your last name, bio or username.", "rem <lname|bio|uname>")
     )
 
     override fun onCommand(context: AutomationContext) {
@@ -33,6 +35,23 @@ class ProfileAutomationPlugin : AutomationPlugin {
                 context.reply(lines.joinToString("\n"))
             }
             "repo" -> context.reply("TronDroid source: https://github.com/TronUb/TronDroid")
+            "set", "rem" -> {
+                val mode = context.arguments.firstOrNull()?.lowercase() ?: return context.reply("Specify fname, lname, bio or uname.")
+                val value = context.arguments.drop(1).joinToString(" ").trim()
+                val meId = gateway?.currentUserId() ?: return context.reply("Connected account ID unavailable.")
+                val me = gateway.cachedUser(meId) ?: return context.reply("Current profile is not loaded yet.")
+                val request: TdApi.Function<*> = when {
+                    context.command == "set" && mode == "fname" && value.isNotBlank() -> TdApi.SetName(value.take(64), me.lastName)
+                    context.command == "set" && mode == "lname" && value.isNotBlank() -> TdApi.SetName(me.firstName, value.take(64))
+                    context.command == "set" && mode == "bio" && value.isNotBlank() -> TdApi.SetBio(value.take(140))
+                    context.command == "set" && mode == "uname" && value.isNotBlank() -> TdApi.SetUsername(value.take(32))
+                    context.command == "rem" && mode == "lname" -> TdApi.SetName(me.firstName, "")
+                    context.command == "rem" && mode == "bio" -> TdApi.SetBio("")
+                    context.command == "rem" && mode == "uname" -> TdApi.SetUsername("")
+                    else -> return context.reply("Usage: .set fname|lname|bio|uname <value> or .rem lname|bio|uname")
+                }
+                gateway.send(request) { result -> context.reply(if (result is TdApi.Error) "Profile update failed: ${result.message}" else "Profile updated.") }
+            }
             "mention" -> {
                 val id = context.arguments.firstOrNull()?.toLongOrNull()
                     ?: return context.reply("Usage: .mention <user id> <display text>")
