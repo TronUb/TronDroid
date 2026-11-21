@@ -21,6 +21,20 @@ data class BotPlugin(
 
 object PluginCatalog {
     val userbot = listOf(
+        BotPlugin("userbot:anime", "Anime", "Fetch anime images and GIFs by action.", "Entertainment", PluginOwner.USERBOT,
+            "main/userbot/modules/plugins/anime.py", listOf(
+                PluginCommand("animelist", "List supported anime GIF actions.", "animelist"),
+                PluginCommand("nekopic", "Fetch a random anime image.", "nekopic"),
+                PluginCommand("npic", "Alias for neko image.", "npic"),
+                PluginCommand("animegif", "Fetch a GIF for an action.", "animegif <action>")
+            )),
+        BotPlugin("userbot:fun", "Fun", "Small text utilities, jokes and advice.", "Entertainment", PluginOwner.USERBOT,
+            "main/userbot/modules/plugins/fun.py", listOf(
+                PluginCommand("upcase", "Convert text to uppercase.", "upcase <text>"),
+                PluginCommand("joke", "Fetch a random joke.", "joke"),
+                PluginCommand("advice", "Fetch random advice.", "advice"),
+                PluginCommand("uadvice", "Alias for advice.", "uadvice")
+            )),
         BotPlugin("userbot:wikipedia", "Wikipedia", "Search Wikipedia articles and read concise summaries.", "Search", PluginOwner.USERBOT,
             "main/userbot/modules/plugins/wikipedia.py", listOf(
                 PluginCommand("wiki", "Find an article and return its summary.", "wiki <query>")
