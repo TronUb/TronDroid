@@ -26,7 +26,7 @@ object TelegramBotRuntime {
         val store = BotStore(app)
         val eligible = store.all().filter { it.botEnabled }
             .mapNotNull { profile ->
-                val token = store.customCredentials(profile.id)["BOT_TOKEN"]?.trim()
+                val token = store.customCredentials(profile.id).entries.firstOrNull { it.key.equals("BOT_TOKEN", ignoreCase = true) }?.value?.trim()
                 if (token.isNullOrBlank()) null else profile.id to token
             }.toMap()
 
