@@ -35,7 +35,11 @@ class MainActivity : ComponentActivity() {
             val selected = bots.firstOrNull { it.id == selectedId }
             val engine = selected?.let { engines[it.id] }
 
-            LaunchedEffect(Unit) { TelegramBackgroundService.reconcile(applicationContext) }
+            LaunchedEffect(Unit) {
+                if (preferences.getBoolean("auto_start_sessions", true)) {
+                    TelegramBackgroundService.reconcile(applicationContext)
+                }
+            }
             LaunchedEffect(botNames) { bots = store.all() }
 
             val colorScheme = when {
