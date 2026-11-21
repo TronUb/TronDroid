@@ -21,7 +21,7 @@ class ToolsExtrasAutomationPlugin : AutomationPlugin {
                 gateway.send(TdApi.CreatePrivateChat(gateway.currentUserId() ?: return context.reply("Account ID unavailable."), false)) { chatResult ->
                     val saved = chatResult as? TdApi.Chat
                         ?: return@send context.reply(if (chatResult is TdApi.Error) chatResult.message else "Saved Messages unavailable.")
-                    gateway.send(TdApi.ForwardMessages(saved.id, 0, replied.chatId, longArrayOf(replied.id), null, false, false)) { result ->
+                    gateway.send(TdApi.ForwardMessages(saved.id, null, replied.chatId, longArrayOf(replied.id), null, false, false)) { result ->
                         context.reply(if (result is TdApi.Error) "Forward failed: ${result.message}" else "Forwarded to Saved Messages.")
                     }
                 }
@@ -32,8 +32,8 @@ class ToolsExtrasAutomationPlugin : AutomationPlugin {
                     ?: return context.reply("Usage: .commonchat <user id> or reply to a user's message")
                 gateway.send(TdApi.GetGroupsInCommon(target, 0, 100)) { result ->
                     if (result is TdApi.Error) return@send context.reply("Telegram error: ${result.message}")
-                    val chats = (result as? TdApi.Chats)?.chatIds.orEmpty()
-                    val names = chats.mapNotNull { gateway.cachedChat(it)?.title ?: "Chat $it" }
+                    val chats: LongArray = (result as? TdApi.Chats)?.chatIds ?: longArrayOf()
+                    val names = chats.map { id -> gateway.cachedChat(id)?.title ?: "Chat $id" }
                     context.reply(if (names.isEmpty()) "No shared groups returned." else "Common groups:\n" + names.joinToString("\n").take(3800))
                 }
             }
