@@ -19,7 +19,7 @@ class TelegramUpdateStore(
     val updates: StateFlow<List<TdApi.Update>> = _updates.asStateFlow()
 
     private val _messages = MutableStateFlow<Map<Pair<Long, Long>, TdApi.Message>>(emptyMap())
-    val messages: StateFlow<Map<Long, TdApi.Message>> = _messages.asStateFlow()
+    val messages: StateFlow<Map<Pair<Long, Long>, TdApi.Message>> = _messages.asStateFlow()
 
     private val _chats = MutableStateFlow<Map<Long, TdApi.Chat>>(emptyMap())
     val chats: StateFlow<Map<Long, TdApi.Chat>> = _chats.asStateFlow()
