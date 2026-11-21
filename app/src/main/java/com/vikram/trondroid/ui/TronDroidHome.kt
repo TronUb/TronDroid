@@ -253,6 +253,23 @@ private fun UserbotDetailScreen(
             }
         }
 
+        Box(
+            Modifier.fillMaxSize().pointerInput(section) {
+                var dragDistance = 0f
+                detectHorizontalDragGestures(
+                    onDragEnd = {
+                        val index = UserbotSection.entries.indexOf(section)
+                        if (dragDistance < -72f && index < UserbotSection.entries.lastIndex) {
+                            section = UserbotSection.entries[index + 1]
+                        } else if (dragDistance > 72f && index > 0) {
+                            section = UserbotSection.entries[index - 1]
+                        }
+                        dragDistance = 0f
+                    },
+                    onHorizontalDrag = { _, amount -> dragDistance += amount }
+                )
+            }
+        ) {
         when (section) {
             UserbotSection.GENERAL -> LazyColumn(
                 Modifier.fillMaxSize().padding(horizontal = 18.dp),
@@ -557,6 +574,7 @@ private fun UserbotDetailScreen(
                     }
                 }
             }
+        }
         }
     }
 }
