@@ -38,8 +38,9 @@ class ProfileAutomationPlugin : AutomationPlugin {
             "set", "rem" -> {
                 val mode = context.arguments.firstOrNull()?.lowercase() ?: return context.reply("Specify fname, lname, bio or uname.")
                 val value = context.arguments.drop(1).joinToString(" ").trim()
-                val meId = gateway?.currentUserId() ?: return context.reply("Connected account ID unavailable.")
-                val me = gateway.cachedUser(meId) ?: return context.reply("Current profile is not loaded yet.")
+                val activeGateway = gateway ?: return context.reply("Telegram session is unavailable.")
+                val meId = activeGateway.currentUserId() ?: return context.reply("Connected account ID unavailable.")
+                val me = activeGateway.cachedUser(meId) ?: return context.reply("Current profile is not loaded yet.")
                 val request: TdApi.Function<*> = when {
                     context.command == "set" && mode == "fname" && value.isNotBlank() -> TdApi.SetName(value.take(64), me.lastName)
                     context.command == "set" && mode == "lname" && value.isNotBlank() -> TdApi.SetName(me.firstName, value.take(64))
@@ -50,7 +51,7 @@ class ProfileAutomationPlugin : AutomationPlugin {
                     context.command == "rem" && mode == "uname" -> TdApi.SetUsername("")
                     else -> return context.reply("Usage: .set fname|lname|bio|uname <value> or .rem lname|bio|uname")
                 }
-                gateway.send(request) { result -> context.reply(if (result is TdApi.Error) "Profile update failed: ${result.message}" else "Profile updated.") }
+                activeGateway.send(request) { result -> context.reply(if (result is TdApi.Error) "Profile update failed: ${result.message}" else "Profile updated.") }
             }
             "mention" -> {
                 val id = context.arguments.firstOrNull()?.toLongOrNull()
