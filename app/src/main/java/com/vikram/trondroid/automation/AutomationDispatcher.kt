@@ -1,5 +1,6 @@
 package com.vikram.trondroid.automation
 
+import org.drinkless.tdlib.TdApi
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -19,7 +20,8 @@ class AutomationDispatcher(
 
     private val plugins = CopyOnWriteArrayList<AutomationPlugin>()
     private val handlers = CopyOnWriteArrayList<MessageHandler>()
-    private val scheduler = Executors.newSingleThreadScheduledExecutor { runnable ->
+    /** Serial execution preserves update order and keeps plugin code off TDLib's callback thread. */
+    private val executor = Executors.newSingleThreadScheduledExecutor { runnable ->
         Thread(runnable, "TronDroid-Automation").apply { isDaemon = true }
     }
 
@@ -27,6 +29,7 @@ class AutomationDispatcher(
         unregister(plugin.id)
         plugins += plugin
         handlers += MessageHandler(plugin.id, AutomationFilters.all, plugin::onMessage)
+        logger("Registered plugin ${plugin.id} (${plugin.commands.size} commands)", false)
     }
 
     fun registerMessageHandler(
@@ -44,15 +47,40 @@ class AutomationDispatcher(
 
     fun registeredPlugins(): List<String> = plugins.map { it.id }
 
+    /** Dispatch every TDLib update to every enabled plugin. */
+    fun dispatchUpdate(update: TdApi.Update) {
+        executor.execute {
+            val context = AutomationUpdateContext(update) { chatId, text ->
+                if (text.isNotBlank()) sendText(chatId, text)
+            }
+            plugins.forEach { plugin ->
+                if (plugin.id == "core" || isPluginEnabled(plugin.id)) {
+                    runCatching { plugin.onTelegramUpdate(context) }
+                        .onFailure {
+                            logger("Plugin ${plugin.id} update handler failed: ${it.message}", true)
+                        }
+                }
+            }
+        }
+    }
+
     fun dispatch(message: AutomationMessage) {
+        executor.execute {
+            dispatchMessage(message)
+        }
+    }
+
+    private fun dispatchMessage(message: AutomationMessage) {
         val sendReply: (String) -> Unit = { text ->
             if (text.isNotBlank()) sendText(message.chatId, text)
         }
         val editCommand: (String) -> Unit = { text ->
-            if (text.isNotBlank() && message.messageId != 0L) editText(message.chatId, message.messageId, text)
+            if (text.isNotBlank() && message.messageId != 0L) {
+                editText(message.chatId, message.messageId, text)
+            }
         }
         val delayedEdit: (Long, String) -> Unit = { delay, text ->
-            scheduler.schedule({ editCommand(text) }, delay.coerceAtLeast(0), TimeUnit.MILLISECONDS)
+            executor.schedule({ editCommand(text) }, delay.coerceAtLeast(0), TimeUnit.MILLISECONDS)
         }
 
         handlers.forEach { handler ->
@@ -68,17 +96,22 @@ class AutomationDispatcher(
         if (!message.isOutgoing) return
         val parsed = parseCommand(message.text, commandPrefix().ifBlank { "." }) ?: return
         val (name, arguments) = parsed
-        val plugin = plugins.firstOrNull { candidate ->
+        val matches = plugins.filter { candidate ->
             (candidate.id == "core" || isPluginEnabled(candidate.id)) &&
                 candidate.commands.any { it.name.equals(name, true) }
-        } ?: return
+        }
+        if (matches.isEmpty()) return
+        if (matches.size > 1) {
+            logger("Command collision for '$name': ${matches.joinToString { it.id }}; using first registered plugin", true)
+        }
+        val plugin = matches.first()
         val context = AutomationContext(message, name, arguments, editCommand, delayedEdit)
         runCatching { plugin.onCommand(context) }
-            .onFailure { logger("Command $name failed: ${it.message}", true) }
+            .onFailure { logger("Command $name in ${plugin.id} failed: ${it.message}", true) }
     }
 
     fun shutdown() {
-        scheduler.shutdownNow()
+        executor.shutdownNow()
     }
 
     private fun parseCommand(text: String, prefix: String): Pair<String, List<String>>? {
