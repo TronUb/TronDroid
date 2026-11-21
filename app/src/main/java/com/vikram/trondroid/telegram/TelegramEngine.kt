@@ -29,6 +29,9 @@ import com.vikram.trondroid.automation.GroupInfoAutomationPlugin
 import com.vikram.trondroid.automation.QrAutomationPlugin
 import com.vikram.trondroid.automation.PurgeAutomationPlugin
 import com.vikram.trondroid.automation.StatsAutomationPlugin
+import com.vikram.trondroid.automation.SpamAutomationPlugin
+import com.vikram.trondroid.automation.DigitalVaultAutomationPlugin
+import com.vikram.trondroid.automation.TextToolsAutomationPlugin
 import com.vikram.trondroid.plugins.PluginSettings
 import com.vikram.trondroid.plugins.ExternalPluginLoader
 import android.net.Uri
@@ -119,6 +122,9 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
         nativePlugins += GroupInfoAutomationPlugin()
         nativePlugins += PurgeAutomationPlugin()
         nativePlugins += StatsAutomationPlugin()
+        nativePlugins += SpamAutomationPlugin()
+        nativePlugins += DigitalVaultAutomationPlugin(context.getSharedPreferences("trondroid.userbot.digital_vault", Context.MODE_PRIVATE))
+        nativePlugins += TextToolsAutomationPlugin()
         nativePlugins += WeatherAutomationPlugin()
         nativePlugins += CurrencyAutomationPlugin()
         nativePlugins += TemperatureAutomationPlugin()
