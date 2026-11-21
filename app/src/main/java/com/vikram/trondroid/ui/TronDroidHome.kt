@@ -652,29 +652,91 @@ private fun AddBotDialog(onDismiss: () -> Unit, onSave: (String, String, Int, St
     }, dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } })
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PluginsScreen(modifier: Modifier, onOpen: (String) -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val settings = remember { PluginSettings(context) }
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+    val keyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
     var refresh by remember { mutableIntStateOf(0) }
+    var selectedOwner by remember { mutableIntStateOf(0) }
+    var handler by remember { mutableStateOf(settings.handler()) }
+
     Column(modifier.fillMaxSize().padding(horizontal = 18.dp)) {
-        Text("Command handler", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 12.dp))
-        var handler by remember { mutableStateOf(settings.handler()) }
-        OutlinedTextField(handler, { handler = it.take(8); settings.setHandler(it.take(8)) },
-            modifier = Modifier.fillMaxWidth().padding(top = 8.dp), label = { Text("Command prefix") },
-            supportingText = { Text("Example: .ban, .mute, .afk") }, singleLine = true)
-        Text("Plugin library", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 18.dp, bottom = 8.dp))
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(bottom = 24.dp)) {
-            items(PluginCatalog.all, key = { it.id }) { plugin ->
-                val checked = remember(refresh, plugin.id) { settings.enabled(plugin.id) }
-                ElevatedCard(onClick = { onOpen(plugin.id) }, shape = RoundedCornerShape(18.dp)) {
-                    Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            Text(plugin.title, style = MaterialTheme.typography.titleMedium)
-                            Text("${plugin.commands.size} commands · ${plugin.category}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        PrimaryTabRow(selectedTabIndex = selectedOwner, modifier = Modifier.padding(top = 4.dp)) {
+            Tab(selected = selectedOwner == 0, onClick = { selectedOwner = 0 }, text = { Text("Userbot") },
+                icon = { Icon(Icons.Rounded.Person, null) })
+            Tab(selected = selectedOwner == 1, onClick = { selectedOwner = 1 }, text = { Text("Bot") },
+                icon = { Icon(Icons.Rounded.SmartToy, null) })
+        }
+
+        if (selectedOwner == 0) {
+            Text("Command handler", style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(top = 14.dp, bottom = 8.dp))
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedTextField(
+                    value = handler,
+                    onValueChange = { handler = it.take(8) },
+                    modifier = Modifier.weight(1f),
+                    label = { Text("Command prefix") },
+                    supportingText = { Text("Example: .ban, .mute, .afk") },
+                    singleLine = true
+                )
+                Button(
+                    onClick = {
+                        val saved = handler.trim().ifBlank { "." }
+                        settings.setHandler(saved)
+                        handler = saved
+                        focusManager.clearFocus()
+                        keyboard?.hide()
+                    },
+                    enabled = handler.isNotBlank()
+                ) { Text("Save") }
+            }
+            Text("Userbot plugin library", style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(top = 12.dp, bottom = 8.dp))
+            LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(bottom = 24.dp)) {
+                items(PluginCatalog.all, key = { it.id }) { plugin ->
+                    val checked = remember(refresh, plugin.id) { settings.enabled(plugin.id) }
+                    ElevatedCard(onClick = { onOpen(plugin.id) }, shape = RoundedCornerShape(20.dp)) {
+                        Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text(plugin.title, style = MaterialTheme.typography.titleMedium)
+                                Text("${plugin.commands.size} commands · ${plugin.category}",
+                                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            Switch(checked, { settings.setEnabled(plugin.id, it); refresh++ })
+                            Icon(Icons.Rounded.ChevronRight, null)
                         }
-                        Switch(checked, { settings.setEnabled(plugin.id, it); refresh++ })
-                        Icon(Icons.Rounded.ChevronRight, null)
+                    }
+                }
+            }
+        } else {
+            Text("Bot plugin library", style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(top = 18.dp, bottom = 8.dp))
+            LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp),
+                contentPadding = PaddingValues(bottom = 24.dp)) {
+                item {
+                    ElevatedCard(shape = RoundedCornerShape(22.dp)) {
+                        ListItem(
+                            headlineContent = { Text("Bot API connection") },
+                            supportingContent = {
+                                Text("Bot tokens can connect and receive updates in the background. Bot command execution is not implemented yet, so bot plugins are not shown as active features.")
+                            },
+                            leadingContent = { Icon(Icons.Rounded.SmartToy, null, tint = MaterialTheme.colorScheme.primary) }
+                        )
+                    }
+                }
+                item {
+                    ElevatedCard(shape = RoundedCornerShape(20.dp)) {
+                        ListItem(
+                            headlineContent = { Text("Bot plugins are coming next") },
+                            supportingContent = { Text("This library is separate from userbot plugins. Enabling a userbot plugin will never enable it for a bot.") },
+                            leadingContent = { Icon(Icons.Rounded.Extension, null, tint = MaterialTheme.colorScheme.secondary) }
+                        )
                     }
                 }
             }
