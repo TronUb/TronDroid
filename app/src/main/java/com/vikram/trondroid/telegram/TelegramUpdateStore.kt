@@ -30,6 +30,9 @@ class TelegramUpdateStore(
     private val _files = MutableStateFlow<Map<Int, TdApi.File>>(emptyMap())
     val files: StateFlow<Map<Int, TdApi.File>> = _files.asStateFlow()
 
+    private val _userStatuses = MutableStateFlow<Map<Long, TdApi.UserStatus>>(emptyMap())
+    val userStatuses: StateFlow<Map<Long, TdApi.UserStatus>> = _userStatuses.asStateFlow()
+
     @Synchronized
     fun accept(update: TdApi.Update) {
         _updates.value = (_updates.value + update).takeLast(journalLimit.coerceAtLeast(1))
@@ -46,6 +49,25 @@ class TelegramUpdateStore(
             }
             is TdApi.UpdateFile -> {
                 _files.value = _files.value + (update.file.id to update.file)
+            }
+            is TdApi.UpdateUserStatus -> {
+                _userStatuses.value = _userStatuses.value + (update.userId to update.status)
+            }
+            is TdApi.UpdateMessageContent -> {
+                val key = update.chatId to update.messageId
+                val message = _messages.value[key]
+                if (message != null) message.content = update.newContent
+            }
+            is TdApi.UpdateMessageEdited -> {
+                val key = update.chatId to update.messageId
+                val message = _messages.value[key]
+                if (message != null) message.editDate = update.editDate
+            }
+            is TdApi.UpdateChatTitle -> {
+                _chats.value[update.chatId]?.title = update.title
+            }
+            is TdApi.UpdateChatLastMessage -> {
+                _chats.value[update.chatId]?.lastMessage = update.lastMessage
             }
             is TdApi.UpdateDeleteMessages -> {
                 val next = _messages.value.toMutableMap()
@@ -89,5 +111,6 @@ class TelegramUpdateStore(
         _chats.value = emptyMap()
         _users.value = emptyMap()
         _files.value = emptyMap()
+        _userStatuses.value = emptyMap()
     }
 }
