@@ -6,6 +6,16 @@ import com.vikram.trondroid.data.BotProfile
 import com.vikram.trondroid.automation.AutomationDispatcher
 import com.vikram.trondroid.automation.AutomationMessage
 import com.vikram.trondroid.automation.AutomationPlugin
+import com.vikram.trondroid.automation.PingAutomationPlugin
+import com.vikram.trondroid.automation.WikipediaAutomationPlugin
+import com.vikram.trondroid.automation.ImdbAutomationPlugin
+import com.vikram.trondroid.automation.RedditAutomationPlugin
+import com.vikram.trondroid.automation.TranslateAutomationPlugin
+import com.vikram.trondroid.automation.TimeAutomationPlugin
+import com.vikram.trondroid.automation.AliveAutomationPlugin
+import com.vikram.trondroid.automation.AnimeAutomationPlugin
+import com.vikram.trondroid.automation.FunAutomationPlugin
+import com.vikram.trondroid.automation.HelpAutomationPlugin
 import com.vikram.trondroid.plugins.PluginSettings
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
