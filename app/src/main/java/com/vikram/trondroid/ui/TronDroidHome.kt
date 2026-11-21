@@ -755,16 +755,9 @@ private fun PluginsScreen(modifier: Modifier, onOpen: (String) -> Unit) {
                         Column(Modifier.weight(1f)) {
                             Text(plugin.title, style = MaterialTheme.typography.titleMedium)
                             Text(
-                                plugin.category + " · Python source",
+                                plugin.category + " · " + plugin.commands.size + " commands",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Text(
-                                if (plugin.requiresReview) "Source imported · review required"
-                                else "Source imported · Android port pending",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = if (plugin.requiresReview) MaterialTheme.colorScheme.error
-                                    else MaterialTheme.colorScheme.primary
                             )
                         }
                         Icon(Icons.Rounded.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -800,6 +793,27 @@ private fun PluginDetailScreen(modifier: Modifier, id: String) {
                     Text(plugin.summary, style = MaterialTheme.typography.bodyLarge)
                     Text(plugin.category, style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.primary)
+                }
+            }
+        }
+        item {
+            Text("Commands", style = MaterialTheme.typography.titleMedium)
+        }
+        items(plugin.commands, key = { it.name }) { command ->
+            ElevatedCard(shape = RoundedCornerShape(18.dp)) {
+                Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        (if (isBot) "/" else PluginSettings(context).handler()) + command.name,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(command.description, style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        "Usage: " + (if (isBot || command.usage.startsWith("/")) command.usage
+                            else PluginSettings(context).handler() + command.usage),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
         }
