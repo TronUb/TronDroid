@@ -8,6 +8,7 @@ import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import java.util.concurrent.Executors
+import android.content.SharedPreferences
 
 private object PluginHttp {
     private val executor = Executors.newCachedThreadPool { r ->
@@ -42,6 +43,26 @@ private object PluginHttp {
     }
 
     fun encode(value: String): String = URLEncoder.encode(value, Charsets.UTF_8.name())
+
+    fun post(url: String, body: String, contentType: String = "text/plain; charset=utf-8"): String {
+        val connection = URL(url).openConnection() as HttpURLConnection
+        connection.requestMethod = "POST"
+        connection.doOutput = true
+        connection.connectTimeout = 10_000
+        connection.readTimeout = 15_000
+        connection.setRequestProperty("User-Agent", "TronDroid/1.0")
+        connection.setRequestProperty("Content-Type", contentType)
+        return try {
+            connection.outputStream.use { it.write(body.toByteArray(Charsets.UTF_8)) }
+            val code = connection.responseCode
+            val stream = if (code in 200..299) connection.inputStream else connection.errorStream
+            val result = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
+            if (code !in 200..299) error("HTTP $code")
+            result
+        } finally {
+            connection.disconnect()
+        }
+    }
 }
 
 class WikipediaAutomationPlugin : AutomationPlugin {
@@ -306,6 +327,142 @@ class FunAutomationPlugin : AutomationPlugin {
                     json.optJSONObject("slip")?.optString("advice") ?: "No advice found."
                 }
             }
+        }
+    }
+}
+
+
+class WeatherAutomationPlugin : AutomationPlugin {
+    override val id = "userbot:weather"
+    override val commands = listOf(AutomationCommand("weather", "Show current weather for a city.", "weather <city>"))
+    override fun onCommand(context: AutomationContext) {
+        val city = context.arguments.joinToString(" ").trim()
+        if (city.isBlank()) return context.reply("Usage: .weather <city>")
+        context.reply("Checking weather…")
+        PluginHttp.run(context) { PluginHttp.get("https://wttr.in/${PluginHttp.encode(city)}?format=%l:+%c+%t,+feels+like+%f,+humidity+%h,+wind+%w") }
+    }
+}
+
+class CurrencyAutomationPlugin : AutomationPlugin {
+    override val id = "userbot:currency"
+    override val commands = listOf(AutomationCommand("currency", "Convert an amount between currencies.", "currency <amount> <from> <to>"))
+    override fun onCommand(context: AutomationContext) {
+        if (context.arguments.size < 3) return context.reply("Usage: .currency <amount> <from> <to>")
+        val amount = context.arguments[0].toDoubleOrNull() ?: return context.reply("Enter a valid amount.")
+        val from = context.arguments[1].uppercase(Locale.ROOT)
+        val to = context.arguments[2].uppercase(Locale.ROOT)
+        context.reply("Converting $from to $to…")
+        PluginHttp.run(context) {
+            val json = JSONObject(PluginHttp.get("https://api.frankfurter.app/latest?amount=$amount&from=$from&to=$to"))
+            val rate = json.optJSONObject("rates")?.optDouble(to, Double.NaN) ?: Double.NaN
+            if (!rate.isFinite()) "Unable to find a conversion rate for $from to $to."
+            else String.format(Locale.US, "%.2f %s = %.2f %s", amount, from, rate, to)
+        }
+    }
+}
+
+class TemperatureAutomationPlugin : AutomationPlugin {
+    override val id = "userbot:temperature"
+    override val commands = listOf(AutomationCommand("temp", "Convert Celsius and Fahrenheit.", "temp <value> <c|f>"))
+    override fun onCommand(context: AutomationContext) {
+        if (context.arguments.size < 2) return context.reply("Usage: .temp <value> <c|f>")
+        val value = context.arguments[0].toDoubleOrNull() ?: return context.reply("Enter a valid temperature.")
+        val result = when (context.arguments[1].lowercase(Locale.ROOT)) {
+            "c" -> value * 9.0 / 5.0 + 32.0
+            "f" -> (value - 32.0) * 5.0 / 9.0
+            else -> return context.reply("Use c to convert Celsius to Fahrenheit, or f for Fahrenheit to Celsius.")
+        }
+        val unit = if (context.arguments[1].equals("c", true)) "°F" else "°C"
+        context.reply(String.format(Locale.US, "%.2f%s", result, unit))
+    }
+}
+
+class PasteAutomationPlugin : AutomationPlugin {
+    override val id = "userbot:pastebin"
+    override val commands = listOf(AutomationCommand("paste", "Upload text to paste.rs and return its link.", "paste <text>"))
+    override fun onCommand(context: AutomationContext) {
+        val text = context.arguments.joinToString(" ").trim()
+        if (text.isBlank()) return context.reply("Usage: .paste <text>")
+        context.reply("Uploading paste…")
+        PluginHttp.run(context) {
+            val url = PluginHttp.post("https://paste.rs", text)
+            if (url.startsWith("http")) "Paste created: $url" else "Paste service returned an unexpected response."
+        }
+    }
+}
+
+class QrAutomationPlugin : AutomationPlugin {
+    override val id = "userbot:qrcode"
+    override val commands = listOf(AutomationCommand("qrcode", "Create a QR code link for text or a URL.", "qrcode <text>"))
+    override fun onCommand(context: AutomationContext) {
+        val value = context.arguments.joinToString(" ").trim()
+        if (value.isBlank()) return context.reply("Usage: .qrcode <text>")
+        val url = "https://api.qrserver.com/v1/create-qr-code/?size=512x512&data=" + PluginHttp.encode(value)
+        context.reply("QR code: $url")
+    }
+}
+
+class NotesAutomationPlugin(private val preferences: SharedPreferences) : AutomationPlugin {
+    override val id = "userbot:notes"
+    override val commands = listOf(
+        AutomationCommand("save", "Save a text note under a name.", "save <name> <text>"),
+        AutomationCommand("getnote", "Retrieve a saved note.", "getnote <name>"),
+        AutomationCommand("notes", "List saved note names.", "notes"),
+        AutomationCommand("clear", "Delete a saved note.", "clear <name>")
+    )
+    override fun onCommand(context: AutomationContext) {
+        val name = context.arguments.firstOrNull().orEmpty()
+        when (context.command) {
+            "save" -> {
+                if (context.arguments.size < 2) return context.reply("Usage: .save <name> <text>")
+                val value = context.arguments.drop(1).joinToString(" ")
+                preferences.edit().putString("note.$name", value).apply()
+                context.reply("Saved note: $name")
+            }
+            "getnote" -> {
+                if (name.isBlank()) return context.reply("Usage: .getnote <name>")
+                context.reply(preferences.getString("note.$name", null) ?: "No note named $name.")
+            }
+            "notes" -> {
+                val names = preferences.all.keys.filter { it.startsWith("note.") }.map { it.removePrefix("note.") }.sorted()
+                context.reply(names.takeIf { it.isNotEmpty() }?.joinToString("\\n") ?: "No saved notes.")
+            }
+            "clear" -> {
+                if (name.isBlank()) return context.reply("Usage: .clear <name>")
+                preferences.edit().remove("note.$name").apply()
+                context.reply("Deleted note: $name")
+            }
+        }
+    }
+}
+
+class AfkAutomationPlugin : AutomationPlugin {
+    override val id = "userbot:afk"
+    override val commands = listOf(
+        AutomationCommand("afk", "Set an away status and optional reason.", "afk <reason>"),
+        AutomationCommand("unafk", "Clear the away status.", "unafk")
+    )
+    @Volatile private var reason: String? = null
+    @Volatile private var startedAt: Long = 0L
+    override fun onCommand(context: AutomationContext) {
+        when (context.command) {
+            "afk" -> {
+                reason = context.arguments.joinToString(" ").ifBlank { null }
+                startedAt = System.currentTimeMillis()
+                context.reply("AFK enabled" + (reason?.let { ": $it" } ?: "."))
+            }
+            "unafk" -> {
+                reason = null
+                startedAt = 0L
+                context.reply("AFK disabled.")
+            }
+        }
+    }
+    override fun onMessage(context: AutomationContext) {
+        val awayReason = reason ?: return
+        if (!context.message.isOutgoing) {
+            val minutes = ((System.currentTimeMillis() - startedAt) / 60000).coerceAtLeast(0)
+            context.reply("This user is currently away (" + minutes + "m). Reason: " + awayReason)
         }
     }
 }
