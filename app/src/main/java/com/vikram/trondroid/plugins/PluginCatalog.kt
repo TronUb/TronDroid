@@ -53,7 +53,7 @@ object PluginCatalog {
         plugin("userbot:anime","Anime","Fetch anime images and GIFs by action.","Entertainment",PluginOwner.USERBOT,"main/userbot/modules/plugins/anime.py",true,"animelist","nekopic","npic","animegif"),
         plugin("userbot:broadcast","Broadcast","Send an announcement to selected chats.","Messaging",PluginOwner.USERBOT,"main/userbot/modules/plugins/broadcast.py",false,"broadcast"),
         plugin("userbot:carbon","Carbon","Create syntax-highlighted code images. The upstream implementation is broken and remains unavailable until it is replaced.","Media",PluginOwner.USERBOT,"main/userbot/modules/plugins/carbon.py",false,"carbon","carblist"),
-        plugin("userbot:clone","Clone","Copy and restore Telegram profile details.","Profile",PluginOwner.USERBOT,"main/userbot/modules/plugins/clone.py",false,"clone","revert"),
+        plugin("userbot:clone","Clone","Copy and restore Telegram profile details.","Profile",PluginOwner.USERBOT,"main/userbot/modules/plugins/clone.py",true,"clone","revert"),
         plugin("userbot:dev","Developer tools","Developer utilities and code evaluation. Shell execution is intentionally not enabled.","Developer",PluginOwner.USERBOT,"main/userbot/modules/plugins/dev.py",false,"eval","terminal"),
         plugin("userbot:download","Downloads","Download and upload supported Telegram files.","Media",PluginOwner.USERBOT,"main/userbot/modules/plugins/download.py",true,"ls","download","upload","batchupload"),
         plugin("userbot:dv","Digital vault","Save and retrieve private snippets and vault entries locally on this device.","Utilities",PluginOwner.USERBOT,"main/userbot/modules/plugins/dv.py",true,"setdv","deldv","getdv","pm","listdv","alldv"),
