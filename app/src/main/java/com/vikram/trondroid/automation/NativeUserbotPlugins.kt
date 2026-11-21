@@ -211,11 +211,21 @@ class TimeAutomationPlugin : AutomationPlugin {
 class PingAutomationPlugin : AutomationPlugin {
     override val id = "userbot:ping"
     override val commands = listOf(
-        AutomationCommand("ping", "Check that the userbot is responding.", "ping")
+        AutomationCommand("ping", "Measure command response time.", "ping [count]"),
+        AutomationCommand("pong", "Alias for ping.", "pong")
     )
 
     override fun onCommand(context: AutomationContext) {
-        context.reply("Pong! TronDroid is responding.")
+        val count = context.arguments.firstOrNull()?.toIntOrNull() ?: 1
+        if (count !in 1..10) return context.reply("Usage: .ping [1-10]")
+        val started = System.nanoTime()
+        context.reply("…")
+        context.replyAfter(300, buildString {
+            append("Pöng!\n")
+            append("%.2f ms".format(Locale.US, (System.nanoTime() - started) / 1_000_000.0))
+            append("\nTronDroid is responding.")
+            if (count > 1) append("\nSamples: $count")
+        })
     }
 }
 
