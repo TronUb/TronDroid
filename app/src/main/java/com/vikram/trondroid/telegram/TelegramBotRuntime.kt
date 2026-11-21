@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
+import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -97,7 +98,9 @@ object TelegramBotRuntime {
                             val name = result.optString("first_name").ifBlank {
                                 result.optString("username").ifBlank { "Telegram bot" }
                             }
-                            store.setBotIdentity(profileId, name, result.optString("username").takeIf { it.isNotBlank() }, result.optLong("id").takeIf { it > 0 })
+                            val botId = result.optLong("id")
+                            val photo = if (botId > 0) runCatching { loadBotPhoto(botId) }.getOrNull() else null
+                            store.setBotIdentity(profileId, name, result.optString("username").takeIf { it.isNotBlank() }, botId.takeIf { it > 0 }, photo)
                             mutableNames.value = mutableNames.value + (profileId to name)
                             identityLoaded = true
                         } else {
@@ -149,6 +152,29 @@ object TelegramBotRuntime {
                 val arguments = text.substringAfter(' ', "").trim().split(Regex("\\s+")).filter { it.isNotBlank() }
                 plugin.onCommand(token, arguments, chatId) { response -> sendReply(chatId, response) }
             }.onFailure { android.util.Log.e("TronDroidBot", "External plugin command failed", it) }
+        }
+
+        private fun loadBotPhoto(botId: Long): String? {
+            val photos = request("getUserProfilePhotos?user_id=$botId&limit=1")
+            val first = photos.optJSONObject("result")?.optJSONArray("photos")?.optJSONArray(0) ?: return null
+            val size = first.optJSONObject(first.length() - 1) ?: return null
+            val fileId = size.optString("file_id")
+            if (fileId.isBlank()) return null
+            val fileInfo = request("getFile?file_id=" + java.net.URLEncoder.encode(fileId, Charsets.UTF_8.name()))
+            val filePath = fileInfo.optJSONObject("result")?.optString("file_path").orEmpty()
+            if (filePath.isBlank()) return null
+            val destination = File(app.filesDir, "bot-avatars/$profileId.jpg")
+            destination.parentFile?.mkdirs()
+            val connection = URL("https://api.telegram.org/file/bot$token/$filePath").openConnection() as HttpURLConnection
+            connection.connectTimeout = 15000
+            connection.readTimeout = 20000
+            return try {
+                if (connection.responseCode !in 200..299) return null
+                connection.inputStream.use { input -> destination.outputStream().use { output -> input.copyTo(output) } }
+                destination.absolutePath
+            } finally {
+                connection.disconnect()
+            }
         }
 
         private fun sendReply(chatId: Long, reply: String) {
