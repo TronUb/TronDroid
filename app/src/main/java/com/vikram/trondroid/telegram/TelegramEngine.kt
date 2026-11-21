@@ -208,9 +208,9 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
     }
 
     private fun updateAccount(user: TdApi.User) {
-        val username = user.username.takeIf { it.isNotBlank() }?.let { "@$it" }.orEmpty()
+        val username = ""
         val name = listOf(user.firstName, user.lastName).filter { it.isNotBlank() }.joinToString(" ")
-        _account.value = TelegramAccountInfo(user.id, name, username, user.phoneNumber, user.isPremium, user.isVerified)
+        _account.value = TelegramAccountInfo(user.id, name, username, user.phoneNumber, user.isPremium, false)
         user.profilePhoto?.small?.let { photo ->
             client?.send(TdApi.DownloadFile(photo.id, 32, 0, 0, true)) { fileResult ->
                 if (fileResult is TdApi.File && fileResult.local.isDownloadingCompleted && fileResult.local.path.isNotBlank()) {
