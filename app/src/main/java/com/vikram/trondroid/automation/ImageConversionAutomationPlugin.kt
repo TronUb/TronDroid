@@ -24,7 +24,7 @@ class ImageConversionAutomationPlugin(private val context: Context) : Automation
                     ?: return context.reply("Reply to a static sticker with .stoi")
                 val sticker = (replied.content as? TdApi.MessageSticker)?.sticker
                     ?: return context.reply("The replied message is not a sticker.")
-                if (sticker.isAnimated || sticker.isVideo) return context.reply("Animated and video stickers are not supported.")
+                
                 context.reply("Converting sticker…")
                 gateway.downloadFile(sticker.sticker.id) { downloaded, error ->
                     if (downloaded == null || error != null) return@downloadFile context.reply("Sticker download failed: ${error ?: "unknown error"}")
@@ -48,7 +48,7 @@ class ImageConversionAutomationPlugin(private val context: Context) : Automation
                     ?: gateway.currentUserId()
                     ?: return context.reply("Reply to a user's message or connect your account first.")
                 val user = gateway.cachedUser(targetId)
-                val photo = user?.profilePhoto?.big ?: user?.publicPhoto?.big
+                val photo = user?.profilePhoto?.big
                     ?: return context.reply("No profile photo is available in the local Telegram cache.")
                 context.reply("Downloading profile photo…")
                 gateway.downloadFile(photo.id) { downloaded, error ->
@@ -114,7 +114,7 @@ class ImageConversionAutomationPlugin(private val context: Context) : Automation
                 }
                 val bitmap = Bitmap.createBitmap(900, 500, Bitmap.Config.ARGB_8888)
                 Canvas(bitmap).drawColor(color)
-                val output = File(context.cacheDir, "color_${System.currentTimeMillis()}.png")
+                val output = File(this.context.cacheDir, "color_${System.currentTimeMillis()}.png")
                 runCatching {
                     output.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
                     bitmap.recycle()
