@@ -10,7 +10,7 @@ object ExternalPluginLoader {
     private val loadedClassLoaders = mutableListOf<ClassLoader>()
 
     @Synchronized
-    fun import(context: Context, uri: Uri): List<Any> {
+    fun loadFromUri(context: Context, uri: Uri): List<Any> {
         val directory = File(context.filesDir, "plugins").apply { mkdirs() }
         val file = File(directory, "external_${System.currentTimeMillis()}.dex")
         context.contentResolver.openInputStream(uri)?.use { input ->
