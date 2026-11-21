@@ -813,30 +813,6 @@ private fun PluginDetailScreen(modifier: Modifier, id: String) {
             }
         }
         item {
-            ElevatedCard(shape = RoundedCornerShape(22.dp)) {
-                Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Rounded.Info, null, tint = MaterialTheme.colorScheme.primary)
-                        Spacer(Modifier.width(8.dp))
-                        Text("Android compatibility", style = MaterialTheme.typography.titleMedium)
-                    }
-                    Text(
-                        "This entry is imported from TronUb/Tron. Its Python/Pyrogram implementation is not executable inside the native TDLib runtime yet. It must be ported and tested before commands can be enabled.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    if (plugin.requiresReview) {
-                        HorizontalDivider()
-                        Text(
-                            "Review this module carefully before porting because it can perform sensitive account, moderation, or messaging actions.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.error
-                        )
-                    }
-                }
-            }
-        }
-        item {
             OutlinedButton(
                 onClick = {
                     val intent = android.content.Intent(
