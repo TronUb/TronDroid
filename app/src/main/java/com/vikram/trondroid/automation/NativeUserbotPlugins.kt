@@ -201,12 +201,15 @@ class AliveAutomationPlugin(
     private val profileName: () -> String
 ) : AutomationPlugin {
     override val id = "userbot:alive"
+    private val startedAt = android.os.SystemClock.elapsedRealtime()
     override val commands = listOf(
         AutomationCommand("alive", "Show the connected account and TronDroid runtime status.", "alive")
     )
 
     override fun onCommand(context: AutomationContext) {
-        context.reply("TronDroid is running\nAccount: ${profileName()}\nRuntime: Kotlin + TDLib")
+        val seconds = ((android.os.SystemClock.elapsedRealtime() - startedAt) / 1000).coerceAtLeast(0)
+        val uptime = "%dd %02dh %02dm".format(seconds / 86400, (seconds / 3600) % 24, (seconds / 60) % 60)
+        context.reply("TronDroid is running\nAccount: ${profileName()}\nUptime: $uptime\nRuntime: Kotlin + TDLib")
     }
 }
 
@@ -254,7 +257,7 @@ class AnimeAutomationPlugin : AutomationPlugin {
                     val url = result.optString("url")
                     val artist = result.optString("artist_name")
                     if (url.isBlank()) "No image found."
-                    else "Anime image" + if (artist.isNotBlank()) " · Artist: $artist" else "" + "\n$url"
+                    else buildString { append("Anime image"); if (artist.isNotBlank()) append(" · Artist: $artist"); append("\n$url") }
                 }
             }
             "animegif" -> {
