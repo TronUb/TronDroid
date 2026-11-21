@@ -6,7 +6,7 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
-    <application android:allowBackup="false" android:icon="@drawable/tron_icon" android:roundIcon="@drawable/tron_icon" android:label="TronDroid" android:supportsRtl="true"
+    <application android:allowBackup="false" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher_round" android:label="TronDroid" android:supportsRtl="true"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
         <service android:name=".telegram.TelegramBackgroundService" android:enabled="true" android:exported="false" android:foregroundServiceType="specialUse">
             <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
