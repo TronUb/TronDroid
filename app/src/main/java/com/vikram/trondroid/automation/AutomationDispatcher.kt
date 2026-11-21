@@ -91,7 +91,18 @@ class AutomationDispatcher(
                 handler.filter.matches(message)
             ) {
                 runCatching {
-                    handler.callback(AutomationContext(message, reply = sendReply, telegram = telegramGateway()))
+                    val messageReply: (String) -> Unit = if (message.isOutgoing) editCommand else sendReply
+                    val delayedMessageReply: (Long, String) -> Unit = { delay, text ->
+                        executor.schedule({ messageReply(text) }, delay.coerceAtLeast(0), TimeUnit.MILLISECONDS)
+                    }
+                    handler.callback(
+                        AutomationContext(
+                            message = message,
+                            reply = messageReply,
+                            replyAfter = delayedMessageReply,
+                            telegram = telegramGateway()
+                        )
+                    )
                 }.onFailure { logger("Plugin ${handler.pluginId} failed: ${it.message}", true) }
             }
         }
