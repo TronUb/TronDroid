@@ -19,7 +19,9 @@ TronDroid plugins are native Kotlin implementations running on the authenticated
 - `telegram.chats`, `telegram.users`, `telegram.files`: latest cached TDLib entities.
 - `telegram.userStatuses`: latest known status per user.
 - `telegram.repliedMessage(message)`: resolves a reply from the in-memory message cache.
-- `telegram.send(function) { result -> ... }`: execute a typed TDLib request on the existing session.
+- `telegram.send(function) { result -> ... }`: execute a TDLib request on the existing session. The callback receives `TdApi.Object`; always check for `TdApi.Error` before casting.
+- `telegram.sendPhotoUrl(...)` / `sendAnimationUrl(...)`: download bounded HTTPS media into the app cache and upload it through TDLib.
+- `telegram.sendToSavedMessages(text)`: send text to the authenticated account’s Saved Messages chat.
 
 TDLib remains the durable source of truth. Plugins should query TDLib through the gateway when an entity is not present in the bounded cache; they must not create a second TDLib client.
 
