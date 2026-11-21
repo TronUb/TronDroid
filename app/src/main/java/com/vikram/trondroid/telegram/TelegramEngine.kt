@@ -16,6 +16,13 @@ import com.vikram.trondroid.automation.AliveAutomationPlugin
 import com.vikram.trondroid.automation.AnimeAutomationPlugin
 import com.vikram.trondroid.automation.FunAutomationPlugin
 import com.vikram.trondroid.automation.HelpAutomationPlugin
+import com.vikram.trondroid.automation.AfkAutomationPlugin
+import com.vikram.trondroid.automation.NotesAutomationPlugin
+import com.vikram.trondroid.automation.WeatherAutomationPlugin
+import com.vikram.trondroid.automation.CurrencyAutomationPlugin
+import com.vikram.trondroid.automation.TemperatureAutomationPlugin
+import com.vikram.trondroid.automation.PasteAutomationPlugin
+import com.vikram.trondroid.automation.QrAutomationPlugin
 import com.vikram.trondroid.plugins.PluginSettings
 import com.vikram.trondroid.plugins.ExternalPluginLoader
 import android.net.Uri
