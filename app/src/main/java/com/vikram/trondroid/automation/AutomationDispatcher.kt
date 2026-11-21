@@ -107,19 +107,23 @@ class AutomationDispatcher(
             }
         }
 
-        if (!message.isOutgoing) return
         val parsed = parseCommand(message.text, commandPrefix().ifBlank { "." }) ?: return
         val (name, arguments) = parsed
         val matches = plugins.filter { candidate ->
             (candidate.id == "core" || isPluginEnabled(candidate.id)) &&
-                candidate.commands.any { it.name.equals(name, true) }
+                candidate.commands.any { it.name.equals(name, true) } &&
+                (message.isOutgoing || candidate.canExecuteIncoming(message))
         }
         if (matches.isEmpty()) return
         if (matches.size > 1) {
             logger("Command collision for '$name': ${matches.joinToString { it.id }}; using first registered plugin", true)
         }
         val plugin = matches.first()
-        val context = AutomationContext(message, name, arguments, editCommand, delayedEdit, telegramGateway())
+        val commandReply: (String) -> Unit = if (message.isOutgoing) editCommand else sendReply
+        val commandDelayedReply: (Long, String) -> Unit = { delay, text ->
+            executor.schedule({ commandReply(text) }, delay.coerceAtLeast(0), TimeUnit.MILLISECONDS)
+        }
+        val context = AutomationContext(message, name, arguments, commandReply, commandDelayedReply, telegramGateway())
         runCatching { plugin.onCommand(context) }
             .onFailure { logger("Command $name in ${plugin.id} failed: ${it.message}", true) }
     }
