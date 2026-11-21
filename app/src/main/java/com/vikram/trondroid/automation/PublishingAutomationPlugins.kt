@@ -7,7 +7,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
 
-private object PluginHttp {
+private object TelegraphHttp {
     fun request(url: String, method: String = "GET", body: String? = null, contentType: String = "application/json"): String {
         val connection = URL(url).openConnection() as HttpURLConnection
         connection.requestMethod = method
@@ -105,7 +105,7 @@ class PublishingAutomationPlugin(private val cacheDir: File) : AutomationPlugin 
                             JSONObject().put("tag", tag).put("attrs", JSONObject().put("src", "https://telegra.ph" + uploaded)))))
                     }
                     val accountBody = "short_name=TronDroid&author_name=TronDroid"
-                    val account = JSONObject(PluginHttp.request("https://api.telegra.ph/createAccount", "POST", accountBody, "application/x-www-form-urlencoded"))
+                    val account = JSONObject(TelegraphHttp.request("https://api.telegra.ph/createAccount", "POST", accountBody, "application/x-www-form-urlencoded"))
                     require(account.optBoolean("ok")) { account.optJSONObject("error")?.optString("message") ?: "Unable to create Telegraph account." }
                     val token = account.getJSONObject("result").getString("access_token")
                     val pageBody = "access_token=" + URLEncoder.encode(token, "UTF-8") +
