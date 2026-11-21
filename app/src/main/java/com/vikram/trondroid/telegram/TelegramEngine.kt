@@ -109,6 +109,9 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
         nativePlugins += HelpAutomationPlugin({ pluginSettings.handler() }) { nativePlugins }
         nativePlugins += AfkAutomationPlugin({ pluginSettings.handler() }, { _account.value?.id }) { _account.value?.username }
         nativePlugins += NotesAutomationPlugin(context.getSharedPreferences("trondroid.userbot.notes", Context.MODE_PRIVATE))
+        nativePlugins += ProfileAutomationPlugin()
+        nativePlugins += ChatInfoAutomationPlugin()
+        nativePlugins += GroupInfoAutomationPlugin()
         nativePlugins += WeatherAutomationPlugin()
         nativePlugins += CurrencyAutomationPlugin()
         nativePlugins += TemperatureAutomationPlugin()
