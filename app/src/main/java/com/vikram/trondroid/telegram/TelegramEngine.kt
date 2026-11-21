@@ -89,6 +89,13 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
         nativePlugins += AnimeAutomationPlugin()
         nativePlugins += FunAutomationPlugin()
         nativePlugins += HelpAutomationPlugin({ pluginSettings.handler() }) { nativePlugins }
+        nativePlugins += AfkAutomationPlugin()
+        nativePlugins += NotesAutomationPlugin(context.getSharedPreferences("trondroid.userbot.notes", Context.MODE_PRIVATE))
+        nativePlugins += WeatherAutomationPlugin()
+        nativePlugins += CurrencyAutomationPlugin()
+        nativePlugins += TemperatureAutomationPlugin()
+        nativePlugins += PasteAutomationPlugin()
+        nativePlugins += QrAutomationPlugin()
         nativePlugins.forEach(automation::register)
         log("Loaded ${nativePlugins.size} native userbot plugins")
     }
