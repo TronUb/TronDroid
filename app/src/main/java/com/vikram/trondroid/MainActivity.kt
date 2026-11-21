@@ -71,6 +71,7 @@ class MainActivity : ComponentActivity() {
                         preferences.edit().putBoolean("dynamic_colors", it).apply()
                     },
                     onSelect = { selectedId = it },
+                    onRename = { id, name -> store.rename(id, name); bots = store.all() },
                     onAdd = { name, phone, id, hash ->
                         val added = store.add(name, phone, id, hash)
                         bots = store.all()
