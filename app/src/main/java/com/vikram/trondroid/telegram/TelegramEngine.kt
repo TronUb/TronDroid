@@ -6,7 +6,6 @@ import com.vikram.trondroid.data.BotProfile
 import com.vikram.trondroid.automation.AutomationDispatcher
 import com.vikram.trondroid.automation.AutomationMessage
 import com.vikram.trondroid.automation.AutomationPlugin
-import com.vikram.trondroid.automation.CoreAutomationPlugin
 import com.vikram.trondroid.plugins.PluginSettings
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -53,8 +52,20 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
             }
         },
         logger = { message, error -> log(message, error) }
-    ).apply {
-        register(CoreAutomationPlugin { pluginSettings.handler() })
+    )
+
+    init {
+        val nativePlugins = mutableListOf<AutomationPlugin>()
+        nativePlugins += PingAutomationPlugin()
+        nativePlugins += WikipediaAutomationPlugin()
+        nativePlugins += ImdbAutomationPlugin()
+        nativePlugins += RedditAutomationPlugin()
+        nativePlugins += TranslateAutomationPlugin()
+        nativePlugins += TimeAutomationPlugin()
+        nativePlugins += AliveAutomationPlugin { profile.name }
+        nativePlugins += HelpAutomationPlugin({ pluginSettings.handler() }) { nativePlugins }
+        nativePlugins.forEach(automation::register)
+        log("Loaded ${nativePlugins.size} native userbot plugins")
     }
 
     fun registerAutomationPlugin(plugin: AutomationPlugin) {
