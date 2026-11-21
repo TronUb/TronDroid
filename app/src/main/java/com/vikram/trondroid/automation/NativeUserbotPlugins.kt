@@ -132,31 +132,52 @@ class ImdbAutomationPlugin : AutomationPlugin {
 class RedditAutomationPlugin : AutomationPlugin {
     override val id = "userbot:reddit"
     override val commands = listOf(
-        AutomationCommand("reddit", "Search Reddit and return the top matching posts.", "reddit <query>"),
-        AutomationCommand("r", "Alias for Reddit search.", "r <query>")
+        AutomationCommand("reddit", "Fetch a random image from a subreddit.", "reddit <subreddit>"),
+        AutomationCommand("r", "Alias for subreddit image lookup.", "r <subreddit>")
     )
 
     override fun onCommand(context: AutomationContext) {
-        val query = context.arguments.joinToString(" ").trim()
-        if (query.isBlank()) return context.reply("Usage: .reddit <query>")
-        context.reply("Searching Reddit…")
+        val subreddit = context.arguments.firstOrNull().orEmpty().removePrefix("r/").trim()
+        if (!subreddit.matches(Regex("[A-Za-z0-9_]{2,21}"))) {
+            return context.reply("Usage: .reddit <subreddit> (example: .reddit anime)")
+        }
+        context.reply("Getting an image from r/$subreddit…")
         PluginHttp.run(context) {
             val root = JSONObject(PluginHttp.get(
-                "https://www.reddit.com/search.json?q=${PluginHttp.encode(query)}&limit=5&sort=relevance",
-                "TronDroid/1.0"
+                "https://old.reddit.com/r/$subreddit.json?limit=50",
+                "Mozilla/5.0 (Android; TronDroid/1.0)"
             ))
             val children = root.optJSONObject("data")?.optJSONArray("children")
-                ?: return@run "No Reddit posts found."
-            val lines = (0 until children.length()).mapNotNull { index ->
+                ?: return@run "No Reddit posts found for r/$subreddit."
+            val candidates = (0 until children.length()).mapNotNull { index ->
                 val post = children.optJSONObject(index)?.optJSONObject("data") ?: return@mapNotNull null
-                if (post.optBoolean("over_18")) return@mapNotNull null
-                val title = post.optString("title")
-                val permalink = post.optString("permalink")
-                if (title.isBlank() || permalink.isBlank()) null
-                else "• $title\nhttps://www.reddit.com$permalink"
+                if (post.optBoolean("over_18") || post.optBoolean("is_video")) return@mapNotNull null
+                val url = post.optString("url_overridden_by_dest").ifBlank { post.optString("url") }
+                val lower = url.lowercase()
+                if (url.startsWith("https://") &&
+                    (lower.substringBefore('?').endsWith(".jpg") ||
+                        lower.substringBefore('?').endsWith(".jpeg") ||
+                        lower.substringBefore('?').endsWith(".png") ||
+                        lower.substringBefore('?').endsWith(".webp") ||
+                        lower.substringBefore('?').endsWith(".gif") ||
+                        lower.substringBefore('?').endsWith(".gifv") ||
+                        "i.redd.it/" in lower || "i.imgur.com/" in lower)
+                ) url to post.optString("title") else null
             }
-            lines.takeIf { it.isNotEmpty() }?.joinToString("\n\n")
-                ?: "No suitable Reddit posts found."
+            val selected = candidates.randomOrNull() ?: return@run "No suitable image posts found in r/$subreddit."
+            val gateway = context.telegram ?: return@run "Telegram session is unavailable."
+            val (url, title) = selected
+            val caption = title.ifBlank { "r/$subreddit" }.take(900)
+            val send = if (url.lowercase().substringBefore('?').let { it.endsWith(".gif") || it.endsWith(".gifv") || it.endsWith(".mp4") }) {
+                gateway.sendAnimationUrl(context.message.chatId, url.removeSuffix("v"), caption) { response ->
+                    if (response is TdApi.Error) context.reply("Unable to send Reddit media: ${response.message}")
+                }
+            } else {
+                gateway.sendPhotoUrl(context.message.chatId, url, caption) { response ->
+                    if (response is TdApi.Error) context.reply("Unable to send Reddit image: ${response.message}")
+                }
+            }
+            "Sending an image from r/$subreddit…"
         }
     }
 }
