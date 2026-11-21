@@ -55,7 +55,7 @@ object PluginCatalog {
         plugin("userbot:carbon","Carbon","Create syntax-highlighted code images. The upstream implementation is broken and remains unavailable until it is replaced.","Media",PluginOwner.USERBOT,"main/userbot/modules/plugins/carbon.py",false,"carbon","carblist"),
         plugin("userbot:clone","Clone","Copy and restore Telegram profile details.","Profile",PluginOwner.USERBOT,"main/userbot/modules/plugins/clone.py",false,"clone","revert"),
         plugin("userbot:dev","Developer tools","Developer utilities and code evaluation. Shell execution is intentionally not enabled.","Developer",PluginOwner.USERBOT,"main/userbot/modules/plugins/dev.py",false,"eval","terminal"),
-        plugin("userbot:download","Downloads","Download and upload supported Telegram files.","Media",PluginOwner.USERBOT,"main/userbot/modules/plugins/download.py",false,"ls","download","upload","batchupload"),
+        plugin("userbot:download","Downloads","Download and upload supported Telegram files.","Media",PluginOwner.USERBOT,"main/userbot/modules/plugins/download.py",true,"ls","download","upload","batchupload"),
         plugin("userbot:dv","Digital vault","Save and retrieve private snippets and vault entries locally on this device.","Utilities",PluginOwner.USERBOT,"main/userbot/modules/plugins/dv.py",true,"setdv","deldv","getdv","pm","listdv","alldv"),
         plugin("userbot:filetools","File tools","Create, zip and extract files in the app local plugin storage.","Files",PluginOwner.USERBOT,"main/userbot/modules/plugins/filetools.py",true,"zip","unzip","new"),
         plugin("userbot:fun","Fun","Jokes, advice, text effects and lightweight entertainment.","Entertainment",PluginOwner.USERBOT,"main/userbot/modules/plugins/fun.py",true,"slap","upcase","type","insult","advice","uadvice","qs","wtd","mqt","joke"),
@@ -81,7 +81,7 @@ object PluginCatalog {
         plugin("userbot:spotify","Spotify","Search Spotify and inspect the currently playing track.","Media",PluginOwner.USERBOT,"main/userbot/modules/plugins/spotify.py",false,"spotify","now"),
         plugin("userbot:stats","Stats","Show Telegram dialog and chat statistics from loaded dialogs.","Information",PluginOwner.USERBOT,"main/userbot/modules/plugins/stats.py",true,"stats"),
         plugin("userbot:stickers","Stickers","Create stickers from media and inspect sticker metadata.","Media",PluginOwner.USERBOT,"main/userbot/modules/plugins/stickers.py",false,"kang","stinfo"),
-        plugin("userbot:sudo","Sudo users","Manage trusted user IDs allowed to run privileged commands.","Security",PluginOwner.USERBOT,"main/userbot/modules/plugins/sudo.py",false,"addsudo","listsudo","delsudo"),
+        plugin("userbot:sudo","Sudo users","Manage trusted user IDs allowed to run privileged commands.","Security",PluginOwner.USERBOT,"main/userbot/modules/plugins/sudo.py",true,"addsudo","listsudo","delsudo"),
         plugin("userbot:supertools","Super tools","Text-to-speech, dictionary, link, weather and web utilities.","Utilities",PluginOwner.USERBOT,"main/userbot/modules/plugins/supertools.py",false,"tts","ud","short","unshort","weather","webshot","undlt"),
         plugin("userbot:telegraph","Telegraph","Publish text or media to Telegraph pages.","Publishing",PluginOwner.USERBOT,"main/userbot/modules/plugins/telegraph.py",false,"telegraph"),
         plugin("userbot:time","Time & date","Show local time, date and weekday.","Utilities",PluginOwner.USERBOT,"main/userbot/modules/plugins/time.py",true,"today","time","date"),
@@ -97,7 +97,7 @@ object PluginCatalog {
         plugin("userbot:temperature","Temperature","Convert Celsius and Fahrenheit.","Utilities",PluginOwner.USERBOT,"main/userbot/modules/plugins/tools.py",true,"temp"),
         plugin("userbot:qrcode","QR code","Create a QR code for text or a URL.","Utilities",PluginOwner.USERBOT,"main/userbot/modules/plugins/image.py",true,"qrcode"),
         plugin("userbot:wikipedia","Wikipedia","Search Wikipedia articles and read concise summaries.","Search",PluginOwner.USERBOT,"main/userbot/modules/plugins/wikipedia.py",true,"wiki"),
-        plugin("userbot:zombies","Zombie cleanup","Find and remove deleted or inactive accounts from groups.","Moderation",PluginOwner.USERBOT,"main/userbot/modules/plugins/zombies.py",false,"zombies")
+        plugin("userbot:zombies","Zombie cleanup","Find and remove deleted or inactive accounts from groups.","Moderation",PluginOwner.USERBOT,"main/userbot/modules/plugins/zombies.py",true,"zombies")
     )
 
     val bot = listOf(
