@@ -379,15 +379,43 @@ class TemperatureAutomationPlugin : AutomationPlugin {
 
 class PasteAutomationPlugin : AutomationPlugin {
     override val id = "userbot:pastebin"
-    override val commands = listOf(AutomationCommand("paste", "Upload text to paste.rs and return its link.", "paste <text>"), AutomationCommand("bin", "Alias for paste.", "bin <text>"))
+    override val commands = listOf(
+        AutomationCommand("paste", "Paste text from a message or command arguments.", "paste <text>"),
+        AutomationCommand("bin", "Alias for paste.", "bin <text>")
+    )
+
     override fun onCommand(context: AutomationContext) {
-        val text = context.arguments.joinToString(" ").trim()
-        if (text.isBlank()) return context.reply("Usage: .paste <text>")
-        context.reply("Uploading paste…")
+        val sourceMessage = context.message.tdMessage
+        val replied = sourceMessage?.let { context.telegram?.repliedMessage(it) }
+        val deleteReply = context.arguments.firstOrNull()?.lowercase() in setOf("d", "del") &&
+            replied?.isOutgoing == true
+        val argumentText = context.arguments.let { args ->
+            if (args.firstOrNull()?.lowercase() in setOf("d", "del")) args.drop(1) else args
+        }.joinToString(" ").trim()
+        val text = replied?.let(::messageText).orEmpty().ifBlank { argumentText }
+        if (text.isBlank()) {
+            return context.reply("Reply to a text message or provide text after the command. Usage: .paste <text>")
+        }
+
+        context.reply("Pasting to pastebin…")
         PluginHttp.run(context) {
             val url = PluginHttp.post("https://paste.rs", text)
-            if (url.startsWith("http")) "Paste created: $url" else "Paste service returned an unexpected response."
+            if (!url.startsWith("http")) return@run "Paste service returned an unexpected response."
+            if (deleteReply && replied != null && sourceMessage != null) {
+                context.telegram?.send(TdApi.DeleteMessages(sourceMessage.chatId, longArrayOf(replied.id), true)) { }
+            }
+            "Pastebin: $url"
         }
+    }
+
+    private fun messageText(message: TdApi.Message): String = when (val content = message.content) {
+        is TdApi.MessageText -> content.text.text
+        is TdApi.MessagePhoto -> content.caption.text
+        is TdApi.MessageVideo -> content.caption.text
+        is TdApi.MessageAnimation -> content.caption.text
+        is TdApi.MessageDocument -> content.caption.text
+        is TdApi.MessageAudio -> content.caption.text
+        else -> ""
     }
 }
 
