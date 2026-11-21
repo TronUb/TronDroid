@@ -29,6 +29,7 @@ interface BotCommandPlugin {
 object TelegramBotRuntime {
     private val workers = ConcurrentHashMap<String, BotWorker>()
     private val externalPlugins = CopyOnWriteArrayList<BotCommandPlugin>()
+    private val numberGameScores = ConcurrentHashMap<String, Int>()
 
     fun loadExternalPlugins(context: Context, uri: Uri): Int {
         val plugins = ExternalPluginLoader.loadFromUri(context.applicationContext, uri).filterIsInstance<BotCommandPlugin>()
@@ -133,13 +134,25 @@ object TelegramBotRuntime {
         private fun handleUpdate(update: JSONObject) {
             val message = update.optJSONObject("message") ?: return
             val text = message.optString("text").trim()
-            if (!text.startsWith("/")) return
+            val chat = message.optJSONObject("chat") ?: return
+            val chatId = chat.optLong("id")
+            if (!text.startsWith("/")) {
+                handleNumberGame(message, chat, text)
+                return
+            }
             val token = text.substringBefore(' ').substringBefore('@').removePrefix("/").lowercase()
-            val chatId = message.optJSONObject("chat")?.optLong("id") ?: return
             val builtInReply = when (token) {
                 "start" -> "Welcome! TronDroid bot is online. Send /help to see available commands."
-                "help" -> "Available commands:\n/start — Start the bot\n/help — Show this help\n/ping — Check bot response"
+                "help" -> "Available commands:\n/start — Start the bot\n/help — Show this help\n/ping — Check bot response\n/id — Show user and chat IDs" +
+                    externalPlugins.flatMap { it.commands }.joinToString("") { "\n/" + it.name + " — " + it.description }
                 "ping" -> "Pong! Telegram Bot API is responding."
+                "id" -> {
+                    val sender = message.optJSONObject("from") ?: JSONObject()
+                    val replySender = message.optJSONObject("reply_to_message")?.optJSONObject("from")
+                    "User: " + sender.optString("first_name") + " (" + sender.optLong("id") + ")\nChat: " +
+                        chat.optString("title", chat.optString("type")) + " (" + chat.optLong("id") + ")" +
+                        (replySender?.let { "\nReplied user: " + it.optString("first_name") + " (" + it.optLong("id") + ")" } ?: "")
+                }
                 else -> null
             }
             if (builtInReply != null) {
@@ -152,6 +165,20 @@ object TelegramBotRuntime {
                 val arguments = text.substringAfter(' ', "").trim().split(Regex("\\s+")).filter { it.isNotBlank() }
                 plugin.onCommand(token, arguments, chatId) { response -> sendReply(chatId, response) }
             }.onFailure { android.util.Log.e("TronDroidBot", "External plugin command failed", it) }
+        }
+
+        private fun handleNumberGame(message: JSONObject, chat: JSONObject, text: String) {
+            if (chat.optString("type") !in setOf("group", "supergroup")) return
+            if (!text.matches(Regex("[+-][1-9]"))) return
+            val reply = message.optJSONObject("reply_to_message") ?: return
+            val target = reply.optJSONObject("from") ?: return
+            if (target.optBoolean("is_bot")) return
+            val userId = target.optLong("id")
+            if (userId <= 0) return
+            val key = "$profileId:" + chat.optLong("id") + ":" + userId
+            val delta = text.drop(1).toInt() * if (text.startsWith("+")) 1 else -1
+            val score = numberGameScores.compute(key) { _, previous -> (previous ?: 0) + delta } ?: delta
+            sendReply(chat.optLong("id"), target.optString("first_name") + ": $score points")
         }
 
         private fun loadBotPhoto(botId: Long): String? {
