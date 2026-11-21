@@ -15,7 +15,8 @@ import java.util.concurrent.Executors
 class TelegramClientGateway(
     private val clientProvider: () -> Client?,
     val updates: TelegramUpdateStore,
-    private val cacheDirectory: File
+    private val cacheDirectory: File,
+    private val currentUserId: () -> Long? = { null }
 ) {
     private val mediaExecutor = Executors.newCachedThreadPool { runnable ->
         Thread(runnable, "TronDroid-PluginMedia").apply { isDaemon = true }
@@ -29,6 +30,15 @@ class TelegramClientGateway(
         @Suppress("UNCHECKED_CAST")
         val typedFunction = function as TdApi.Function<TdApi.Object>
         activeClient.send(typedFunction) { result -> callback(result) }
+    }
+
+    fun sendToSavedMessages(text: String, callback: (TdApi.Object) -> Unit = {}) {
+        val userId = currentUserId() ?: return callback(TdApi.Error(400, "Current Telegram account is unavailable."))
+        send(TdApi.CreatePrivateChat(userId, false)) { chatResult ->
+            if (chatResult !is TdApi.Chat) return@send callback(chatResult)
+            val content = TdApi.InputMessageText(TdApi.FormattedText(text.take(4000), emptyArray()), null, true)
+            send(TdApi.SendMessage(chatResult.id, null, null, null, null, content), callback)
+        }
     }
 
     /** Download an HTTPS image and send it as a real Telegram photo message. */
