@@ -269,10 +269,15 @@ class PingAutomationPlugin : AutomationPlugin {
         val count = context.arguments.firstOrNull()?.toIntOrNull() ?: 1
         if (count !in 1..10) return context.reply("Usage: .ping [1-10]")
         val started = System.nanoTime()
+        val frames = listOf("🕜", "🕡", "🕦", "🕣", "🕥", "🕧", "🕓", "🕔", "🕒", "🕑")
         context.reply("…")
-        context.replyAfter(300, buildString {
+        repeat(count) { index ->
+            context.replyAfter(index * 280L, frames[index % frames.size])
+        }
+        val elapsed = (System.nanoTime() - started) / 1_000_000.0
+        context.replyAfter(count * 280L + 100L, buildString {
             append("Pöng!\n")
-            append("%.2f ms".format(Locale.US, (System.nanoTime() - started) / 1_000_000.0))
+            append("%.2f ms".format(Locale.US, elapsed))
             append("\nTronDroid is responding.")
             if (count > 1) append("\nSamples: $count")
         })
