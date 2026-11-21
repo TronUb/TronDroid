@@ -26,7 +26,7 @@ class SpamAutomationPlugin : AutomationPlugin {
             return
         }
         val delaySeconds = if (delayed) context.arguments.getOrNull(1)?.toLongOrNull() else 0L
-        if (delayed && (delaySeconds == null || delaySeconds !in 1..60)) {
+        if (delayed && (delaySeconds == null || delaySeconds !in 1L..60L)) {
             context.reply("Delay must be between 1 and 60 seconds.")
             return
         }
