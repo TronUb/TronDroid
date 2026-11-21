@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <color name="tron_icon_background">#050509</color>
-</resources>
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="#050509" />
+</shape>
