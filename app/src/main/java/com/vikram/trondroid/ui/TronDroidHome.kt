@@ -311,7 +311,7 @@ private fun UserbotDetailScreen(
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 item {
-                    ElevatedCard(shape = RoundedCornerShape(24.dp)) {
+                    Card(shape = RoundedCornerShape(24.dp)) {
                         Column(
                             Modifier.fillMaxWidth().padding(18.dp),
                             verticalArrangement = Arrangement.spacedBy(14.dp)
@@ -405,7 +405,7 @@ private fun UserbotDetailScreen(
 
                 item {
                     if (customCredentials.entries.any { it.key.equals("BOT_TOKEN", ignoreCase = true) && it.value.isNotBlank() }) {
-                        ElevatedCard(shape = RoundedCornerShape(22.dp)) {
+                        Card(shape = RoundedCornerShape(22.dp)) {
                             Row(Modifier.fillMaxWidth().padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
                                 if (botAvatar != null) {
                                     androidx.compose.foundation.Image(bitmap = botAvatar, contentDescription = "Bot profile photo",
@@ -531,7 +531,7 @@ private fun UserbotDetailScreen(
                     items(stats.chunked(2)) { rowStats ->
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             rowStats.forEach { (label, count) ->
-                                ElevatedCard(
+                                Card(
                                     Modifier.weight(1f),
                                     shape = RoundedCornerShape(20.dp),
                                     colors = CardDefaults.cardColors(
@@ -553,7 +553,7 @@ private fun UserbotDetailScreen(
                         }
                     }
                     item {
-                        ElevatedCard(shape = RoundedCornerShape(20.dp)) {
+                        Card(shape = RoundedCornerShape(20.dp)) {
                             Column(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
                                 ListItem(
                                     headlineContent = { Text("Userbot connection") },
@@ -578,7 +578,7 @@ private fun UserbotDetailScreen(
                         }
                     }
                     item {
-                        ElevatedCard(shape = RoundedCornerShape(20.dp), colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
+                        Card(shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
                             ListItem(
                                 modifier = Modifier.clickable { recentChatsExpanded = !recentChatsExpanded },
                                 headlineContent = { Text("Recent chats") },
@@ -590,7 +590,7 @@ private fun UserbotDetailScreen(
                     }
                     if (recentChatsExpanded && (!ready || chats.isEmpty())) {
                         item {
-                            ElevatedCard(shape = RoundedCornerShape(18.dp)) {
+                            Card(shape = RoundedCornerShape(18.dp)) {
                                 ListItem(
                                     headlineContent = { Text(if (!ready) "Account not connected" else "No chats loaded") },
                                     supportingContent = { Text(if (!ready) "Complete Telegram sign-in to view your chats." else "Telegram has not returned any chats yet.") },
@@ -600,7 +600,7 @@ private fun UserbotDetailScreen(
                         }
                     } else if (recentChatsExpanded) {
                         items(chats.take(20), key = { "insight-chat-${it.id}" }) { chat ->
-                            ElevatedCard(shape = RoundedCornerShape(18.dp)) {
+                            Card(shape = RoundedCornerShape(18.dp)) {
                                 ListItem(
                                     headlineContent = { Text(chat.title.ifBlank { "Chat ${chat.id}" }, maxLines = 1) },
                                     supportingContent = {
@@ -625,14 +625,14 @@ private fun UserbotDetailScreen(
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 item {
-                    ElevatedCard(shape = RoundedCornerShape(22.dp), colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
+                    Card(shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
                         ListItem(headlineContent = { Text("Profile name") }, supportingContent = { Text(bot.name) },
                             leadingContent = { Icon(Icons.Rounded.Edit, null) },
                             trailingContent = { TextButton(onClick = { renamedProfile = bot.name; showRenameDialog = true }) { Text("Rename") } })
                     }
                 }
                 item {
-                    ElevatedCard(shape = RoundedCornerShape(22.dp), colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
+                    Card(shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
                         ListItem(headlineContent = { Text("Telegram session") }, supportingContent = { Text("Log out from this account on this device.") },
                             leadingContent = { Icon(Icons.Rounded.Logout, null) },
                             trailingContent = { TextButton(onClick = onLogout) { Text("Log out") } })
@@ -644,8 +644,8 @@ private fun UserbotDetailScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 item {
-                    ElevatedCard(shape = RoundedCornerShape(22.dp),
-                        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
+                    Card(shape = RoundedCornerShape(22.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
                         Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                             Icon(Icons.Rounded.DeleteForever, null, tint = MaterialTheme.colorScheme.onErrorContainer)
                             Text("Delete userbot", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onErrorContainer)
@@ -803,7 +803,7 @@ private fun PluginsScreen(modifier: Modifier, selectedOwner: Int, onOwnerChange:
         LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp),
             contentPadding = PaddingValues(bottom = 24.dp)) {
             items(plugins, key = { it.id }) { plugin ->
-                ElevatedCard(onClick = { onOpen(plugin.id) }, shape = RoundedCornerShape(20.dp)) {
+                Card(onClick = { onOpen(plugin.id) }, shape = RoundedCornerShape(20.dp)) {
                     Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                         Surface(
                             shape = RoundedCornerShape(14.dp),
@@ -847,7 +847,7 @@ private fun PluginDetailScreen(modifier: Modifier, id: String) {
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item {
-            ElevatedCard(shape = RoundedCornerShape(22.dp)) {
+            Card(shape = RoundedCornerShape(22.dp)) {
                 Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
@@ -877,7 +877,7 @@ private fun PluginDetailScreen(modifier: Modifier, id: String) {
             Text("Commands", style = MaterialTheme.typography.titleMedium)
         }
         items(plugin.commands, key = { it.name }) { command ->
-            ElevatedCard(shape = RoundedCornerShape(18.dp)) {
+            Card(shape = RoundedCornerShape(18.dp)) {
                 Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(
                         (if (isBot) "/" else PluginSettings(context).handler()) + command.name,
@@ -895,7 +895,7 @@ private fun PluginDetailScreen(modifier: Modifier, id: String) {
             }
         }
         item {
-            ElevatedCard(shape = RoundedCornerShape(22.dp)) {
+            Card(shape = RoundedCornerShape(22.dp)) {
                 ListItem(
                     headlineContent = { Text("Source module") },
                     supportingContent = { Text(plugin.sourcePath) },
@@ -927,7 +927,7 @@ private fun PluginDetailScreen(modifier: Modifier, id: String) {
 private fun SettingsScreen(modifier: Modifier, onGeneral: () -> Unit, onAbout: () -> Unit, onUpdater: () -> Unit, themeMode: String, onThemeChange: (String) -> Unit, dynamicColors: Boolean, onDynamicColorsChange: (Boolean) -> Unit) {
     Column(modifier.fillMaxSize().padding(18.dp).verticalScroll(rememberScrollState())) {
         Text("Appearance", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 18.dp, bottom = 8.dp))
-        ElevatedCard(shape = RoundedCornerShape(20.dp)) {
+        Card(shape = RoundedCornerShape(20.dp)) {
             Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text("Theme", style = MaterialTheme.typography.titleSmall)
                 SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
@@ -975,7 +975,7 @@ private fun AboutScreen(modifier: Modifier) {
     LazyColumn(modifier.fillMaxSize().padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp),
         contentPadding = PaddingValues(bottom = 28.dp)) {
         item {
-            ElevatedCard(shape = RoundedCornerShape(28.dp), colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
+            Card(shape = RoundedCornerShape(28.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
                 Column(Modifier.fillMaxWidth().padding(22.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Icon(Icons.Rounded.Send, null, Modifier.size(38.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
                     Text("TronDroid", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
@@ -987,7 +987,7 @@ private fun AboutScreen(modifier: Modifier) {
         }
         item {
             Text("About the app", style = MaterialTheme.typography.titleMedium)
-            ElevatedCard(shape = RoundedCornerShape(22.dp)) {
+            Card(shape = RoundedCornerShape(22.dp)) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Manage multiple TDLib userbot sessions, Telegram Bot API connections, command plugins and account credentials from one place.")
                     Text("Credentials are stored locally and encrypted using Android Keystore.", color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -996,7 +996,7 @@ private fun AboutScreen(modifier: Modifier) {
         }
         item {
             Text("Developer", style = MaterialTheme.typography.titleMedium)
-            ElevatedCard(shape = RoundedCornerShape(22.dp)) {
+            Card(shape = RoundedCornerShape(22.dp)) {
                 ListItem(headlineContent = { Text("Vikram Vishwakarma") },
                     supportingContent = { Text("Android · Kotlin · React and UI engineering") },
                     leadingContent = { Icon(Icons.Rounded.Code, null, tint = MaterialTheme.colorScheme.primary) })
@@ -1004,7 +1004,7 @@ private fun AboutScreen(modifier: Modifier) {
         }
         item {
             Text("Project", style = MaterialTheme.typography.titleMedium)
-            ElevatedCard(shape = RoundedCornerShape(22.dp)) {
+            Card(shape = RoundedCornerShape(22.dp)) {
                 ListItem(headlineContent = { Text("TronDroid on GitHub") },
                     supportingContent = { Text("Source code, issues and development updates") },
                     leadingContent = { Icon(Icons.Rounded.OpenInNew, null) },
@@ -1058,7 +1058,7 @@ private fun GeneralSettingsScreen(modifier: Modifier) {
     var autoReconnectBots by remember { mutableStateOf(preferences.getBoolean("auto_reconnect_bots", true)) }
     Column(modifier.fillMaxSize().padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Text("Userbot & bot preferences", style = MaterialTheme.typography.headlineSmall)
-        ElevatedCard(shape = RoundedCornerShape(22.dp)) {
+        Card(shape = RoundedCornerShape(22.dp)) {
             Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp)) {
                 Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
@@ -1085,7 +1085,7 @@ private fun GeneralSettingsScreen(modifier: Modifier) {
                 }
             }
         }
-        ElevatedCard(shape = RoundedCornerShape(22.dp)) {
+        Card(shape = RoundedCornerShape(22.dp)) {
             Column(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
                 ListItem(
                     headlineContent = { Text("Userbot sessions") },
@@ -1107,7 +1107,7 @@ private fun GeneralSettingsScreen(modifier: Modifier) {
             }
         }
         Text("Application information", style = MaterialTheme.typography.titleMedium)
-        ElevatedCard(shape = RoundedCornerShape(20.dp)) {
+        Card(shape = RoundedCornerShape(20.dp)) {
             ListItem(headlineContent = { Text("TronDroid 1.0.0") },
                 supportingContent = { Text("Debug: com.vikram.trondroid.debug · Release: com.vikram.trondroid") },
                 leadingContent = { Icon(Icons.Rounded.Info, null) })
@@ -1124,7 +1124,7 @@ private fun CredentialsScreen(modifier: Modifier, bots: List<BotProfile>, onOpen
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         items(bots, key = { it.id }) { bot ->
-            ElevatedCard(onClick = { onOpen(bot.id) }, shape = RoundedCornerShape(18.dp)) {
+            Card(onClick = { onOpen(bot.id) }, shape = RoundedCornerShape(18.dp)) {
                 ListItem(headlineContent = { Text(bot.name) }, supportingContent = { Text(bot.phoneNumber) },
                     leadingContent = { Icon(Icons.Rounded.Key, null) }, trailingContent = { Icon(Icons.Rounded.ChevronRight, null) })
             }
@@ -1157,7 +1157,7 @@ private fun CredentialDetailScreen(
         item { CredentialField("Phone number", bot.phoneNumber) }
         item { CredentialField("Telegram API ID", bot.apiId.toString()) }
         item {
-            ElevatedCard(shape = RoundedCornerShape(16.dp)) {
+            Card(shape = RoundedCornerShape(16.dp)) {
                 Column(Modifier.fillMaxWidth().padding(14.dp)) {
                     Text("Telegram API Hash", style = MaterialTheme.typography.labelLarge)
                     if (editing) OutlinedTextField(hash, { hash = it }, modifier = Modifier.fillMaxWidth(),
@@ -1191,7 +1191,7 @@ private fun CredentialDetailScreen(
 
                 }
                 if (customCredentials.isEmpty()) {
-                    ElevatedCard(shape = RoundedCornerShape(18.dp)) {
+                    Card(shape = RoundedCornerShape(18.dp)) {
                         Text("No custom credentials added.", Modifier.fillMaxWidth().padding(16.dp),
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
@@ -1227,7 +1227,7 @@ private fun CustomCredentialField(keyName: String, value: String) {
     var reveal by remember(keyName) { mutableStateOf(false) }
     val sensitive = keyName.contains("TOKEN", true) || keyName.contains("HASH", true) ||
         keyName.contains("SECRET", true) || keyName.contains("PASSWORD", true)
-    ElevatedCard(shape = RoundedCornerShape(18.dp)) {
+    Card(shape = RoundedCornerShape(18.dp)) {
         Column(Modifier.fillMaxWidth().padding(14.dp)) {
             Text(keyName, style = MaterialTheme.typography.labelLarge)
             Text(
@@ -1272,7 +1272,7 @@ private fun CustomCredentialsDialog(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                 rows.forEachIndexed { index, pair ->
-                    ElevatedCard(shape = RoundedCornerShape(16.dp)) {
+                    Card(shape = RoundedCornerShape(16.dp)) {
                         Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             OutlinedTextField(
                                 value = pair.first,
@@ -1331,7 +1331,7 @@ private fun CustomCredentialsDialog(
 @Composable
 private fun CredentialField(label: String, value: String) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    ElevatedCard(shape = RoundedCornerShape(16.dp)) {
+    Card(shape = RoundedCornerShape(16.dp)) {
         Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(label, style = MaterialTheme.typography.labelLarge)
