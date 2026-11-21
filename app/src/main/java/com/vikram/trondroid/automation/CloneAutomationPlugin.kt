@@ -49,11 +49,11 @@ class CloneAutomationPlugin(
                         preferences.edit()
                             .putString("original_first", own.firstName)
                             .putString("original_last", own.lastName)
-                            .putString("original_bio", ownFull.bio.text)
+                            .putString("original_bio", ownFull.bio?.text.orEmpty())
                             .apply()
                         gateway.send(TdApi.SetName(target.firstName.take(64), target.lastName.take(64))) { setName ->
                             if (setName is TdApi.Error) return@send context.reply("Profile name update failed: ${setName.message}")
-                            gateway.send(TdApi.SetBio(targetFull.bio.text.take(140))) { setBio ->
+                            gateway.send(TdApi.SetBio(targetFull.bio?.text.orEmpty().take(140))) { setBio ->
                                 context.reply(if (setBio is TdApi.Error) "Name cloned, but bio update failed: ${setBio.message}" else "Profile cloned. Use .revert to restore the saved name and bio.")
                             }
                         }
