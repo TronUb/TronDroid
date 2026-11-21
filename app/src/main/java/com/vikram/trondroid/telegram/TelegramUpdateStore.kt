@@ -56,18 +56,26 @@ class TelegramUpdateStore(
             is TdApi.UpdateMessageContent -> {
                 val key = update.chatId to update.messageId
                 val message = _messages.value[key]
-                if (message != null) message.content = update.newContent
+                if (message != null) {
+                    message.content = update.newContent
+                    _messages.value = _messages.value.toMap()
+                }
             }
             is TdApi.UpdateMessageEdited -> {
                 val key = update.chatId to update.messageId
                 val message = _messages.value[key]
-                if (message != null) message.editDate = update.editDate
+                if (message != null) {
+                    message.editDate = update.editDate
+                    _messages.value = _messages.value.toMap()
+                }
             }
             is TdApi.UpdateChatTitle -> {
                 _chats.value[update.chatId]?.title = update.title
+                _chats.value = _chats.value.toMap()
             }
             is TdApi.UpdateChatLastMessage -> {
                 _chats.value[update.chatId]?.lastMessage = update.lastMessage
+                _chats.value = _chats.value.toMap()
             }
             is TdApi.UpdateDeleteMessages -> {
                 val next = _messages.value.toMutableMap()
