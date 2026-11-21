@@ -24,10 +24,10 @@ object PluginCatalog {
         id, title, summary, category, owner, source,
         commands.map { name ->
             val usage = when (name) {
-                in setOf("wiki", "imdb", "reddit", "r", "translate", "tr", "tl", "upcase", "joke", "weather", "currency", "paste", "google", "img", "download", "upload", "ytsearch", "song", "lyrics", "whois", "id", "qrcode", "tts", "ud", "short", "unshort", "telegraph", "carbon", "search", "pic", "pfp", "deezer", "spotify", "webshot") -> "$name <query>"
+                in setOf("wiki", "imdb", "reddit", "r", "translate", "tr", "tl", "upcase", "joke", "weather", "currency", "paste", "google", "img", "download", "upload", "ytsearch", "song", "lyrics", "whois", "id", "qrcode", "tts", "ud", "short", "unshort", "telegraph", "carbon", "search", "pic", "pfp", "deezer", "spotify", "webshot", "itos", "vsubclip") -> "$name <query>"
                 in setOf("ban", "mute", "kick", "promote", "demote", "pin", "unpin", "block", "unblock", "approve", "disapprove") -> "$name <reply or user>"
-                in setOf("afk", "setwelcome", "welcome", "save", "setdv", "filter", "schedule", "settitle") -> "$name <text>"
-                in setOf("purge", "purgecount", "spam", "dspam", "vcut", "vspeed") -> "$name <count or options>"
+                in setOf("afk", "setwelcome", "welcome", "save", "setdv", "filter", "schedule", "settitle", "colourtemplate", "tts") -> "$name <text>"
+                in setOf("purge", "purgecount", "spam", "dspam", "vcut", "vspeed", "vmute", "vinvert") -> "$name <count or options>"
                 else -> name
             }
             val example = when (name) {
@@ -62,7 +62,7 @@ object PluginCatalog {
         plugin("userbot:google","Google & images","Search the web and find image sources.","Search",PluginOwner.USERBOT,"main/userbot/modules/plugins/google.py",false,"sauce","pic","img"),
         plugin("userbot:group","Group info","Inspect group, supergroup, channel and unread chat details.","Information",PluginOwner.USERBOT,"main/userbot/modules/plugins/group.py",true,"basicgroup","supergroup","unreadchat","channel"),
         plugin("userbot:help","Help","List commands currently implemented in TronDroid.","Utilities",PluginOwner.USERBOT,"main/userbot/modules/plugins/help.py",true,"help"),
-        plugin("userbot:image","Image tools","Generate QR codes and fetch image or profile-picture content.","Media",PluginOwner.USERBOT,"main/userbot/modules/plugins/image.py",false,"stoi","itos","qrcode","colourtemplate","cat","waifu","pfp","dog"),
+        plugin("userbot:image","Image tools","Generate QR codes, convert static images and stickers, and fetch image or profile-picture content.","Media",PluginOwner.USERBOT,"main/userbot/modules/plugins/image.py",true,"stoi","itos","qrcode","colourtemplate","cat","waifu","pfp","dog"),
         plugin("userbot:imdb","IMDb","Find movies and series using IMDb title search.","Search",PluginOwner.USERBOT,"main/userbot/modules/plugins/imdb.py",true,"imdb"),
         plugin("userbot:info","Media & chat info","Inspect media metadata and chat information.","Information",PluginOwner.USERBOT,"main/userbot/modules/plugins/info.py",true,"minfo","chatinfo"),
         plugin("userbot:keyboard","Keyboard","Create custom reply keyboards.","Messaging",PluginOwner.USERBOT,"main/userbot/modules/plugins/keyboard.py",false,"keyboard"),
