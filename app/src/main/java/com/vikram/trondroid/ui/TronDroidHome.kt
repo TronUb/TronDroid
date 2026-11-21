@@ -366,7 +366,7 @@ private fun UserbotDetailScreen(
                 }
 
                 item {
-                    if (!customCredentials["BOT_TOKEN"].isNullOrBlank()) {
+                    if (customCredentials.entries.any { it.key.equals("BOT_TOKEN", ignoreCase = true) && it.value.isNotBlank() }) {
                         ElevatedCard(shape = RoundedCornerShape(22.dp)) {
                             Row(Modifier.fillMaxWidth().padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
                                 Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.tertiaryContainer, modifier = Modifier.size(48.dp)) {
@@ -505,6 +505,31 @@ private fun UserbotDetailScreen(
                                 }
                             }
                             if (rowStats.size == 1) Spacer(Modifier.weight(1f))
+                        }
+                    }
+                    item {
+                        ElevatedCard(shape = RoundedCornerShape(20.dp)) {
+                            Column(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                                ListItem(
+                                    headlineContent = { Text("Userbot connection") },
+                                    supportingContent = { Text(if (!bot.enabled) "Disabled" else authLabel(auth)) },
+                                    leadingContent = { Icon(Icons.Rounded.AccountCircle, null, tint = MaterialTheme.colorScheme.primary) }
+                                )
+                                HorizontalDivider(Modifier.padding(horizontal = 16.dp))
+                                ListItem(
+                                    headlineContent = { Text("Live log events") },
+                                    supportingContent = { Text("${logs.size} events currently retained in this session") },
+                                    leadingContent = { Icon(Icons.Rounded.Terminal, null, tint = MaterialTheme.colorScheme.primary) }
+                                )
+                                if (customCredentials.entries.any { it.key.equals("BOT_TOKEN", ignoreCase = true) && it.value.isNotBlank() }) {
+                                    HorizontalDivider(Modifier.padding(horizontal = 16.dp))
+                                    ListItem(
+                                        headlineContent = { Text("Bot session") },
+                                        supportingContent = { Text(if (bot.botEnabled) "Enabled · polling Telegram Bot API updates" else "Token saved · session paused") },
+                                        leadingContent = { Icon(Icons.Rounded.SmartToy, null, tint = MaterialTheme.colorScheme.primary) }
+                                    )
+                                }
+                            }
                         }
                     }
                     item {
@@ -962,6 +987,11 @@ private fun CredentialDetailScreen(
                         Icon(Icons.Rounded.Add, null)
                         Spacer(Modifier.width(6.dp))
                         Text("Add more")
+                    }
+                    if (customCredentials.isNotEmpty()) {
+                        TextButton(onClick = { onSaveCustomCredentials(emptyMap()) }) {
+                            Text("Clear all", color = MaterialTheme.colorScheme.error)
+                        }
                     }
                 }
                 if (customCredentials.isEmpty()) {
