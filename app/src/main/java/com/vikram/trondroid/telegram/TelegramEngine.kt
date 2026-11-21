@@ -53,6 +53,7 @@ import com.vikram.trondroid.automation.CloneAutomationPlugin
 import com.vikram.trondroid.automation.StickerAutomationPlugin
 import com.vikram.trondroid.automation.ImageConversionAutomationPlugin
 import com.vikram.trondroid.automation.UpdateAutomationPlugin
+import com.vikram.trondroid.automation.TextToSpeechAutomationPlugin
 import com.vikram.trondroid.plugins.PluginSettings
 import com.vikram.trondroid.plugins.ExternalPluginLoader
 import android.net.Uri
@@ -167,6 +168,7 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
         nativePlugins += StickerAutomationPlugin()
         nativePlugins += ImageConversionAutomationPlugin(context)
         nativePlugins += UpdateAutomationPlugin()
+        nativePlugins += TextToSpeechAutomationPlugin(context.cacheDir)
         nativePlugins += WeatherAutomationPlugin()
         nativePlugins += CurrencyAutomationPlugin()
         nativePlugins += TemperatureAutomationPlugin()
