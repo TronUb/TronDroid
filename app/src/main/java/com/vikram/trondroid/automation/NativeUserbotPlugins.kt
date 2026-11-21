@@ -593,7 +593,10 @@ class NotesAutomationPlugin(private val preferences: SharedPreferences) : Automa
     }
 }
 
-class AfkAutomationPlugin : AutomationPlugin {
+class AfkAutomationPlugin(
+    private val commandPrefix: () -> String = { "." },
+    private val ownerId: () -> Long? = { null }
+) : AutomationPlugin {
     override val id = "userbot:afk"
     override val commands = listOf(
         AutomationCommand("afk", "Set an away status and optional reason.", "afk <reason>"),
@@ -602,6 +605,7 @@ class AfkAutomationPlugin : AutomationPlugin {
     @Volatile private var reason: String = ""
     @Volatile private var active: Boolean = false
     @Volatile private var startedAt: Long = 0L
+
     override fun onCommand(context: AutomationContext) {
         when (context.command) {
             "afk" -> {
@@ -610,19 +614,56 @@ class AfkAutomationPlugin : AutomationPlugin {
                 startedAt = System.currentTimeMillis()
                 context.reply("AFK enabled" + (reason.takeIf { it.isNotBlank() }?.let { ": $it" } ?: "."))
             }
-            "unafk" -> {
-                reason = ""
-                active = false
-                startedAt = 0L
-                context.reply("AFK disabled.")
-            }
+            "unafk" -> clearAfk(context.message.chatId, context)
         }
     }
+
     override fun onMessage(context: AutomationContext) {
-        if (active && !context.message.isOutgoing) {
-            val awayReason = reason.ifBlank { "No reason provided" }
-            val minutes = ((System.currentTimeMillis() - startedAt) / 60000).coerceAtLeast(0)
-            context.reply("This user is currently away (" + minutes + "m). Reason: " + awayReason)
+        if (!active) return
+        val message = context.message
+        val text = message.text
+        if (message.isOutgoing) {
+            val prefix = commandPrefix().ifBlank { "." }
+            val token = text.trim().substringBefore(Regex("\\s+").pattern)
+            if (token.equals(prefix + "afk", true) ||
+                token.equals(prefix + "unafk", true) || text.contains("#afk", true)
+            ) return
+            val minutes = ((System.currentTimeMillis() - startedAt) / 60_000).coerceAtLeast(0)
+            active = false
+            reason = ""
+            startedAt = 0L
+            sendNewMessage(context, "I'm back online. Offline time: ${minutes}m.")
+            return
         }
+
+        val tdMessage = message.tdMessage ?: return
+        val isPrivate = context.telegram?.cachedChat(message.chatId)?.type is TdApi.ChatTypePrivate
+        val expectedOwnerId = ownerId()
+        val isMention = (tdMessage.content as? TdApi.MessageText)?.text?.entities
+            ?.any { entity ->
+                val mention = entity.type as? TdApi.TextEntityTypeMentionName
+                mention != null && expectedOwnerId != null && mention.userId == expectedOwnerId
+            } == true
+        if (!isPrivate && !isMention) return
+
+        val awayReason = reason.ifBlank { "No reason mentioned" }
+        val minutes = ((System.currentTimeMillis() - startedAt) / 60_000).coerceAtLeast(0)
+        context.reply("Currently away for ${minutes}m. Reason: $awayReason")
+    }
+
+    private fun clearAfk(chatId: Long, context: AutomationContext) {
+        reason = ""
+        active = false
+        startedAt = 0L
+        context.reply("AFK disabled.")
+    }
+
+    private fun sendNewMessage(context: AutomationContext, text: String) {
+        context.telegram?.send(
+            TdApi.SendMessage(
+                context.message.chatId, null, null, null, null,
+                TdApi.InputMessageText(TdApi.FormattedText(text, emptyArray()), null, true)
+            )
+        ) { }
     }
 }
