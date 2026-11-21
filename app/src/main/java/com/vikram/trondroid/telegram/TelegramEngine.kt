@@ -48,6 +48,7 @@ import com.vikram.trondroid.automation.SudoAutomationPlugin
 import com.vikram.trondroid.automation.ToolsExtrasAutomationPlugin
 import com.vikram.trondroid.automation.ZombieCleanupAutomationPlugin
 import com.vikram.trondroid.automation.MusicSearchAutomationPlugin
+import com.vikram.trondroid.automation.QuotlyAutomationPlugin
 import com.vikram.trondroid.plugins.PluginSettings
 import com.vikram.trondroid.plugins.ExternalPluginLoader
 import android.net.Uri
@@ -157,6 +158,7 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
         nativePlugins += ToolsExtrasAutomationPlugin()
         nativePlugins += ZombieCleanupAutomationPlugin()
         nativePlugins += MusicSearchAutomationPlugin()
+        nativePlugins += QuotlyAutomationPlugin(context.cacheDir)
         nativePlugins += WeatherAutomationPlugin()
         nativePlugins += CurrencyAutomationPlugin()
         nativePlugins += TemperatureAutomationPlugin()
