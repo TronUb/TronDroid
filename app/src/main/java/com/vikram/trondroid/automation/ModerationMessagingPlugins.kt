@@ -41,7 +41,25 @@ class AdminAutomationPlugin : AutomationPlugin {
         val targetId = (replied?.senderId as? TdApi.MessageSenderUser)?.userId
 
         if (command == "banall") {
-            context.reply("Bulk banning is not enabled in this Android build yet. No members were changed.")
+            if (context.arguments.firstOrNull()?.equals("confirm", true) != true) {
+                context.reply("This will ban every regular member in this supergroup (up to 200 members per Telegram query). Run .banall confirm to proceed.")
+                return
+            }
+            requireAdmin(gateway, context.message.chatId, "restrict") { allowed, reason ->
+                if (!allowed) {
+                    context.reply(reason ?: "You need the ban/restrict members permission.")
+                    return@requireAdmin
+                }
+                gateway.send(TdApi.GetChat(context.message.chatId)) { chatResult ->
+                    val chat = chatResult as? TdApi.Chat
+                    val type = chat?.type as? TdApi.ChatTypeSupergroup
+                    if (type == null) {
+                        context.reply("Bulk banning currently supports supergroups only. No members were changed.")
+                        return@send
+                    }
+                    banAllMembers(context, gateway, type.supergroupId)
+                }
+            }
             return
         }
 
@@ -243,6 +261,45 @@ class AdminAutomationPlugin : AutomationPlugin {
             gateway.send(request) { result ->
                 context.reply(if (result is TdApi.Error) "Telegram error: ${result.message}"
                     else if (command == "pin") "Message pinned." else "Pinned messages cleared.")
+            }
+        }
+    }
+
+    private fun banAllMembers(
+        context: AutomationContext,
+        gateway: com.vikram.trondroid.telegram.TelegramClientGateway,
+        supergroupId: Long
+    ) {
+        gateway.send(TdApi.GetSupergroupMembers(supergroupId, TdApi.SupergroupMembersFilterRecent(), 0, 200)) { result ->
+            val page = result as? TdApi.ChatMembers
+            if (page == null) {
+                context.reply((result as? TdApi.Error)?.let { "Unable to load members: ${it.message}" }
+                    ?: "Telegram did not return the member list.")
+                return@send
+            }
+            val candidates = page.members.mapNotNull { member ->
+                val user = member.memberId as? TdApi.MessageSenderUser ?: return@mapNotNull null
+                if (member.status is TdApi.ChatMemberStatusMember) user.userId else null
+            }.distinct().filter { it != gateway.currentUserId() }
+            if (candidates.isEmpty()) {
+                context.reply("No regular members were found to ban.")
+                return@send
+            }
+            context.reply("Bulk ban started for ${candidates.size} regular members. Administrators and the connected account are excluded.")
+            val completed = java.util.concurrent.atomic.AtomicInteger(0)
+            val banned = java.util.concurrent.atomic.AtomicInteger(0)
+            val failed = java.util.concurrent.atomic.AtomicInteger(0)
+            candidates.forEach { userId ->
+                gateway.send(TdApi.SetChatMemberStatus(
+                    context.message.chatId,
+                    TdApi.MessageSenderUser(userId),
+                    TdApi.ChatMemberStatusBanned(0)
+                )) { response ->
+                    if (response is TdApi.Error) failed.incrementAndGet() else banned.incrementAndGet()
+                    if (completed.incrementAndGet() == candidates.size) {
+                        context.reply("Bulk ban finished. Banned: ${banned.get()}, failed: ${failed.get()}. Telegram returned ${page.members.size} members in this request.")
+                    }
+                }
             }
         }
     }
