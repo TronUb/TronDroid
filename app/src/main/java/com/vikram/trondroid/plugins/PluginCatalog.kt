@@ -24,7 +24,7 @@ object PluginCatalog {
         id, title, summary, category, owner, source,
         commands.map { name ->
             val usage = when (name) {
-                in setOf("wiki", "imdb", "reddit", "r", "translate", "tr", "tl", "upcase", "joke", "weather", "currency", "paste", "google", "download", "upload", "ytsearch", "song", "lyrics", "whois", "id", "qrcode", "tts", "ud", "short", "unshort", "telegraph", "search", "pfp", "deezer", "spotify", "webshot", "itos", "vsubclip") -> "$name <query>"
+                in setOf("wiki", "imdb", "reddit", "r", "translate", "tr", "tl", "upcase", "joke", "weather", "currency", "paste", "google", "download", "upload", "ytsearch", "song", "lyrics", "whois", "id", "qrcode", "tts", "ud", "short", "unshort", "telegraph", "search", "pfp", "deezer", "spotify", "webshot", "itos", "vsubclip", "wlink", "commonchat") -> "$name <query>"
                 in setOf("ban", "unban", "kick", "mute", "unmute", "promote", "demote") -> "$name <reply or user> [duration]"
                 in setOf("whois", "uinfo") -> "$name <user id> (or reply to a user)"
                 in setOf("mention", "men") -> "$name <user id> <display text>"
@@ -37,6 +37,14 @@ object PluginCatalog {
                 "img" -> "img [count 1-3] <query>"
                 "pic" -> "pic <query>"
                 "sauce" -> "sauce (reply to photo)"
+                "wlink" -> "wlink <word or phrase>"
+                "json" -> "json (reply optional)"
+                "mlink" -> "Reply to a message with .mlink"
+                "saved" -> "Reply to a message with .saved"
+                "forward" -> "Reply to a message with .forward [destination chat ID]"
+                "commonchat" -> "commonchat <user id> (or reply to a user)"
+                "speedtest" -> "speedtest"
+                "undlt" -> "undlt [1-20]"
                 in setOf("carbon", "cb") -> "$name [colour] <code>"
                 "pin" -> "pin (reply required) [loud]"
                 "unpin" -> "unpin (reply required) | unpin all"
@@ -121,11 +129,11 @@ object PluginCatalog {
         plugin("userbot:stats","Stats","Show Telegram dialog and chat statistics from loaded dialogs.","Information",PluginOwner.USERBOT,"main/userbot/modules/plugins/stats.py",true,"stats"),
         plugin("userbot:stickers","Stickers","Add or remove replied stickers from Telegram favorites and inspect sticker metadata. Sticker-pack creation from arbitrary images requires the official @Stickers bot.","Media",PluginOwner.USERBOT,"main/userbot/modules/plugins/stickers.py",true,"kang","unkang","stinfo","stickerinfo"),
         plugin("userbot:sudo","Sudo users","Manage trusted user IDs allowed to run privileged commands.","Security",PluginOwner.USERBOT,"main/userbot/modules/plugins/sudo.py",true,"addsudo","listsudo","delsudo"),
-        plugin("userbot:supertools","Super tools","Dictionary, link shortening, weather and webpage screenshot utilities.","Utilities",PluginOwner.USERBOT,"main/userbot/modules/plugins/supertools.py",false,"tts","ud","short","unshort","weather","webshot","undlt"),
-        plugin("userbot:telegraph","Telegraph","Publish replied text and supported media to Telegraph pages.","Publishing",PluginOwner.USERBOT,"main/userbot/modules/plugins/telegraph.py",false,"telegraph"),
+        plugin("userbot:supertools","Super tools","Dictionary lookup, safe URL shortening and expansion, and webpage screenshot utilities. Text-to-speech and weather are available as separate native plugins.","Utilities",PluginOwner.USERBOT,"main/userbot/modules/plugins/supertools.py",true,"ud","short","unshort","webshot"),
+        plugin("userbot:telegraph","Telegraph","Publish replied text, photos, videos and supported media to Telegraph pages.","Publishing",PluginOwner.USERBOT,"main/userbot/modules/plugins/telegraph.py",true,"telegraph"),
         plugin("userbot:tts","Text to speech","Convert short text or a replied text message to an audio file.","Media",PluginOwner.USERBOT,"main/userbot/modules/plugins/supertools.py",true,"tts"),
         plugin("userbot:time","Time & date","Show local time, date and weekday.","Utilities",PluginOwner.USERBOT,"main/userbot/modules/plugins/time.py",true,"today","time","date"),
-        plugin("userbot:tools","Tools","Currency, temperature, saved messages and message utilities.","Utilities",PluginOwner.USERBOT,"main/userbot/modules/plugins/tools.py",false,"wlink","currency","temperature","json","mlink","saved","forward","speedtest","commonchat"),
+        plugin("userbot:tools","Tools","Search recent chat history, inspect message JSON, create message links, save or forward replies, find common groups, run a download speed test and view locally cached deleted messages.","Utilities",PluginOwner.USERBOT,"main/userbot/modules/plugins/tools.py",true,"wlink","json","mlink","saved","forward","speedtest","commonchat","undlt"),
         plugin("userbot:translate","Translate","Translate text using the selected target language.","Utilities",PluginOwner.USERBOT,"main/userbot/modules/plugins/translate.py",true,"translate","tr","tl","trlist","tllist","translatelist","translatelang"),
         plugin("userbot:update","Update","Check the latest published TronDroid release and open its release notes.","System",PluginOwner.USERBOT,"main/userbot/modules/plugins/update.py",true,"update"),
         plugin("userbot:utils","Group utilities","Group administration helpers for titles, invites, member lists, reporting and chat controls.","Groups",PluginOwner.USERBOT,"main/userbot/modules/plugins/utils.py",false,"settitle","invite","inviteall","admins","report","all","bots","kickme","members","join","slowmo"),
