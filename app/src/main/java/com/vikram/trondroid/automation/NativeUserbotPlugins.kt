@@ -505,7 +505,7 @@ class FunAutomationPlugin : AutomationPlugin {
 
 class WeatherAutomationPlugin : AutomationPlugin {
     override val id = "userbot:weather"
-    override val commands = listOf(AutomationCommand("weather", "Show current weather for a city.", "weather <city>"))
+    override val commands = listOf(AutomationCommand("weather", "Show current weather for a city.", "weather <city>"), AutomationCommand("wtr", "Alias for weather.", "wtr <city>"))
     override fun onCommand(context: AutomationContext) {
         val city = context.arguments.joinToString(" ").trim()
         if (city.isBlank()) return context.reply("Usage: .weather <city>")
