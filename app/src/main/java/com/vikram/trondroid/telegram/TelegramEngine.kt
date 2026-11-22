@@ -145,7 +145,7 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
         nativePlugins += AliveAutomationPlugin(
             { profile.name },
             context,
-            { chatId -> TelegramBotRuntime.sendUserbotAlive(profile.id, chatId) },
+            { chatId, caption -> TelegramBotRuntime.sendUserbotAlive(profile.id, chatId, caption) },
             { chatId -> TelegramBotRuntime.sendUserbotQuote(profile.id, chatId) }
         )
         nativePlugins += AnimeAutomationPlugin()
