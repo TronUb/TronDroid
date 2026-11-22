@@ -541,13 +541,14 @@ private fun UserbotDetailScreen(
                                     }
                                 }
                             }
-                            if (account != null) {
+                            val accountInfo = account
+                            if (accountInfo != null) {
                                 Column(Modifier.fillMaxWidth().padding(start = 70.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    Text("Telegram ID  " + account.id, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    Text("Phone  " + account.phone.ifBlank { bot.phoneNumber }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text("Telegram ID  " + accountInfo.id, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text("Phone  " + accountInfo.phone.ifBlank { bot.phoneNumber }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     Text("Data center  Managed by TDLib", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    if (account.isPremium || account.isVerified) {
-                                        Text(listOfNotNull(if (account.isPremium) "Premium" else null, if (account.isVerified) "Verified" else null).joinToString(" · "),
+                                    if (accountInfo.isPremium || accountInfo.isVerified) {
+                                        Text(listOfNotNull(if (accountInfo.isPremium) "Premium" else null, if (accountInfo.isVerified) "Verified" else null).joinToString(" · "),
                                             style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                                     }
                                 }
