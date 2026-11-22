@@ -39,7 +39,7 @@ class QuotlyAutomationPlugin(private val cacheDir: File) : AutomationPlugin {
 
         val requested = context.arguments.firstOrNull()?.lowercase()
         val paletteName = requested?.takeIf { it in palettes } ?: "black"
-        val quoteText = if (requested in palettes.keys) context.arguments.drop(1).joinToString(" ").ifBlank { text } else text
+        val quoteText = if (requested != null && requested in palettes.keys) context.arguments.drop(1).joinToString(" ").ifBlank { text } else text
         val senderId = (replied.senderId as? TdApi.MessageSenderUser)?.userId
         val sender = senderId?.let(gateway::cachedUser)
         val name = listOfNotNull(sender?.firstName, sender?.lastName)
