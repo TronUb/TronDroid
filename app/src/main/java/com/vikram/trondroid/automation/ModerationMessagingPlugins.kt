@@ -29,10 +29,10 @@ class AdminAutomationPlugin : AutomationPlugin {
 
     override fun onCommand(context: AutomationContext) {
         val gateway = context.telegram ?: return context.reply("Telegram session is unavailable.")
-        val command = when (context.command.lowercase()) {
+        val command = when (context.command?.lowercase().orEmpty()) {
             "dban" -> "ban"
             "dmute" -> "mute"
-            else -> context.command.lowercase()
+            else -> context.command?.lowercase().orEmpty()
         }
         val replied = context.message.tdMessage?.let(gateway::repliedMessage)
 
@@ -232,7 +232,7 @@ class AdminAutomationPlugin : AutomationPlugin {
             }
         }
         val repliedForDelete = context.message.tdMessage?.let(gateway::repliedMessage)
-        if (context.command.startsWith("d") && repliedForDelete != null) {
+        if (context.command?.startsWith("d") == true && repliedForDelete != null) {
             gateway.send(TdApi.DeleteMessages(chatId, longArrayOf(repliedForDelete.id), true)) {
                 executeAction()
             }
