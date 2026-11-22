@@ -33,6 +33,7 @@ class WelcomeAutomationPlugin(private val prefs: SharedPreferences) : Automation
     }
 
     override fun onTelegramUpdate(context: AutomationUpdateContext) {
+        if (!context.isCommandEnabled("setwelcome")) return
         val update = context.update as? TdApi.UpdateNewMessage ?: return
         val message = update.message
         val added = message.content as? TdApi.MessageChatAddMembers ?: return
