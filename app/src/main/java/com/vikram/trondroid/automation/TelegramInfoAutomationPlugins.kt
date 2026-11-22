@@ -12,6 +12,7 @@ class ProfileAutomationPlugin : AutomationPlugin {
         AutomationCommand("whois", "Show the profile of a replied user or numeric Telegram user ID.", "whois <user id>"),
         AutomationCommand("uinfo", "Alias for whois.", "uinfo <user id>"),
         AutomationCommand("mention", "Create a Telegram mention link for a user ID.", "mention <user id> <display text>"),
+        AutomationCommand("men", "Alias for mention.", "men <user id> <display text>"),
         AutomationCommand("block", "Block a user by ID or replied message.", "block <user id> (or reply)"),
         AutomationCommand("unblock", "Unblock a user by ID or replied message.", "unblock <user id> (or reply)"),
         AutomationCommand("sg", "Send a replied user profile link and ID to Saved Messages.", "sg (reply optional)"),
@@ -27,9 +28,11 @@ class ProfileAutomationPlugin : AutomationPlugin {
             "id" -> {
                 val message = context.message.tdMessage
                 val replied = message?.let { gateway?.repliedMessage(it) }
+                val explicitId = context.arguments.firstOrNull()?.toLongOrNull()
                 val sender = message?.senderUserId() ?: context.message.senderId?.toLongOrNull()
                 val replySender = replied?.senderUserId()
                 val lines = mutableListOf("Chat ID: ${context.message.chatId}")
+                explicitId?.let { lines.add("Requested user ID: $it") }
                 sender?.let { lines.add("Your ID: $it") }
                 replySender?.let { lines.add("Replied user ID: $it") }
                 context.reply(lines.joinToString("\n"))
@@ -53,9 +56,9 @@ class ProfileAutomationPlugin : AutomationPlugin {
                 }
                 activeGateway.send(request) { result -> context.reply(if (result is TdApi.Error) "Profile update failed: ${result.message}" else "Profile updated.") }
             }
-            "mention" -> {
+            "mention", "men" -> {
                 val id = context.arguments.firstOrNull()?.toLongOrNull()
-                    ?: return context.reply("Usage: .mention <user id> <display text>")
+                    ?: return context.reply("Usage: .${context.command} <user id> <display text>")
                 val label = context.arguments.drop(1).joinToString(" ").ifBlank { "User" }
                 context.reply("$label (tg://user?id=$id)")
             }
