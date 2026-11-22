@@ -158,6 +158,9 @@ class MainActivity : ComponentActivity() {
                         TelegramBackgroundService.reconcile(applicationContext)
                     },
                     onDeleteAllConnections = {
+                        // Stop workers before deleting their TDLib data directories.
+                        com.vikram.trondroid.telegram.TelegramRuntime.stopAll()
+                        TelegramBotRuntime.stopAll()
                         store.removeAll()
                         bots = store.all()
                         selectedId = null
