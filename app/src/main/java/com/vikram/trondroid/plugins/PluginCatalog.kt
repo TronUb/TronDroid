@@ -26,6 +26,12 @@ object PluginCatalog {
             val usage = when (name) {
                 in setOf("wiki", "imdb", "reddit", "r", "translate", "tr", "tl", "upcase", "joke", "weather", "currency", "paste", "google", "download", "upload", "ytsearch", "song", "lyrics", "whois", "id", "qrcode", "tts", "ud", "short", "unshort", "telegraph", "search", "pfp", "deezer", "spotify", "webshot", "itos", "vsubclip") -> "$name <query>"
                 in setOf("ban", "unban", "kick", "mute", "unmute", "promote", "demote") -> "$name <reply or user> [duration]"
+                in setOf("whois", "uinfo") -> "$name <user id> (or reply to a user)"
+                in setOf("mention", "men") -> "$name <user id> <display text>"
+                "set" -> "set <fname|lname|bio|uname> <value>"
+                "rem" -> "rem <lname|bio|uname>"
+                "sleep" -> "sleep <seconds>"
+                in setOf("q", "quotly") -> "$name [black|white|blue|purple|green] (reply to text)"
                 in setOf("broadcast", "bdt") -> "$name <message>"
                 in setOf("kbd", "keyboard") -> "$name <button text> | <https URL> | <message>"
                 "img" -> "img [count 1-3] <query>"
@@ -48,6 +54,13 @@ object PluginCatalog {
                 "img" -> "img 3 mountain landscape"
                 "pic" -> "pic sunset beach"
                 "sauce" -> "Reply to a photo with .sauce"
+                "reboot" -> "reboot"
+                "sleep" -> "sleep 300"
+                "q", "quotly" -> "Reply to a text message with .q blue"
+                "whois", "uinfo" -> "$name 123456789"
+                "mention", "men" -> "$name 123456789 Vikram"
+                "set" -> "set bio Building with Kotlin"
+                "rem" -> "rem bio"
                 "wiki" -> "wiki quantum mechanics"
                 "imdb" -> "imdb Interstellar"
                 "translate", "tr", "tl" -> "$name en Hello, how are you?"
@@ -87,10 +100,10 @@ object PluginCatalog {
         plugin("userbot:pastebin","Pastebin","Publish text snippets and return shareable links.","Utilities",PluginOwner.USERBOT,"main/userbot/modules/plugins/pastebin.py",true,"paste","bin"),
         plugin("userbot:ping","Ping","Check the userbot command response.","Diagnostics",PluginOwner.USERBOT,"main/userbot/modules/plugins/ping.py",true,"ping","pong"),
         plugin("userbot:pmpermit","PM permit","Warn unknown private senders and block after a configurable message limit.","Privacy",PluginOwner.USERBOT,"main/userbot/modules/plugins/pmpermit.py",true,"pmpermit","approve","disapprove"),
-        plugin("userbot:power","Power","Device power actions from the original host environment are not available on Android.","System",PluginOwner.USERBOT,"main/userbot/modules/plugins/power.py",false,"reboot","sleep"),
-        plugin("userbot:profile","Profile","Look up Telegram users, IDs and profile-related information.","Profile",PluginOwner.USERBOT,"main/userbot/modules/plugins/profile.py",false,"whois","id","mention","uinfo","block","unblock","sg","set","rem","repo"),
+        plugin("userbot:power","Power","Restart the active Telegram userbot session or temporarily pause its command and update processing. These actions do not reboot or power off Android.","System",PluginOwner.USERBOT,"main/userbot/modules/plugins/power.py",true,"reboot","sleep"),
+        plugin("userbot:profile","Profile","Look up Telegram users and IDs, create mentions, block or unblock users, update your profile and send profile details to Saved Messages.","Profile",PluginOwner.USERBOT,"main/userbot/modules/plugins/profile.py",true,"whois","id","mention","men","uinfo","block","unblock","sg","set","rem","repo"),
         plugin("userbot:purge","Purge","Delete selected messages and count matching messages.","Moderation",PluginOwner.USERBOT,"main/userbot/modules/plugins/purge.py",true,"purge","purgecount","del"),
-        plugin("userbot:quotly","Quotly","Turn a replied message into a quote image.","Media",PluginOwner.USERBOT,"main/userbot/modules/plugins/quotly.py",false,"quotly"),
+        plugin("userbot:quotly","Quotly","Render replied Telegram text locally into a shareable quote image with selectable colour themes; no third-party bot is required.","Media",PluginOwner.USERBOT,"main/userbot/modules/plugins/quotly.py",true,"q","quotly"),
         plugin("userbot:reddit","Reddit","Search public Reddit posts and show relevant results.","Search",PluginOwner.USERBOT,"main/userbot/modules/plugins/reddit.py",true,"reddit","r"),
         plugin("userbot:share","Plugin sharing","Share, install and uninstall compatible plugin packages.","Plugins",PluginOwner.USERBOT,"main/userbot/modules/plugins/share.py",false,"send","install","uninstall"),
         plugin("userbot:song","Music search","Search songs, Deezer tracks and lyrics.","Media",PluginOwner.USERBOT,"main/userbot/modules/plugins/song.py",false,"song","deezer","lyrics"),
