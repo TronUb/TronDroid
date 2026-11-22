@@ -27,6 +27,10 @@ object PluginCatalog {
                 in setOf("wiki", "imdb", "reddit", "r", "translate", "tr", "tl", "upcase", "joke", "weather", "currency", "paste", "google", "img", "download", "upload", "ytsearch", "song", "lyrics", "whois", "id", "qrcode", "tts", "ud", "short", "unshort", "telegraph", "search", "pic", "pfp", "deezer", "spotify", "webshot", "itos", "vsubclip") -> "$name <query>"
                 in setOf("ban", "unban", "kick", "mute", "unmute", "promote", "demote") -> "$name <reply or user> [duration]"
                 in setOf("broadcast", "bdt") -> "$name <message>"
+                in setOf("kbd", "keyboard") -> "$name <button text> | <https URL> | <message>"
+                "img" -> "img [count 1-3] <query>"
+                "pic" -> "pic <query>"
+                "sauce" -> "sauce (reply to photo)"
                 in setOf("carbon", "cb") -> "$name [colour] <code>"
                 "pin" -> "pin (reply required) [loud]"
                 "unpin" -> "unpin (reply required) | unpin all"
@@ -40,6 +44,10 @@ object PluginCatalog {
                 "carbon", "cb" -> "$name aqua fun main() { println(\"Hello\") }"
                 "carblist", "devinfo", "meminfo", "storageinfo", "displayinfo" -> name
                 "eval", "e", "term", "shell" -> "$name (disabled for device safety)"
+                "kbd", "keyboard" -> "$name Open website | https://example.com | Visit our website"
+                "img" -> "img 3 mountain landscape"
+                "pic" -> "pic sunset beach"
+                "sauce" -> "Reply to a photo with .sauce"
                 "wiki" -> "wiki quantum mechanics"
                 "imdb" -> "imdb Interstellar"
                 "translate", "tr", "tl" -> "$name en Hello, how are you?"
@@ -68,13 +76,13 @@ object PluginCatalog {
         plugin("userbot:dv","Digital vault","Save and retrieve private snippets and vault entries locally on this device.","Utilities",PluginOwner.USERBOT,"main/userbot/modules/plugins/dv.py",true,"setdv","deldv","getdv","pm","listdv","alldv"),
         plugin("userbot:filetools","File tools","Create, zip and extract files in the app local plugin storage.","Files",PluginOwner.USERBOT,"main/userbot/modules/plugins/filetools.py",true,"zip","unzip","new"),
         plugin("userbot:fun","Fun","Jokes, advice, text effects and lightweight entertainment.","Entertainment",PluginOwner.USERBOT,"main/userbot/modules/plugins/fun.py",true,"slap","upcase","type","insult","advice","uadvice","qs","wtd","mqt","joke"),
-        plugin("userbot:google","Google & images","Search the web and find image sources.","Search",PluginOwner.USERBOT,"main/userbot/modules/plugins/google.py",false,"sauce","pic","img"),
+        plugin("userbot:google","Google & images","Search Wikimedia Commons for images and open Google Lens for user-controlled reverse-image lookup.","Search",PluginOwner.USERBOT,"main/userbot/modules/plugins/google.py",true,"sauce","pic","img"),
         plugin("userbot:group","Group info","Inspect group, supergroup, channel and unread chat details.","Information",PluginOwner.USERBOT,"main/userbot/modules/plugins/group.py",true,"basicgroup","supergroup","unreadchat","channel"),
         plugin("userbot:help","Help","List commands currently implemented in TronDroid.","Utilities",PluginOwner.USERBOT,"main/userbot/modules/plugins/help.py",true,"help"),
         plugin("userbot:image","Image tools","Generate QR codes, convert static images and stickers, and fetch image or profile-picture content.","Media",PluginOwner.USERBOT,"main/userbot/modules/plugins/image.py",true,"stoi","itos","qrcode","colourtemplate","cat","waifu","pfp","dog"),
         plugin("userbot:imdb","IMDb","Find movies and series using IMDb title search.","Search",PluginOwner.USERBOT,"main/userbot/modules/plugins/imdb.py",true,"imdb"),
         plugin("userbot:info","Media & chat info","Inspect media metadata and chat information.","Information",PluginOwner.USERBOT,"main/userbot/modules/plugins/info.py",true,"minfo","chatinfo"),
-        plugin("userbot:keyboard","Keyboard","Create custom reply keyboards.","Messaging",PluginOwner.USERBOT,"main/userbot/modules/plugins/keyboard.py",false,"keyboard"),
+        plugin("userbot:keyboard","Keyboard","Create a one-button HTTPS inline keyboard in group chats, subject to Telegram account restrictions.","Messaging",PluginOwner.USERBOT,"main/userbot/modules/plugins/keyboard.py",true,"kbd","keyboard"),
         plugin("userbot:notes","Notes","Save, retrieve, list and clear personal notes.","Productivity",PluginOwner.USERBOT,"main/userbot/modules/plugins/notes.py",true,"save","notes","getnote","notelist","clear"),
         plugin("userbot:pastebin","Pastebin","Publish text snippets and return shareable links.","Utilities",PluginOwner.USERBOT,"main/userbot/modules/plugins/pastebin.py",true,"paste","bin"),
         plugin("userbot:ping","Ping","Check the userbot command response.","Diagnostics",PluginOwner.USERBOT,"main/userbot/modules/plugins/ping.py",true,"ping","pong"),
