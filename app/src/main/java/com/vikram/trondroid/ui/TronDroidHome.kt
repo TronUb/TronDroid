@@ -27,7 +27,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
@@ -94,18 +93,24 @@ fun TronDroidHome(
         bottomBar = {},
         floatingActionButton = {
             if (isHome && tab == Tab.USERBOTS) {
-                FloatingActionButton(onClick = { showAdd = true }) {
+                FloatingActionButton(
+                    onClick = { showAdd = true },
+                    modifier = Modifier.offset(y = (-104).dp)
+                ) {
                     Icon(Icons.Rounded.Add, "Add userbot")
                 }
             } else if (isHome && tab == Tab.PLUGINS) {
-                FloatingActionButton(onClick = {
-                    android.widget.Toast.makeText(
-                        context,
-                        "Executable external plugins are disabled for security. Built-in plugins are available here; .tdplugin files are metadata-only.",
-                        android.widget.Toast.LENGTH_LONG
-                    ).show()
-                }) {
-                    Icon(Icons.Rounded.Info, "Plugin security information")
+                FloatingActionButton(
+                    onClick = {
+                        android.widget.Toast.makeText(
+                            context,
+                            "External executable plugins require a trusted signing and isolation model. .tdplugin manifests can be imported as plugin metadata.",
+                            android.widget.Toast.LENGTH_LONG
+                        ).show()
+                    },
+                    modifier = Modifier.offset(y = (-104).dp)
+                ) {
+                    Icon(Icons.Rounded.Extension, "Install external plugin")
                 }
             }
         }
@@ -198,22 +203,9 @@ private fun FloatingGlassBottomBar(
     val dark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
     val glass = if (dark) Color(0xFF17181D).copy(alpha = 0.82f) else Color.White.copy(alpha = 0.78f)
     val edge = if (dark) Color.White.copy(alpha = 0.12f) else Color.White.copy(alpha = 0.72f)
-    val shadowTint = if (dark) Color.Black else Color(0xFF64748B)
     Box(
         modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 22.dp, vertical = 8.dp)
-            .height(76.dp)
-            .drawBehind {
-                drawRect(
-                    brush = Brush.verticalGradient(
-                        colorStops = arrayOf(
-                            0.0f to Color.Transparent,
-                            0.55f to Color.Transparent,
-                            0.82f to shadowTint.copy(alpha = if (dark) 0.30f else 0.18f),
-                            1.0f to Color.Transparent
-                        )
-                    )
-                )
-            },
+            .height(76.dp),
         contentAlignment = Alignment.TopCenter
     ) {
         BoxWithConstraints(
