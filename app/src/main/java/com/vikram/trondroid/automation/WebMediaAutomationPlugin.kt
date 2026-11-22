@@ -93,8 +93,13 @@ class WebMediaAutomationPlugin : AutomationPlugin {
             ?: return null
         val host = url.host.lowercase()
         if (host !in setOf("youtube.com", "www.youtube.com", "m.youtube.com", "music.youtube.com", "youtu.be", "www.youtu.be")) return null
-        val id = if (host.endsWith("youtu.be")) url.path.trim('/').substringBefore('/')
-            else url.path.substringAfter("/watch", "").let { url.query?.split("&")?.firstOrNull { part -> part.startsWith("v=") }?.substringAfter("v=") }
+        val segments = url.path.split('/').filter { it.isNotBlank() }
+        val id = when {
+            host.endsWith("youtu.be") -> segments.firstOrNull()
+            url.path == "/watch" -> url.query?.split("&")?.firstOrNull { part -> part.startsWith("v=") }?.substringAfter("v=")
+            segments.firstOrNull() in setOf("shorts", "embed", "live") -> segments.getOrNull(1)
+            else -> null
+        }
         return id?.takeIf { it.matches(Regex("[A-Za-z0-9_-]{11}")) }
     }
 }
