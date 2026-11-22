@@ -63,12 +63,13 @@ object PluginCatalog {
                 "pin" -> "pin (reply required) [loud]"
                 "unpin" -> "unpin (reply required) | unpin all"
                 "banall" -> "banall confirm"
-                in setOf("afk", "setwelcome", "welcome", "save", "setdv", "filter", "schedule", "settitle", "colourtemplate", "tts") -> "$name <text>"
+                in setOf("afk", "setwelcome", "welcome", "save", "setdv", "filter", "schedule", "gtitle", "colourtemplate", "tts") -> "$name <text>"
                 in setOf("purge", "purgecount", "spam", "dspam") -> "$name <count or options>"
                 in setOf("members", "bots") -> "$name [1-100]"
                 in setOf("vcut", "vmute", "vsubclip") -> "$name <time options>"
                 in setOf("ytsearch", "ytinfo") -> "$name <query or YouTube URL>"
                 in setOf("invite", "join") -> "$name <user id or public username/invite link>"
+                "gtitle" -> "gtitle <new group title>"
                 else -> name
             }
             val example = when (name) {
