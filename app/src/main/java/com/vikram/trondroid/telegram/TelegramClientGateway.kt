@@ -85,6 +85,33 @@ class TelegramClientGateway(
         }
     }
 
+    /**
+     * Execute the same TDLib flow used by Tron/Pyrogram:
+     * query the companion bot, then insert its actual inline result into this chat.
+     */
+    fun sendInlineBotResult(
+        chatId: Long,
+        botUserId: Long,
+        query: String,
+        callback: (TdApi.Object) -> Unit = {}
+    ) {
+        send(TdApi.GetInlineQueryResults(botUserId, chatId, null, query, "")) { result ->
+            val inline = result as? TdApi.InlineQueryResults
+            val first = inline?.results?.firstOrNull()
+            if (inline == null || first == null) {
+                callback(result.takeIf { it is TdApi.Error }
+                    ?: TdApi.Error(404, "The companion bot returned no inline results for '$query'."))
+                return@send
+            }
+            send(
+                TdApi.SendInlineQueryResultMessage(
+                    chatId, 0, null, null, inline.inlineQueryId, first.id, false
+                ),
+                callback
+            )
+        }
+    }
+
     fun deleteMessage(chatId: Long, messageId: Long, callback: (TdApi.Object) -> Unit = {}) {
         send(TdApi.DeleteMessages(chatId, longArrayOf(messageId), false), callback)
     }
