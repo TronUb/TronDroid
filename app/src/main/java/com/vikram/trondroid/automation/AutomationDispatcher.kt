@@ -25,6 +25,20 @@ class AutomationDispatcher(
     private val executor = Executors.newSingleThreadScheduledExecutor { runnable ->
         Thread(runnable, "TronDroid-Automation").apply { isDaemon = true }
     }
+    @Volatile private var sleepingUntilElapsed = 0L
+
+    /** Pause message/update handlers without blocking the serial executor. */
+    fun sleepFor(seconds: Long) {
+        require(seconds in 1L..86_400L)
+        val deadline = android.os.SystemClock.elapsedRealtime() + seconds * 1000L
+        sleepingUntilElapsed = deadline
+        executor.schedule({
+            if (sleepingUntilElapsed == deadline) sleepingUntilElapsed = 0L
+        }, seconds, TimeUnit.SECONDS)
+    }
+
+    private fun isSleeping(): Boolean =
+        android.os.SystemClock.elapsedRealtime() < sleepingUntilElapsed
 
     fun register(plugin: AutomationPlugin) {
         unregister(plugin.id)
@@ -51,6 +65,7 @@ class AutomationDispatcher(
     /** Dispatch every TDLib update to every enabled plugin. */
     fun dispatchUpdate(update: TdApi.Update) {
         executor.execute {
+            if (isSleeping()) return@execute
             val context = AutomationUpdateContext(
                 update = update,
                 reply = { chatId, text -> if (text.isNotBlank()) sendText(chatId, text) },
@@ -74,6 +89,7 @@ class AutomationDispatcher(
     }
 
     private fun dispatchMessage(message: AutomationMessage) {
+        if (isSleeping()) return
         val sendReply: (String) -> Unit = { text ->
             if (text.isNotBlank()) sendText(message.chatId, text)
         }
