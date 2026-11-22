@@ -34,7 +34,7 @@ class CarbonAutomationPlugin(private val context: Context) : AutomationPlugin {
     override fun onCommand(context: AutomationContext) {
         val gateway = context.telegram ?: return context.reply("Telegram session is unavailable.")
         if (context.command == "carblist") return context.reply("**Carbon colours**\n" + colours.keys.joinToString(" · "))
-        val raw = context.arguments.joinToString(" ").trim()
+        val raw = context.message.text.trim().substringAfter(" ", "").trim()
         if (raw.isBlank()) return context.reply("Usage: .carbon [colour] <code>\nExample: .carbon aqua fun main() { println(\"Hello\") }")
         val first = raw.substringBefore(' ')
         val colour = colours[first.lowercase(Locale.ROOT)] ?: "#8BE9FD"
