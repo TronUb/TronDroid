@@ -1216,7 +1216,7 @@ private fun PluginsScreen(modifier: Modifier, selectedOwner: Int, onOwnerChange:
                 Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                     Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.secondaryContainer, modifier = Modifier.size(38.dp)) {
                         Box(contentAlignment = Alignment.Center) {
-                            Icon(if (selectedOwner == 0) Icons.Rounded.Extension else Icons.Rounded.SmartToy, null,
+                            Icon(pluginIcon(plugin), null,
                                 tint = MaterialTheme.colorScheme.onSecondaryContainer, modifier = Modifier.size(20.dp))
                         }
                     }
@@ -1233,6 +1233,32 @@ private fun PluginsScreen(modifier: Modifier, selectedOwner: Int, onOwnerChange:
                 }
             }
         }
+    }
+}
+
+private fun pluginIcon(plugin: com.vikram.trondroid.plugins.BotPlugin): androidx.compose.ui.graphics.vector.ImageVector {
+    val title = plugin.title.lowercase()
+    val category = plugin.category.lowercase()
+    return when {
+        title.contains("admin") || title.contains("purge") || title.contains("zombie") || category == "moderation" ->
+            Icons.Rounded.Security
+        title.contains("clone") -> Icons.Rounded.ContentCopy
+        category == "automation" -> Icons.Rounded.Autorenew
+        category == "profile" -> Icons.Rounded.Person
+        category == "media" || title.contains("image") || title.contains("anime") -> Icons.Rounded.Image
+        category == "files" || title.contains("download") -> Icons.Rounded.Folder
+        category == "messaging" -> Icons.Rounded.Chat
+        category == "search" -> Icons.Rounded.Search
+        category == "privacy" -> Icons.Rounded.Lock
+        category == "developer" -> Icons.Rounded.Code
+        category == "diagnostics" -> Icons.Rounded.Monitor
+        category == "productivity" -> Icons.Rounded.Assignment
+        category == "utilities" -> Icons.Rounded.Build
+        category == "entertainment" -> Icons.Rounded.Star
+        category == "information" -> Icons.Rounded.Info
+        category == "system" -> Icons.Rounded.PowerSettingsNew
+        category == "plugins" -> Icons.Rounded.Extension
+        else -> Icons.Rounded.Extension
     }
 }
 
@@ -1253,7 +1279,7 @@ private fun PluginDetailScreen(modifier: Modifier, id: String) {
                 Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surface.copy(alpha = 0.55f), modifier = Modifier.size(48.dp)) {
-                            Box(contentAlignment = Alignment.Center) { Icon(if (isBot) Icons.Rounded.SmartToy else Icons.Rounded.Extension, null,
+                            Box(contentAlignment = Alignment.Center) { Icon(pluginIcon(plugin), null,
                                 tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(25.dp)) }
                         }
                         Spacer(Modifier.width(12.dp))
