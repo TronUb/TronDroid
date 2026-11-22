@@ -229,16 +229,21 @@ object TelegramBotRuntime {
             ))
 
         fun sendUserbotHelpDex(chatId: Long): Boolean = runCatching {
-            sendBotText(chatId,
-                "✦ **TRON USERBOT HELPDEX**\n\nOpen the Helpdex in any chat using inline mode. Browse plugins, commands and usage without sending a command message.",
-                inlineLauncher("help")).optBoolean("ok")
+            // Open the plugin browser immediately; no intermediate inline-query launcher.
+            sendBotPhoto(chatId, helpCaption(userbot = true), helpKeyboard(0, userbot = true))
+                .optBoolean("ok")
         }.getOrDefault(false)
 
         fun sendUserbotAlive(chatId: Long, caption: String): Boolean = runCatching {
             lastUserbotAliveCaption = caption
             app.getSharedPreferences("trondroid.bot.runtime", Context.MODE_PRIVATE)
                 .edit().putString("userbot_alive_caption.$profileId", caption).apply()
-            sendBotText(chatId, caption, inlineLauncher("alive")).optBoolean("ok")
+            val markup = JSONObject().put("inline_keyboard", org.json.JSONArray().apply {
+                put(org.json.JSONArray().put(button("Refresh", "ubalive:refresh")))
+                put(org.json.JSONArray().put(button("Plugins", "ubhelp:home")).put(button("Close", "ubalive:close")))
+            })
+            // The companion bot sends the status photo with real callback buttons.
+            sendBotPhoto(chatId, caption, markup).optBoolean("ok")
         }.getOrDefault(false)
 
         private fun currentUserbotAliveCaption(): String =
