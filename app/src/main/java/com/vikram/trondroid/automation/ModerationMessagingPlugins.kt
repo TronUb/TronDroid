@@ -205,29 +205,39 @@ class AdminAutomationPlugin : AutomationPlugin {
             "demote" -> TdApi.SetChatMemberStatus(chatId, sender, TdApi.ChatMemberStatusMember())
             else -> return context.reply("Unknown admin command.")
         }
-        gateway.send(request) { result ->
-            if (result is TdApi.Error) {
-                context.reply("Telegram rejected the action: ${result.message}")
-                return@send
-            }
-            if (command == "kick") {
-                gateway.send(TdApi.SetChatMemberStatus(chatId, sender, TdApi.ChatMemberStatusLeft())) { leaveResult ->
-                    context.reply(if (leaveResult is TdApi.Error) {
-                        "Member was temporarily banned, but could not be removed from the ban list: ${leaveResult.message}"
-                    } else "Member kicked from this chat.")
+        val executeAction: () -> Unit = {
+            gateway.send(request) { result ->
+                if (result is TdApi.Error) {
+                    context.reply("Telegram rejected the action: ${result.message}")
+                    return@send
                 }
-            } else {
-                val label = when (command) {
-                    "ban" -> if (duration != null) "Member banned for ${durationToken}." else "Member permanently banned."
-                    "unban" -> "Member unbanned."
-                    "mute" -> if (duration != null) "Member muted for ${durationToken}." else "Member muted indefinitely."
-                    "unmute" -> "Member unmuted."
-                    "promote" -> "Member promoted with invite-only administrator rights."
-                    "demote" -> "Administrator rights removed."
-                    else -> "Action completed."
+                if (command == "kick") {
+                    gateway.send(TdApi.SetChatMemberStatus(chatId, sender, TdApi.ChatMemberStatusLeft())) { leaveResult ->
+                        context.reply(if (leaveResult is TdApi.Error) {
+                            "Member was temporarily banned, but could not be removed from the ban list: ${leaveResult.message}"
+                        } else "Member kicked from this chat.")
+                    }
+                } else {
+                    val label = when (command) {
+                        "ban" -> if (duration != null) "Member banned for ${durationToken}." else "Member permanently banned."
+                        "unban" -> "Member unbanned."
+                        "mute" -> if (duration != null) "Member muted for ${durationToken}." else "Member muted indefinitely."
+                        "unmute" -> "Member unmuted."
+                        "promote" -> "Member promoted with invite-only administrator rights."
+                        "demote" -> "Administrator rights removed."
+                        else -> "Action completed."
+                    }
+                    context.reply(label)
                 }
-                context.reply(label)
             }
+        }
+        val repliedForDelete = context.message.tdMessage?.let(gateway::repliedMessage)
+        if (context.command.startsWith("d") && repliedForDelete != null) {
+            gateway.send(TdApi.DeleteMessages(chatId, longArrayOf(repliedForDelete.id), true)) {
+                executeAction()
+            }
+        } else {
+            executeAction()
         }
     }
 
