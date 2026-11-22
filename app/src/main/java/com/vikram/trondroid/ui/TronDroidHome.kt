@@ -366,10 +366,24 @@ private fun UserbotDetailScreen(
     onBack: () -> Unit
 ) {
     if (bot == null) return
-    val auth = engine?.authorization?.collectAsState()?.value
-    val logs = engine?.logs?.collectAsState()?.value.orEmpty()
-    val chats = engine?.chats?.collectAsState()?.value.orEmpty()
-    val account = engine?.account?.collectAsState()?.value
+    // Keep Flow collection slots stable when the engine disappears after a userbot is disabled.
+    // Conditional collectAsState calls can shift Compose's remembered slots and crash this screen.
+    val authFlow = remember(engine) {
+        engine?.authorization ?: kotlinx.coroutines.flow.MutableStateFlow<TdApi.AuthorizationState?>(null)
+    }
+    val logsFlow = remember(engine) {
+        engine?.logs ?: kotlinx.coroutines.flow.MutableStateFlow(emptyList<com.vikram.trondroid.telegram.EngineLog>())
+    }
+    val chatsFlow = remember(engine) {
+        engine?.chats ?: kotlinx.coroutines.flow.MutableStateFlow(emptyList<TdApi.Chat>())
+    }
+    val accountFlow = remember(engine) {
+        engine?.account ?: kotlinx.coroutines.flow.MutableStateFlow<com.vikram.trondroid.telegram.TelegramAccountInfo?>(null)
+    }
+    val auth by authFlow.collectAsState()
+    val logs by logsFlow.collectAsState()
+    val chats by chatsFlow.collectAsState()
+    val account by accountFlow.collectAsState()
     val accountAvatar = remember(account?.photoPath) { account?.photoPath?.let { runCatching { BitmapFactory.decodeFile(it)?.asImageBitmap() }.getOrNull() } }
     val botAvatar = remember(bot.botPhotoPath) { bot.botPhotoPath?.let { runCatching { BitmapFactory.decodeFile(it)?.asImageBitmap() }.getOrNull() } }
     val ready = auth?.constructor == TdApi.AuthorizationStateReady.CONSTRUCTOR
