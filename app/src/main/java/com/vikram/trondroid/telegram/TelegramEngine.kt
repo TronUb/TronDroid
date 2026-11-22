@@ -142,7 +142,7 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
         nativePlugins += RedditAutomationPlugin()
         nativePlugins += TranslateAutomationPlugin()
         nativePlugins += TimeAutomationPlugin()
-        nativePlugins += AliveAutomationPlugin { profile.name }
+        nativePlugins += AliveAutomationPlugin({ profile.name }, context)
         nativePlugins += AnimeAutomationPlugin()
         nativePlugins += FunAutomationPlugin()
         nativePlugins += HelpAutomationPlugin({ pluginSettings.handler() }) { nativePlugins }
