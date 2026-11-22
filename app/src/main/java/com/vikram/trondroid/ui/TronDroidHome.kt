@@ -301,6 +301,11 @@ private enum class UserbotSection(val label: String) {
     GENERAL("General"), LOGS("Logs"), CREDENTIALS("Credentials"), INSIGHTS("Insights"), SETTINGS("Settings")
 }
 
+private val userbotSections = listOf(
+    UserbotSection.GENERAL, UserbotSection.LOGS, UserbotSection.CREDENTIALS,
+    UserbotSection.INSIGHTS, UserbotSection.SETTINGS
+)
+
 @Composable
 private fun UserbotDetailScreen(
     modifier: Modifier,
@@ -334,11 +339,11 @@ private fun UserbotDetailScreen(
 
     Column(modifier.fillMaxSize()) {
         ScrollableTabRow(
-            selectedTabIndex = UserbotSection.values().indexOf(section),
+            selectedTabIndex = userbotSections.indexOf(section),
             edgePadding = 16.dp,
             divider = { HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)) }
         ) {
-            UserbotSection.values().forEach { item ->
+            userbotSections.forEach { item ->
                 Tab(
                     selected = section == item,
                     onClick = { section = item },
@@ -364,11 +369,11 @@ private fun UserbotDetailScreen(
                 var dragDistance = 0f
                 detectHorizontalDragGestures(
                     onDragEnd = {
-                        val index = UserbotSection.values().indexOf(section)
-                        if (dragDistance < -72f && index < UserbotSection.values().lastIndex) {
-                            section = UserbotSection.values()[index + 1]
+                        val index = userbotSections.indexOf(section)
+                        if (dragDistance < -72f && index < userbotSections.lastIndex) {
+                            section = userbotSections[index + 1]
                         } else if (dragDistance > 72f && index > 0) {
-                            section = UserbotSection.values()[index - 1]
+                            section = userbotSections[index - 1]
                         }
                         dragDistance = 0f
                     },
