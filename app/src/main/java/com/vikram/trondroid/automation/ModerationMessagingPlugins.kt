@@ -149,8 +149,8 @@ class AdminAutomationPlugin : AutomationPlugin {
         member: TdApi.ChatMember?
     ) {
         val chatId = context.message.chatId
-        val durationToken = context.arguments.drop(1).firstOrNull()
-            ?: if (context.arguments.firstOrNull()?.toLongOrNull() == null) null else context.arguments.getOrNull(1)
+        val hasReplyTarget = context.message.tdMessage?.let(gateway::repliedMessage) != null
+        val durationToken = if (hasReplyTarget) context.arguments.firstOrNull() else context.arguments.getOrNull(1)
         val duration = durationToken?.let(::parseDuration)
         if (durationToken != null && duration == null && command in setOf("ban", "mute")) {
             context.reply("Invalid duration. Use seconds, minutes, hours or days, e.g. 30s, 15m, 2h, 3d.")
