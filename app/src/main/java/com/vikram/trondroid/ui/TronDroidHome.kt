@@ -46,7 +46,9 @@ private enum class Tab { USERBOTS, PLUGINS, SETTINGS }
 private sealed interface Page {
     data object Home : Page
     data class Userbot(val id: String) : Page
-    data object GeneralSettings : Page
+    data object SessionPreferences : Page
+    data object BotConnections : Page
+    data object Permissions : Page
     data object About : Page
     data object Updater : Page
     data class PluginDetail(val id: String) : Page
@@ -83,7 +85,9 @@ fun TronDroidHome(
     val title = when (val p = page) {
         Page.Home -> when (tab) { Tab.USERBOTS -> "Userbots"; Tab.PLUGINS -> "Plugins"; Tab.SETTINGS -> "Settings" }
         is Page.Userbot -> bots.firstOrNull { it.id == p.id }?.name ?: "Userbot"
-        Page.GeneralSettings -> "General"
+        Page.SessionPreferences -> "Session preferences"
+        Page.BotConnections -> "Bot connections"
+        Page.Permissions -> "Permissions"
         Page.About -> "About TronDroid"
         Page.Updater -> "App updates"
         is Page.PluginDetail -> PluginCatalog.find(p.id)?.title ?: "Plugin"
@@ -142,8 +146,9 @@ fun TronDroidHome(
                 }, onToggle = { id, enabled -> onToggle(id, enabled) })
                 Tab.PLUGINS -> PluginsScreen(Modifier.padding(padding), selectedOwner = pluginOwner, onOwnerChange = { pluginOwner = it }, listState = if (pluginOwner == 0) userbotPluginsListState else botPluginsListState, onOpen = { navigate(Page.PluginDetail(it)) })
                 Tab.SETTINGS -> SettingsScreen(Modifier.padding(padding),
-                    onGeneral = { navigate(Page.GeneralSettings) }, onAbout = { navigate(Page.About) }, onUpdater = { navigate(Page.Updater) }, themeMode = themeMode, onThemeChange = onThemeChange,
-                    dynamicColors = dynamicColors, onDynamicColorsChange = onDynamicColorsChange)
+                    onSessions = { navigate(Page.SessionPreferences) }, onBots = { navigate(Page.BotConnections) },
+                    onPermissions = { navigate(Page.Permissions) }, onAbout = { navigate(Page.About) }, onUpdater = { navigate(Page.Updater) },
+                    themeMode = themeMode, onThemeChange = onThemeChange, dynamicColors = dynamicColors, onDynamicColorsChange = onDynamicColorsChange)
             }
             is Page.Userbot -> {
                 val bot = bots.firstOrNull { it.id == current.id }
@@ -162,7 +167,9 @@ fun TronDroidHome(
                     onBotToggle = onBotToggle
                 )
             }
-            Page.GeneralSettings -> GeneralSettingsScreen(Modifier.padding(padding))
+            Page.SessionPreferences -> SessionPreferencesScreen(Modifier.padding(padding))
+            Page.BotConnections -> BotConnectionsScreen(Modifier.padding(padding))
+            Page.Permissions -> PermissionsScreen(Modifier.padding(padding))
             Page.About -> AboutScreen(Modifier.padding(padding))
             Page.Updater -> AppUpdaterScreen(Modifier.padding(padding))
             is Page.PluginDetail -> PluginDetailScreen(Modifier.padding(padding), current.id)
@@ -967,15 +974,28 @@ private fun PluginDetailScreen(modifier: Modifier, id: String) {
 }
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SettingsScreen(modifier: Modifier, onGeneral: () -> Unit, onAbout: () -> Unit, onUpdater: () -> Unit, themeMode: String, onThemeChange: (String) -> Unit, dynamicColors: Boolean, onDynamicColorsChange: (Boolean) -> Unit) {
-    Column(modifier.fillMaxSize().padding(18.dp).verticalScroll(rememberScrollState())) {
-        Text("Appearance", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 18.dp, bottom = 8.dp))
-        Card(shape = RoundedCornerShape(20.dp)) {
-            Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+private fun SettingsScreen(
+    modifier: Modifier,
+    onSessions: () -> Unit,
+    onBots: () -> Unit,
+    onPermissions: () -> Unit,
+    onAbout: () -> Unit,
+    onUpdater: () -> Unit,
+    themeMode: String,
+    onThemeChange: (String) -> Unit,
+    dynamicColors: Boolean,
+    onDynamicColorsChange: (Boolean) -> Unit
+) {
+    Column(modifier.fillMaxSize().padding(horizontal = 18.dp).verticalScroll(rememberScrollState())) {
+        Text("Appearance", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(top = 12.dp, bottom = 8.dp))
+        Card(shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+            Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("Theme", style = MaterialTheme.typography.titleSmall)
                 SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
                     listOf("system", "light", "dark").forEachIndexed { index, mode ->
-                        SegmentedButton(selected = themeMode == mode, onClick = { onThemeChange(mode) }, shape = SegmentedButtonDefaults.itemShape(index, 3)) {
+                        SegmentedButton(selected = themeMode == mode, onClick = { onThemeChange(mode) },
+                            shape = SegmentedButtonDefaults.itemShape(index, 3)) {
                             Text(mode.replaceFirstChar { it.uppercase() })
                         }
                     }
@@ -984,86 +1004,88 @@ private fun SettingsScreen(modifier: Modifier, onGeneral: () -> Unit, onAbout: (
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text("Dynamic color", style = MaterialTheme.typography.titleSmall)
-                        Text("Match the app to your wallpaper.",
-                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Match TronDroid to your wallpaper.", style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Switch(checked = dynamicColors, onCheckedChange = onDynamicColorsChange)
                 }
             }
         }
-        SettingsGroup(
-            "Userbot & bot",
-            listOf(
-                Triple("Session preferences", "Background account and connection behaviour", Icons.Rounded.Tune),
-                Triple("Bot connections", "Manage bot tokens and bot sessions per account", Icons.Rounded.SmartToy)
-            ),
-            listOf(onGeneral, onGeneral)
-        )
-        SettingsGroup(
-            "Application",
-            listOf(
-                Triple("App updates", "Check and install the latest APK", Icons.Rounded.SystemUpdate),
-                Triple("About TronDroid", "App details, project links and developer information", Icons.Rounded.Info)
-            ),
-            listOf(onUpdater, onAbout)
-        )
-
+        SettingsGroup("Connections", listOf(
+            Triple("Session preferences", "Userbot startup and background session behaviour", Icons.Rounded.Tune),
+            Triple("Bot connections", "Bot API reconnect and connection behaviour", Icons.Rounded.SmartToy)
+        ), listOf(onSessions, onBots))
+        SettingsGroup("Device access", listOf(
+            Triple("Permissions", "Required, optional and battery/background access", Icons.Rounded.Security)
+        ), listOf(onPermissions))
+        SettingsGroup("Application", listOf(
+            Triple("App updates", "Check and install the latest APK", Icons.Rounded.SystemUpdate),
+            Triple("About TronDroid", "Version, project information and developer", Icons.Rounded.Info)
+        ), listOf(onUpdater, onAbout))
+        Spacer(Modifier.height(24.dp))
     }
 }
-
 
 @Composable
 private fun AboutScreen(modifier: Modifier) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    LazyColumn(modifier.fillMaxSize().padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp),
-        contentPadding = PaddingValues(bottom = 28.dp)) {
+    val version = com.vikram.trondroid.BuildConfig.VERSION_NAME
+    LazyColumn(modifier.fillMaxSize().padding(horizontal = 18.dp), verticalArrangement = Arrangement.spacedBy(14.dp),
+        contentPadding = PaddingValues(top = 14.dp, bottom = 30.dp)) {
         item {
             Card(shape = RoundedCornerShape(28.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
-                Column(Modifier.fillMaxWidth().padding(22.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Surface(shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.surface.copy(alpha = 0.55f), modifier = Modifier.size(58.dp)) {
-                        Box(contentAlignment = Alignment.Center) { Icon(Icons.Rounded.Send, null, Modifier.size(32.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer) }
+                Column(Modifier.fillMaxWidth().padding(22.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surface.copy(alpha = 0.55f), modifier = Modifier.size(64.dp)) {
+                        Box(contentAlignment = Alignment.Center) { Icon(Icons.Rounded.Send, null, Modifier.size(34.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer) }
                     }
-                    Text("TronDroid", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                    Text("A Telegram account, userbot and bot automation manager for Android.",
+                    Text("TronDroid", style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                    Text("Telegram sessions, userbot automation and Bot API connections — managed from Android.",
                         style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                    Text("Version " + com.vikram.trondroid.BuildConfig.VERSION_NAME,
-                        style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Surface(shape = RoundedCornerShape(50), color = MaterialTheme.colorScheme.surface.copy(alpha = 0.65f)) {
+                            Text("Version $version", Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                        }
+                        Surface(shape = RoundedCornerShape(50), color = MaterialTheme.colorScheme.surface.copy(alpha = 0.65f)) {
+                            Text("Android", Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                        }
+                    }
                 }
             }
         }
         item {
-            Text("What is TronDroid?", style = MaterialTheme.typography.titleMedium)
+            Text("Built for Telegram", style = MaterialTheme.typography.titleMedium)
             Card(shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("One place to manage multiple Telegram userbot sessions, connect Bot API accounts, run command plugins and inspect account activity.")
-                    Text("Userbot sessions run on TDLib. Bot accounts use the official Telegram Bot API. Account credentials are encrypted locally with Android Keystore.",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    ListItem(headlineContent = { Text("Userbot sessions") }, supportingContent = { Text("TDLib-powered account sessions with background processing.") },
+                        leadingContent = { Icon(Icons.Rounded.Person, null, tint = MaterialTheme.colorScheme.primary) })
+                    HorizontalDivider()
+                    ListItem(headlineContent = { Text("Bot API connections") }, supportingContent = { Text("Connect and manage Telegram bots alongside user accounts.") },
+                        leadingContent = { Icon(Icons.Rounded.SmartToy, null, tint = MaterialTheme.colorScheme.primary) })
+                    HorizontalDivider()
+                    ListItem(headlineContent = { Text("Command plugins") }, supportingContent = { Text("Enable plugins and control individual commands.") },
+                        leadingContent = { Icon(Icons.Rounded.Extension, null, tint = MaterialTheme.colorScheme.primary) })
                 }
             }
         }
         item {
             Text("Developer", style = MaterialTheme.typography.titleMedium)
             Card(shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
-                Column {
-                    ListItem(headlineContent = { Text("Vikram Vishwakarma") },
-                        supportingContent = { Text("Android and software developer · UI/UX engineering") },
-                        leadingContent = { Icon(Icons.Rounded.Person, null, tint = MaterialTheme.colorScheme.primary) })
-                    HorizontalDivider(Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outlineVariant)
-                    TextButton(onClick = {
+                ListItem(headlineContent = { Text("Vikram Vishwakarma") },
+                    supportingContent = { Text("Android development · UI/UX engineering") },
+                    leadingContent = { Icon(Icons.Rounded.Person, null, tint = MaterialTheme.colorScheme.primary) },
+                    trailingContent = { Icon(Icons.Rounded.OpenInNew, null) },
+                    modifier = Modifier.clickable {
                         context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://github.com/hustlewithvikram")))
-                    }, modifier = Modifier.align(Alignment.End).padding(end = 8.dp)) {
-                        Icon(Icons.Rounded.OpenInNew, null)
-                        Spacer(Modifier.width(6.dp))
-                        Text("Developer profile")
-                    }
-                }
+                    })
             }
         }
         item {
             Text("Project", style = MaterialTheme.typography.titleMedium)
             Card(shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
                 ListItem(headlineContent = { Text("TronDroid on GitHub") },
-                    supportingContent = { Text("Source code, issues and development updates") },
+                    supportingContent = { Text("Source code, issues and development progress") },
                     leadingContent = { Icon(Icons.Rounded.Code, null, tint = MaterialTheme.colorScheme.primary) },
                     trailingContent = { Icon(Icons.Rounded.OpenInNew, null) },
                     modifier = Modifier.clickable {
@@ -1072,10 +1094,15 @@ private fun AboutScreen(modifier: Modifier) {
             }
         }
         item {
-            Card(shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
-                ListItem(headlineContent = { Text("Application ID") },
-                    supportingContent = { Text(com.vikram.trondroid.BuildConfig.APPLICATION_ID) },
-                    leadingContent = { Icon(Icons.Rounded.Android, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) })
+            Card(shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("App identity", style = MaterialTheme.typography.titleSmall)
+                    Text("Application ID", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(com.vikram.trondroid.BuildConfig.APPLICATION_ID, style = MaterialTheme.typography.bodyMedium)
+                    HorizontalDivider(Modifier.padding(vertical = 6.dp))
+                    Text("Built for Android with Kotlin and Jetpack Compose.", style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
         }
     }
@@ -1118,19 +1145,23 @@ private fun SettingsGroup(
 }
 
 @Composable
-private fun GeneralSettingsScreen(modifier: Modifier) {
+private fun SessionPreferencesScreen(modifier: Modifier) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val preferences = remember { context.getSharedPreferences("trondroid.settings", android.content.Context.MODE_PRIVATE) }
     var autoStart by remember { mutableStateOf(preferences.getBoolean("auto_start_sessions", true)) }
-    var autoReconnectBots by remember { mutableStateOf(preferences.getBoolean("auto_reconnect_bots", true)) }
-    Column(modifier.fillMaxSize().padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Text("Userbot & bot preferences", style = MaterialTheme.typography.headlineSmall)
-        Card(shape = RoundedCornerShape(22.dp)) {
-            Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp)) {
-                Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+    LazyColumn(modifier.fillMaxSize().padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp),
+        contentPadding = PaddingValues(bottom = 28.dp)) {
+        item {
+            Text("Session preferences", style = MaterialTheme.typography.headlineSmall)
+            Text("Control how your enabled userbot sessions start and stay active.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        item {
+            Card(shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+                Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text("Auto-start sessions", style = MaterialTheme.typography.titleSmall)
-                        Text("Reconnect enabled accounts when TronDroid launches.",
+                        Text("Auto-start sessions", style = MaterialTheme.typography.titleMedium)
+                        Text("Reconnect enabled userbot sessions when TronDroid launches.",
                             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Switch(checked = autoStart, onCheckedChange = {
@@ -1138,81 +1169,161 @@ private fun GeneralSettingsScreen(modifier: Modifier) {
                         preferences.edit().putBoolean("auto_start_sessions", it).apply()
                     })
                 }
-                HorizontalDivider()
-                Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+            }
+        }
+        item {
+            Card(shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Background reliability", style = MaterialTheme.typography.titleMedium)
+                    Text("For reliable background sessions, allow notifications and review battery restrictions in the Permissions page.",
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BotConnectionsScreen(modifier: Modifier) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val preferences = remember { context.getSharedPreferences("trondroid.settings", android.content.Context.MODE_PRIVATE) }
+    var autoReconnect by remember { mutableStateOf(preferences.getBoolean("auto_reconnect_bots", true)) }
+    LazyColumn(modifier.fillMaxSize().padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp),
+        contentPadding = PaddingValues(bottom = 28.dp)) {
+        item {
+            Text("Bot connections", style = MaterialTheme.typography.headlineSmall)
+            Text("Manage Bot API connection recovery independently from userbot sessions.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        item {
+            Card(shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+                Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text("Auto-reconnect bots", style = MaterialTheme.typography.titleSmall)
+                        Text("Auto-reconnect bots", style = MaterialTheme.typography.titleMedium)
                         Text("Retry Bot API connections after temporary network or API errors.",
                             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    Switch(checked = autoReconnectBots, onCheckedChange = {
-                        autoReconnectBots = it
+                    Switch(checked = autoReconnect, onCheckedChange = {
+                        autoReconnect = it
                         preferences.edit().putBoolean("auto_reconnect_bots", it).apply()
                     })
                 }
             }
         }
-        Card(shape = RoundedCornerShape(22.dp)) {
-            Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("Background reliability", style = MaterialTheme.typography.titleMedium)
-                Text(
-                    "Android can pause network activity when the app is restricted. Review these system settings to keep enabled Telegram sessions connected.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                OutlinedButton(
-                    onClick = {
-                        val intent = android.content.Intent(android.provider.Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
-                        runCatching { context.startActivity(intent) }
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(Icons.Rounded.BatteryFull, null)
-                    Spacer(Modifier.width(8.dp))
-                    Text("Open battery optimization settings")
-                }
-                OutlinedButton(
-                    onClick = {
-                        val intent = android.content.Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS)
-                            .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName)
-                        runCatching { context.startActivity(intent) }
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(Icons.Rounded.Notifications, null)
-                    Spacer(Modifier.width(8.dp))
-                    Text("Open notification settings")
+        item {
+            Card(shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+                Column(Modifier.padding(vertical = 4.dp)) {
+                    ListItem(headlineContent = { Text("Connect a bot") },
+                        supportingContent = { Text("Add BOT_TOKEN in an account's Credentials tab. The bot can then be enabled from that account's General tab.") },
+                        leadingContent = { Icon(Icons.Rounded.SmartToy, null, tint = MaterialTheme.colorScheme.primary) })
+                    HorizontalDivider(Modifier.padding(horizontal = 16.dp))
+                    ListItem(headlineContent = { Text("Credential security") },
+                        supportingContent = { Text("Saved API hashes and custom credentials are encrypted locally using Android Keystore.") },
+                        leadingContent = { Icon(Icons.Rounded.Security, null, tint = MaterialTheme.colorScheme.primary) })
                 }
             }
-        }
-        Card(shape = RoundedCornerShape(22.dp)) {
-            Column(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-                ListItem(
-                    headlineContent = { Text("Userbot sessions") },
-                    supportingContent = { Text("Each enabled userbot runs in its own TDLib session. Manage account toggles from the account's General tab.") },
-                    leadingContent = { Icon(Icons.Rounded.Person, null, tint = MaterialTheme.colorScheme.primary) }
-                )
-                HorizontalDivider(Modifier.padding(horizontal = 16.dp))
-                ListItem(
-                    headlineContent = { Text("Bot sessions") },
-                    supportingContent = { Text("Add BOT_TOKEN under an account's Credentials tab. Its bot card and background toggle appear on that account's General tab.") },
-                    leadingContent = { Icon(Icons.Rounded.SmartToy, null, tint = MaterialTheme.colorScheme.primary) }
-                )
-                HorizontalDivider(Modifier.padding(horizontal = 16.dp))
-                ListItem(
-                    headlineContent = { Text("Credential security") },
-                    supportingContent = { Text("API hashes and custom key/value pairs are encrypted locally using Android Keystore.") },
-                    leadingContent = { Icon(Icons.Rounded.Security, null, tint = MaterialTheme.colorScheme.primary) }
-                )
-            }
-        }
-        Text("Application information", style = MaterialTheme.typography.titleMedium)
-        Card(shape = RoundedCornerShape(20.dp)) {
-            ListItem(headlineContent = { Text("TronDroid 1.0.0") },
-                supportingContent = { Text("Debug: com.vikram.trondroid.debug · Release: com.vikram.trondroid") },
-                leadingContent = { Icon(Icons.Rounded.Info, null) })
         }
     }
+}
+
+@Composable
+private fun PermissionsScreen(modifier: Modifier) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val activity = context as? android.app.Activity
+    val manager = context.getSystemService(android.content.Context.POWER_SERVICE) as android.os.PowerManager
+    var refresh by remember { mutableIntStateOf(0) }
+    val notificationsGranted = if (android.os.Build.VERSION.SDK_INT >= 33)
+        androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    else true
+    val batteryAllowed = manager.isIgnoringBatteryOptimizations(context.packageName)
+    val installAllowed = if (android.os.Build.VERSION.SDK_INT >= 26) context.packageManager.canRequestPackageInstalls() else true
+    fun openSettings(action: String) {
+        runCatching { context.startActivity(android.content.Intent(action).apply {
+            if (action == android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                data = android.net.Uri.parse("package:" + context.packageName)
+            else if (action == android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName)
+        }) }
+    }
+    LazyColumn(modifier.fillMaxSize().padding(horizontal = 18.dp), verticalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(top = 14.dp, bottom = 30.dp)) {
+        item {
+            Text("App permissions", style = MaterialTheme.typography.headlineSmall)
+            Text("Live status of Android permissions and special access used by TronDroid.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        item {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text("Access overview", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                TextButton(onClick = { refresh++ }) { Icon(Icons.Rounded.Refresh, null); Spacer(Modifier.width(4.dp)); Text("Refresh") }
+            }
+            Text("Statuses update when you return to this page or tap Refresh.",
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        item {
+            Text("Required", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+            Card(shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+                Column {
+                    PermissionStatusRow("Internet access", "Required for Telegram API and media requests", true, "Granted")
+                    HorizontalDivider(Modifier.padding(horizontal = 16.dp))
+                    PermissionStatusRow("Network state", "Detects connectivity changes", true, "Granted")
+                    HorizontalDivider(Modifier.padding(horizontal = 16.dp))
+                    PermissionStatusRow("Foreground service", "Keeps user-enabled sessions running in the background", true, "Declared")
+                }
+            }
+        }
+        item {
+            Text("Optional", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+            Card(shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+                Column {
+                    PermissionStatusRow("Notifications", "Shows session and background service status", false,
+                        if (notificationsGranted) "Granted" else "Not granted")
+                    OutlinedButton(onClick = { openSettings(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS) },
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp)) { Text("Manage notifications") }
+                    HorizontalDivider(Modifier.padding(horizontal = 16.dp))
+                    PermissionStatusRow("Install app updates", "Allows APK updates initiated by TronDroid", false,
+                        if (installAllowed) "Allowed" else "Not allowed")
+                    OutlinedButton(onClick = { openSettings(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES) .also { } },
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp)) { Text("Manage install access") }
+                }
+            }
+        }
+        item {
+            Text("Background access", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+            Card(shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    PermissionStatusRow("Battery optimization", "Allow unrestricted background work for reliable sessions", false,
+                        if (batteryAllowed) "Allowed" else "Restricted")
+                    Text("This is special system access, not a runtime permission. Some Android brands may also require allowing background activity or auto-start in their own settings.",
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    OutlinedButton(onClick = { openSettings(android.provider.Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS) },
+                        modifier = Modifier.fillMaxWidth()) {
+                        Icon(Icons.Rounded.BatteryFull, null); Spacer(Modifier.width(8.dp)); Text("Open battery settings")
+                    }
+                }
+            }
+        }
+        item {
+            OutlinedButton(onClick = { openSettings(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS) },
+                modifier = Modifier.fillMaxWidth()) { Icon(Icons.Rounded.Settings, null); Spacer(Modifier.width(8.dp)); Text("Open Android app settings") }
+        }
+    }
+    @Suppress("UNUSED_VARIABLE")
+    val refreshTick = refresh
+}
+
+@Composable
+private fun PermissionStatusRow(title: String, description: String, required: Boolean, status: String) {
+    ListItem(headlineContent = { Text(title) },
+        supportingContent = { Text(description + if (required) " · Required" else " · Optional") },
+        trailingContent = {
+            val granted = status == "Granted" || status == "Allowed" || status == "Declared"
+            Surface(shape = RoundedCornerShape(50), color = if (granted) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.errorContainer) {
+                Text(status, Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (granted) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onErrorContainer)
+            }
+        })
 }
 
 @Composable
