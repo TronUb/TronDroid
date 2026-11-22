@@ -39,7 +39,7 @@ class PmPermitAutomationPlugin(private val prefs: SharedPreferences) : Automatio
     }
 
     override fun onMessage(context: AutomationContext) {
-        if (context.message.isOutgoing || !prefs.getBoolean("enabled", false)) return
+        if (!context.isCommandEnabled("pmpermit") || context.message.isOutgoing || !prefs.getBoolean("enabled", false)) return
         val gateway = context.telegram ?: return
         val chat = gateway.cachedChat(context.message.chatId) ?: return
         if (chat.type !is TdApi.ChatTypePrivate) return
