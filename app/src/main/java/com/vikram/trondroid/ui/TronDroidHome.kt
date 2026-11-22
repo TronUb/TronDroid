@@ -1243,7 +1243,7 @@ private fun pluginIcon(plugin: com.vikram.trondroid.plugins.BotPlugin): androidx
         title.contains("admin") || title.contains("purge") || title.contains("zombie") || category == "moderation" ->
             Icons.Rounded.Security
         title.contains("clone") -> Icons.Rounded.ContentCopy
-        category == "automation" -> Icons.Rounded.Autorenew
+        category == "automation" -> Icons.Rounded.AutoRenew
         category == "profile" -> Icons.Rounded.Person
         category == "media" || title.contains("image") || title.contains("anime") -> Icons.Rounded.Image
         category == "files" || title.contains("download") -> Icons.Rounded.Folder
@@ -2017,6 +2017,12 @@ private fun CredentialDetailScreen(
                     ) else Text(if (reveal) apiHash else "••••••••••••••••", modifier = Modifier.padding(vertical = 8.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                         TextButton(onClick = { editing = !editing; hash = apiHash }) { Text(if (editing) "Cancel" else "Edit") }
+                        if (!editing) {
+                            IconButton(onClick = { reveal = !reveal }) {
+                                Icon(if (reveal) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility,
+                                    if (reveal) "Hide API hash" else "Show API hash")
+                            }
+                        }
                         if (editing) Button(onClick = { onSaveApiHash(hash); editing = false }) { Text("Save") }
                         IconButton(onClick = { android.content.ClipData.newPlainText("Telegram API Hash", apiHash).also {
                             (context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager).setPrimaryClip(it)
