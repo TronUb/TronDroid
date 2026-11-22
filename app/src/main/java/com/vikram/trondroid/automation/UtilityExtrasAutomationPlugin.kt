@@ -5,7 +5,7 @@ import java.net.URL
 import java.net.URLEncoder
 
 class UtilityExtrasAutomationPlugin : AutomationPlugin {
-    override val id = "userbot:utilityextras"
+    override val id = "userbot:supertools"
     override val commands = listOf(
         AutomationCommand("short", "Shorten an HTTP or HTTPS URL using is.gd.", "short <url>"),
         AutomationCommand("unshort", "Resolve a shortened URL without downloading its content.", "unshort <url>"),
