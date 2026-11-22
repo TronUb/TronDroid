@@ -53,6 +53,7 @@ object PluginCatalog {
                 "invite" -> "Reply to a user or use invite 123456789"
                 "join" -> "join @publicgroup or join https://t.me/+inviteHash"
                 "kickme" -> "kickme"
+                "slowmo" -> "slowmo 30"
                 "ytsearch" -> "ytsearch Kotlin Android tutorial"
                 "ytinfo" -> "ytinfo https://youtu.be/dQw4w9WgXcQ"
                 "vcut" -> "Reply to a video with .vcut 00:00:30"
@@ -156,7 +157,7 @@ object PluginCatalog {
         plugin("userbot:tools","Tools","Search recent chat history, inspect message JSON, create message links, save or forward replies, find common groups, run a download speed test and view locally cached deleted messages.","Utilities",PluginOwner.USERBOT,"main/userbot/modules/plugins/tools.py",true,"wlink","json","mlink","saved","forward","speedtest","commonchat","undlt"),
         plugin("userbot:translate","Translate","Translate text using the selected target language.","Utilities",PluginOwner.USERBOT,"main/userbot/modules/plugins/translate.py",true,"translate","tr","tl","trlist","tllist","translatelist","translatelang"),
         plugin("userbot:update","Update","Check the latest published TronDroid release and open its release notes.","System",PluginOwner.USERBOT,"main/userbot/modules/plugins/update.py",true,"update"),
-        plugin("userbot:utils","Group utilities","List administrators, recent members and bots; change the group title; invite one user; join a public group or invite link; or leave the current group. Custom administrator titles are not exposed by TDLib in this user session. Telegram permissions are enforced by Telegram.","Groups",PluginOwner.USERBOT,"main/userbot/modules/plugins/utils.py",true,"admins","adminlist","members","bots","gtitle","invite","join","kickme"),
+        plugin("userbot:utils","Group utilities","List administrators, recent members and bots; change the group title; invite one user; join a public group or invite link; or leave the current group. Custom administrator titles are not exposed by TDLib in this user session. Telegram permissions are enforced by Telegram.","Groups",PluginOwner.USERBOT,"main/userbot/modules/plugins/utils.py",true,"admins","adminlist","members","bots","gtitle","invite","join","kickme","slowmo"),
         plugin("userbot:utube","YouTube","Search YouTube and inspect video metadata with official links. Stream extraction and downloading are intentionally not included.","Media",PluginOwner.USERBOT,"main/userbot/modules/plugins/utube.py",true,"ytsearch","ytinfo"),
         plugin("userbot:videotools","Video tools","Native Android media remuxing for mute, trim and subclip operations. Inputs and outputs are limited to 100 MB and 10 minutes; trims are keyframe-aligned.","Media",PluginOwner.USERBOT,"main/userbot/modules/plugins/videotools.py",true,"vcut","vmute","vsubclip"),
         plugin("userbot:welcome","Welcome","Configure text welcome messages for new group members.","Groups",PluginOwner.USERBOT,"main/userbot/modules/plugins/welcome.py",true,"welcome","setwelcome","delwelcome","getwelcome"),
