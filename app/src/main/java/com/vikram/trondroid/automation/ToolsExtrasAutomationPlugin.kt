@@ -114,14 +114,12 @@ class ToolsExtrasAutomationPlugin(context: Context, private val isDeletedCacheEn
             "speedtest" -> speedTest(context)
             "undlt" -> {
                 val count = context.arguments.firstOrNull()?.toIntOrNull()?.coerceIn(1, 20) ?: 5
-                val deleted = readArray("deleted")
-                if (deleted.length() == 0) return context.reply("No deleted messages have been cached yet. This only records messages received after Tools is enabled; Telegram cannot provide older deleted content.")
-                val start = (deleted.length() - count).coerceAtLeast(0)
-                val lines = (start until deleted.length()).mapNotNull { index ->
-                    val item = deleted.optJSONObject(index) ?: return@mapNotNull null
+                val deleted = synchronized(recentMessages) { deletedMessages.toList().takeLast(count) }
+                if (deleted.isEmpty()) return context.reply("No recently deleted text messages were cached in this app session. Older deletions and messages received before Tools was enabled cannot be recovered.")
+                val lines = deleted.map { item ->
                     val chatId = item.optLong("chat_id")
                     val chatName = gateway.cachedChat(chatId)?.title ?: "chat $chatId"
-                    "• $chatName [${item.optLong("message_id")}]: ${item.optString("text")}"
+                    "• " + chatName + " [" + item.optLong("message_id") + "]: " + item.optString("text")
                 }
                 context.reply("Locally cached deleted messages:\\n" + lines.joinToString("\\n").take(3900))
             }
@@ -206,13 +204,4 @@ class ToolsExtrasAutomationPlugin(context: Context, private val isDeletedCacheEn
         }, "TronDroid-SpeedTest").apply { isDaemon = true; start() }
     }
 
-    private fun readArray(key: String): JSONArray = runCatching { JSONArray(prefs.getString(key, "[]")) }.getOrDefault(JSONArray())
-    private fun writeArray(key: String, value: JSONArray) { prefs.edit().putString(key, value.toString()).apply() }
-    private fun trimArray(source: JSONArray, limit: Int): JSONArray {
-        val result = JSONArray()
-        for (index in (source.length() - limit).coerceAtLeast(0) until source.length()) {
-            source.optJSONObject(index)?.let(result::put)
-        }
-        return result
-    }
 }
