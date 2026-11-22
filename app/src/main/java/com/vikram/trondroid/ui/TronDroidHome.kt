@@ -1383,6 +1383,79 @@ private fun SettingsScreen(
 }
 
 @Composable
+private fun ManageConnectionsScreen(
+    modifier: Modifier,
+    bots: List<BotProfile>,
+    onBack: () -> Unit,
+    onSetAllConnections: (Boolean) -> Unit,
+    onDeleteAllConnections: () -> Unit
+) {
+    var confirmDelete by remember { mutableStateOf(false) }
+    val anyEnabled = bots.any { it.enabled || it.botEnabled }
+    Column(
+        modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 18.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onBack) { Icon(Icons.Rounded.ArrowBack, "Back") }
+            Column {
+                Text("Manage settings", style = MaterialTheme.typography.headlineSmall)
+                Text("Control every saved Telegram connection.", style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        Card(shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+            Row(Modifier.fillMaxWidth().padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("All userbots and bots", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        if (anyEnabled) "At least one connection is enabled."
+                        else "All userbot and bot connections are disabled.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Switch(checked = anyEnabled, onCheckedChange = onSetAllConnections)
+            }
+        }
+        Card(shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
+            Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Icon(Icons.Rounded.DeleteForever, null, tint = MaterialTheme.colorScheme.error)
+                Text("Delete all connections", style = MaterialTheme.typography.titleMedium)
+                Text("Permanently remove all saved userbot and bot profiles, their local TDLib session folders, API hashes and custom credentials.",
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onErrorContainer)
+                Button(
+                    onClick = { confirmDelete = true },
+                    enabled = bots.isNotEmpty(),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = MaterialTheme.colorScheme.onError),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Rounded.DeleteForever, null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Delete all userbots and bots")
+                }
+            }
+        }
+        Spacer(Modifier.height(120.dp))
+    }
+    if (confirmDelete) {
+        AlertDialog(
+            onDismissRequest = { confirmDelete = false },
+            icon = { Icon(Icons.Rounded.DeleteForever, null, tint = MaterialTheme.colorScheme.error) },
+            title = { Text("Delete all connections?") },
+            text = { Text("This permanently deletes all ${bots.size} saved profiles, API credentials and local Telegram session data. This action cannot be undone.") },
+            confirmButton = {
+                Button(onClick = { confirmDelete = false; onDeleteAllConnections() },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = MaterialTheme.colorScheme.onError)) { Text("Delete all") }
+            },
+            dismissButton = { OutlinedButton(onClick = { confirmDelete = false }) { Text("Cancel") } }
+        )
+    }
+}
+
+@Composable
 private fun SettingsBackupScreen(
     modifier: Modifier,
     onBack: () -> Unit,
