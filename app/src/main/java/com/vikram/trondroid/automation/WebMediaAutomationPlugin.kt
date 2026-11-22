@@ -4,6 +4,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
 import org.json.JSONObject
+import org.drinkless.tdlib.TdApi
 
 /**
  * Native YouTube search and metadata only.
@@ -22,14 +23,13 @@ class WebMediaAutomationPlugin : AutomationPlugin {
         if (query.length > 200) return context.reply("Search query must be 200 characters or fewer.")
         context.reply("Searching YouTube…")
         Thread({
-            val result = runCatching {
+            runCatching {
                 when (context.command) {
-                    "ytsearch" -> search(query)
-                    "ytinfo" -> info(query)
-                    else -> "Unsupported YouTube command."
+                    "ytsearch" -> searchCards(context, query)
+                    "ytinfo" -> infoCard(context, query)
+                    else -> context.reply("Unsupported YouTube command.")
                 }
-            }.getOrElse { "YouTube request failed: ${it.message ?: "unknown error"}" }
-            context.reply(result.take(3900))
+            }.onFailure { context.reply("YouTube request failed: ${it.message ?: "unknown error"}") }
         }, "TronDroid-YouTube").apply { isDaemon = true; start() }
     }
 
@@ -62,6 +62,67 @@ class WebMediaAutomationPlugin : AutomationPlugin {
     }
 
     private fun encode(value: String) = URLEncoder.encode(value, Charsets.UTF_8.name())
+
+    private data class VideoMeta(
+        val id: String,
+        val title: String,
+        val channel: String,
+        val thumbnail: String
+    ) {
+        val url: String get() = "https://www.youtube.com/watch?v=$id"
+    }
+
+    private fun searchIds(query: String): List<String> {
+        val html = request("https://www.youtube.com/results?search_query=${encode(query)}")
+        return Regex("\\\"videoId\\\":\\\"([A-Za-z0-9_-]{11})\\\"")
+            .findAll(html).map { it.groupValues[1] }.distinct().take(5).toList()
+    }
+
+    private fun metadata(id: String): VideoMeta {
+        val watchUrl = "https://www.youtube.com/watch?v=$id"
+        val data = JSONObject(request("https://www.youtube.com/oembed?url=${encode(watchUrl)}&format=json", 256 * 1024))
+        return VideoMeta(id, data.optString("title", "Unknown title"),
+            data.optString("author_name", "Unknown channel"),
+            data.optString("thumbnail_url"))
+    }
+
+    private fun videoMarkup(url: String) = TdApi.ReplyMarkupInlineKeyboard(
+        arrayOf(arrayOf(TdApi.InlineKeyboardButton(
+            "Watch on YouTube", 0L, TdApi.ButtonStyleDefault(), TdApi.InlineKeyboardButtonTypeUrl(url)
+        )))
+    )
+
+    private fun searchCards(context: AutomationContext, query: String) {
+        val gateway = context.telegram ?: return context.reply("Telegram session is unavailable.")
+        val ids = searchIds(query)
+        if (ids.isEmpty()) return context.reply("No YouTube results found for: $query")
+        ids.forEachIndexed { index, id ->
+            val video = metadata(id)
+            val caption = "▶ **${video.title}**\nChannel: ${video.channel}\nResult ${index + 1} of ${ids.size}"
+            if (video.thumbnail.startsWith("https://")) {
+                gateway.sendPhotoUrl(context.message.chatId, video.thumbnail, caption, videoMarkup(video.url)) { result ->
+                    if (result is TdApi.Error) context.reply("$caption\n${video.url}")
+                }
+            } else {
+                gateway.sendText(context.message.chatId, "$caption\n${video.url}", videoMarkup(video.url)) { result ->
+                    if (result is TdApi.Error) context.reply("$caption\n${video.url}")
+                }
+            }
+        }
+    }
+
+    private fun infoCard(context: AutomationContext, input: String) {
+        val gateway = context.telegram ?: return context.reply("Telegram session is unavailable.")
+        val id = extractVideoId(input) ?: searchIds(input).firstOrNull()
+            ?: return context.reply("No valid YouTube video was found.")
+        val video = metadata(id)
+        val caption = "▶ **${video.title}**\n\nChannel: ${video.channel}\n\n${video.url}"
+        if (video.thumbnail.startsWith("https://")) {
+            gateway.sendPhotoUrl(context.message.chatId, video.thumbnail, caption, videoMarkup(video.url)) { result ->
+                if (result is TdApi.Error) context.reply(caption)
+            }
+        } else context.reply(caption)
+    }
 
     private fun search(query: String): String {
         val html = request("https://www.youtube.com/results?search_query=${encode(query)}")
