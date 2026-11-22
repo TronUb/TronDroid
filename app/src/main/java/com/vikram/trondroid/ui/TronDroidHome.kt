@@ -101,11 +101,7 @@ fun TronDroidHome(
     }
     Scaffold(
         topBar = {},
-        bottomBar = {
-            if (isHome) {
-                FloatingGlassBottomBar(selected = tab, onSelect = { tab = it })
-            }
-        },
+        bottomBar = {},
         floatingActionButton = {
             if (isHome && tab == Tab.USERBOTS) {
                 FloatingActionButton(onClick = { showAdd = true }) {
@@ -123,15 +119,16 @@ fun TronDroidHome(
                 }
             }
         }
-    ) { padding ->
-        AnimatedContent(modifier = Modifier.fillMaxSize().statusBarsPadding(), targetState = page, transitionSpec = {
+    ) { _ ->
+        Box(Modifier.fillMaxSize()) {
+            AnimatedContent(modifier = Modifier.fillMaxSize().statusBarsPadding(), targetState = page, transitionSpec = {
             val direction = navigationDirection
             (slideInHorizontally { width -> if (direction > 0) width else -width } + fadeIn()) togetherWith
                 (slideOutHorizontally { width -> if (direction > 0) -width else width } + fadeOut())
         }, label = "page-slide") { currentPage ->
         when (val current = currentPage) {
             Page.Home -> when (tab) {
-                Tab.USERBOTS -> UserbotsScreen(Modifier.padding(padding), bots, listState = userbotsListState, onOpen = {
+                Tab.USERBOTS -> UserbotsScreen(Modifier.fillMaxSize(), bots, listState = userbotsListState, onOpen = {
                     onSelect(it); navigate(Page.Userbot(it))
                 }, onToggle = { id, enabled -> onToggle(id, enabled) })
                 Tab.PLUGINS -> PluginsScreen(Modifier.padding(padding), selectedOwner = pluginOwner, onOwnerChange = { pluginOwner = it }, listState = if (pluginOwner == 0) userbotPluginsListState else botPluginsListState, onOpen = { navigate(Page.PluginDetail(it)) })
@@ -163,7 +160,10 @@ fun TronDroidHome(
             Page.About -> AboutScreen(Modifier.padding(padding))
             Page.Updater -> AppUpdaterScreen(Modifier.padding(padding))
             is Page.PluginDetail -> PluginDetailScreen(Modifier.padding(padding), current.id)
-        } }
+            } 
+            if (isHome) FloatingGlassBottomBar(selected = tab, onSelect = { tab = it },
+                modifier = Modifier.align(Alignment.BottomCenter))
+        }
     }
     BackHandler(enabled = pageStack.size > 1 || tab != Tab.USERBOTS) { if (pageStack.size > 1) goBack() else tab = Tab.USERBOTS }
     if (showAdd) AddBotDialog(onDismiss = { showAdd = false }) { name, phone, id, hash ->
@@ -192,26 +192,32 @@ fun TronDroidHome(
 }
 
 @Composable
-private fun FloatingGlassBottomBar(selected: Tab, onSelect: (Tab) -> Unit) {
+private fun FloatingGlassBottomBar(
+    selected: Tab,
+    onSelect: (Tab) -> Unit,
+    modifier: Modifier = Modifier
+) {
     val tabs = listOf(Tab.USERBOTS, Tab.PLUGINS, Tab.SETTINGS)
     val selectedIndex = tabs.indexOf(selected).coerceAtLeast(0)
     val dark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
     val glass = if (dark) Color(0xFF17181D).copy(alpha = 0.82f) else Color.White.copy(alpha = 0.78f)
     val edge = if (dark) Color.White.copy(alpha = 0.12f) else Color.White.copy(alpha = 0.72f)
     val shadowTint = if (dark) Color.Black else Color(0xFF64748B)
-    Column(
-        Modifier.fillMaxWidth().navigationBarsPadding()
-            .drawBehind {
-                drawRect(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(Color.Transparent, shadowTint.copy(alpha = if (dark) 0.22f else 0.12f), Color.Transparent)
-                    )
-                )
-            }
-            .padding(horizontal = 22.dp, vertical = 8.dp)
+    Box(
+        modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 22.dp, vertical = 8.dp),
+        contentAlignment = Alignment.Center
     ) {
         BoxWithConstraints(
-            Modifier.fillMaxWidth().height(66.dp).clip(RoundedCornerShape(50))
+            Modifier.fillMaxWidth().height(66.dp)
+                .drawBehind {
+                    drawRoundRect(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(Color.Transparent, shadowTint.copy(alpha = if (dark) 0.30f else 0.17f), Color.Transparent)
+                        ),
+                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(size.height / 2)
+                    )
+                }
+                .clip(RoundedCornerShape(50))
                 .background(glass)
                 .border(1.dp, edge, RoundedCornerShape(50))
                 .padding(5.dp)
@@ -222,11 +228,8 @@ private fun FloatingGlassBottomBar(selected: Tab, onSelect: (Tab) -> Unit) {
                 animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.78f, stiffness = 520f),
                 label = "glass-tab-indicator"
             )
-            Box(
-                Modifier.offset(x = animatedX).width(itemWidth).fillMaxHeight()
-                    .clip(RoundedCornerShape(50))
-                    .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f))
-            )
+            Box(Modifier.offset(x = animatedX).width(itemWidth).fillMaxHeight()
+                .clip(RoundedCornerShape(50)).background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f)))
             Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
                 tabs.forEach { tab ->
                     val active = selected == tab
@@ -240,11 +243,8 @@ private fun FloatingGlassBottomBar(selected: Tab, onSelect: (Tab) -> Unit) {
                         Tab.PLUGINS -> "Plugins"
                         Tab.SETTINGS -> "Settings"
                     }
-                    Column(
-                        Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(50)).clickable { onSelect(tab) },
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
+                    Column(Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(50)).clickable { onSelect(tab) },
+                        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
                         Icon(icon, label, tint = if (active) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(21.dp))
                         Spacer(Modifier.height(3.dp))
