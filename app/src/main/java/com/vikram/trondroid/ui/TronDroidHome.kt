@@ -1,8 +1,6 @@
 package com.vikram.trondroid.ui
 
 import androidx.activity.compose.BackHandler
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -74,15 +72,6 @@ fun TronDroidHome(
     var showAdd by remember { mutableStateOf(false) }
     var pluginOwner by remember { mutableIntStateOf(0) }
     val context = androidx.compose.ui.platform.LocalContext.current
-    val pluginPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri != null) {
-            val result = runCatching {
-                if (pluginOwner == 0) (engine ?: error("Select an active userbot session first.")).loadExternalPlugins(uri)
-                else TelegramBotRuntime.loadExternalPlugins(context, uri)
-            }
-            android.widget.Toast.makeText(context, result.fold({ "Loaded " + it + " plugin(s)" }, { it.message ?: "Plugin load failed" }), android.widget.Toast.LENGTH_LONG).show()
-        }
-    }
     var pendingDelete by remember { mutableStateOf<BotProfile?>(null) }
     var pendingLogout by remember { mutableStateOf<BotProfile?>(null) }
     val isHome = page == Page.Home
@@ -124,8 +113,14 @@ fun TronDroidHome(
                     Icon(Icons.Rounded.Add, "Add userbot")
                 }
             } else if (isHome && tab == Tab.PLUGINS) {
-                FloatingActionButton(onClick = { pluginPicker.launch(arrayOf("*/*")) }) {
-                    Icon(Icons.Rounded.Add, "Load plugin")
+                FloatingActionButton(onClick = {
+                    android.widget.Toast.makeText(
+                        context,
+                        "Executable external plugins are disabled for security. Built-in plugins are available here; .tdplugin files are metadata-only.",
+                        android.widget.Toast.LENGTH_LONG
+                    ).show()
+                }) {
+                    Icon(Icons.Rounded.Info, "Plugin security information")
                 }
             }
         }
