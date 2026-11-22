@@ -27,6 +27,7 @@ object PluginCatalog {
                 in setOf("wiki", "imdb", "reddit", "r", "translate", "tr", "tl", "upcase", "joke", "weather", "currency", "paste", "google", "img", "download", "upload", "ytsearch", "song", "lyrics", "whois", "id", "qrcode", "tts", "ud", "short", "unshort", "telegraph", "carbon", "search", "pic", "pfp", "deezer", "spotify", "webshot", "itos", "vsubclip") -> "$name <query>"
                 in setOf("ban", "unban", "kick", "mute", "unmute", "promote", "demote") -> "$name <reply or user> [duration]"
                 in setOf("broadcast", "bdt") -> "$name <message>"
+                in setOf("carbon", "cb") -> "$name [colour] <code>"
                 "pin" -> "pin (reply required) [loud]"
                 "unpin" -> "unpin (reply required) | unpin all"
                 "banall" -> "banall confirm"
@@ -36,6 +37,9 @@ object PluginCatalog {
             }
             val example = when (name) {
                 "broadcast", "bdt" -> "$name Hello everyone! Important announcement."
+                "carbon", "cb" -> "$name aqua fun main() { println(\"Hello\") }"
+                "carblist", "devinfo", "meminfo", "storageinfo", "displayinfo" -> name
+                "eval", "e", "term", "shell" -> "$name (disabled for device safety)"
                 "wiki" -> "wiki quantum mechanics"
                 "imdb" -> "imdb Interstellar"
                 "translate", "tr", "tl" -> "$name en Hello, how are you?"
@@ -57,9 +61,9 @@ object PluginCatalog {
         plugin("userbot:alive","Alive","Show connected account and app runtime status.","Status",PluginOwner.USERBOT,"main/userbot/modules/plugins/alive.py",true,"alive"),
         plugin("userbot:anime","Anime","Fetch anime images and GIFs by action.","Entertainment",PluginOwner.USERBOT,"main/userbot/modules/plugins/anime.py",true,"animelist","nekopic","npic","animegif"),
         plugin("userbot:broadcast","Broadcast","Send announcements sequentially to private chats and groups in the main dialog list, with flood-wait handling and delivery totals.","Messaging",PluginOwner.USERBOT,"main/userbot/modules/plugins/broadcast.py",true,"broadcast","bdt"),
-        plugin("userbot:carbon","Carbon","Create syntax-highlighted code images. The upstream implementation is broken and remains unavailable until it is replaced.","Media",PluginOwner.USERBOT,"main/userbot/modules/plugins/carbon.py",false,"carbon","carblist"),
+        plugin("userbot:carbon","Carbon","Render syntax-styled code images locally on-device with selectable accent colours.","Media",PluginOwner.USERBOT,"main/userbot/modules/plugins/carbon.py",true,"carbon","cb","carblist"),
         plugin("userbot:clone","Clone","Copy and restore Telegram profile details.","Profile",PluginOwner.USERBOT,"main/userbot/modules/plugins/clone.py",true,"clone","revert"),
-        plugin("userbot:dev","Developer tools","Developer utilities and code evaluation. Shell execution is intentionally not enabled.","Developer",PluginOwner.USERBOT,"main/userbot/modules/plugins/dev.py",false,"eval","terminal"),
+        plugin("userbot:dev","Developer tools","Read-only Android, app, memory, storage and display diagnostics. Arbitrary code evaluation and shell access are disabled for device safety.","Developer",PluginOwner.USERBOT,"main/userbot/modules/plugins/dev.py",true,"devinfo","meminfo","storageinfo","displayinfo","eval","e","term","shell"),
         plugin("userbot:download","Downloads","Download and upload supported Telegram files.","Media",PluginOwner.USERBOT,"main/userbot/modules/plugins/download.py",true,"ls","download","upload","batchupload"),
         plugin("userbot:dv","Digital vault","Save and retrieve private snippets and vault entries locally on this device.","Utilities",PluginOwner.USERBOT,"main/userbot/modules/plugins/dv.py",true,"setdv","deldv","getdv","pm","listdv","alldv"),
         plugin("userbot:filetools","File tools","Create, zip and extract files in the app local plugin storage.","Files",PluginOwner.USERBOT,"main/userbot/modules/plugins/filetools.py",true,"zip","unzip","new"),
