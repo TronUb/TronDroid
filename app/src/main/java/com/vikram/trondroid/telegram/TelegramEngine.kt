@@ -108,20 +108,16 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
         commandPrefix = { pluginSettings.handler() },
         isPluginEnabled = { pluginSettings.enabled(it) },
         sendText = { chatId, text ->
-            val content = TdApi.InputMessageText(TdApi.FormattedText(text, emptyArray()), null, true)
-            client?.send(TdApi.SendMessage(chatId, null, null, null, null, content)) { response ->
-                if (response.constructor == TdApi.Error.CONSTRUCTOR) {
-                    val error = response as TdApi.Error
-                    log("Automation send failed: ${error.message}", true)
+            telegramGateway.sendText(chatId, text) { response ->
+                if (response is TdApi.Error) {
+                    log("Automation send failed: ${response.message}", true)
                 } else log("Automation response sent to chat $chatId")
             }
         },
         editText = { chatId, messageId, text ->
-            val content = TdApi.InputMessageText(TdApi.FormattedText(text, emptyArray()), null, true)
-            client?.send(TdApi.EditMessageText(chatId, messageId, null, content)) { response ->
-                if (response.constructor == TdApi.Error.CONSTRUCTOR) {
-                    val error = response as TdApi.Error
-                    log("Command edit failed: ${error.message}", true)
+            telegramGateway.editText(chatId, messageId, text) { response ->
+                if (response is TdApi.Error) {
+                    log("Command edit failed: ${response.message}", true)
                 } else log("Edited command message $messageId")
             }
         },
