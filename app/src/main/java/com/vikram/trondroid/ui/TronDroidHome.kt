@@ -1801,7 +1801,14 @@ private fun CredentialDetailScreen(
         if (uri != null) {
             val result = runCatching {
                 val json = org.json.JSONObject()
-                customCredentials.forEach { (key, value) -> json.put(key, value) }
+                    .put("format", "trondroid-credentials")
+                    .put("schema_version", 1)
+                    .put("telegram", org.json.JSONObject()
+                        .put("api_id", bot.apiId)
+                        .put("api_hash", apiHash))
+                    .put("custom_credentials", org.json.JSONObject().apply {
+                        customCredentials.forEach { (key, value) -> put(key, value) }
+                    })
                 context.contentResolver.openOutputStream(uri)?.bufferedWriter()?.use { it.write(json.toString(2)) }
                     ?: error("Unable to open the selected destination.")
             }
@@ -1818,7 +1825,12 @@ private fun CredentialDetailScreen(
                 val raw = context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
                     ?: error("Unable to read the selected JSON file.")
                 require(raw.toByteArray(Charsets.UTF_8).size <= 512 * 1024) { "JSON file is larger than 512 KB." }
-                val json = org.json.JSONObject(raw)
+                val root = org.json.JSONObject(raw)
+                val telegram = root.optJSONObject("telegram")
+                val json = if (root.optString("format") == "trondroid-credentials") {
+                    require(root.optInt("schema_version") == 1) { "Unsupported credentials backup version." }
+                    root.optJSONObject("custom_credentials") ?: org.json.JSONObject()
+                } else root
                 require(json.length() in 1..200) { "JSON must contain between 1 and 200 key/value entries." }
                 val imported = buildMap {
                     val keys = json.keys()
@@ -1831,6 +1843,10 @@ private fun CredentialDetailScreen(
                     }
                 }
                 require(imported.size == json.length()) { "Duplicate or invalid credential entries." }
+                telegram?.optString("api_hash")?.takeIf { it.isNotBlank() }?.let {
+                    onSaveApiHash(it)
+                    hash = it
+                }
                 onSaveCustomCredentials(customCredentials + imported)
             }
             android.widget.Toast.makeText(context,
