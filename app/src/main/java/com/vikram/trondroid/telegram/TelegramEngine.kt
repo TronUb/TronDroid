@@ -89,6 +89,7 @@ data class TelegramAccountInfo(
 class TelegramEngine(private val context: Context, private val profile: BotProfile, private val apiHash: String) : Client.ResultHandler {
     companion object { init { System.loadLibrary("tdjni") } }
     private var client: Client? = null
+    @Volatile private var closeRequested = false
     private val _authorization = MutableStateFlow<TdApi.AuthorizationState?>(null)
     val authorization: StateFlow<TdApi.AuthorizationState?> = _authorization.asStateFlow()
     private val _error = MutableStateFlow<String?>(null)
@@ -229,6 +230,8 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
         val time = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
         _logs.value = (_logs.value + EngineLog(time, message, error)).takeLast(200)
     }
+    fun hasActiveClient(): Boolean = client != null
+
     fun start() {
         if (client != null) return
         log("Initializing Telegram session for ${profile.name}")
@@ -301,7 +304,18 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
             TdApi.AuthorizationStateWaitCode.CONSTRUCTOR -> log("Telegram verification code required")
             TdApi.AuthorizationStateWaitPassword.CONSTRUCTOR -> log("Two-step verification password required")
             TdApi.AuthorizationStateReady.CONSTRUCTOR -> { log("Telegram account connected"); loadChats(); loadAccount() }
-            TdApi.AuthorizationStateClosed.CONSTRUCTOR -> { log("Telegram session closed"); client = null }
+            TdApi.AuthorizationStateClosed.CONSTRUCTOR -> {
+                log("Telegram session closed")
+                client = null
+                if (!closeRequested) {
+                    // TDLib can close a session after an unrecoverable transport/runtime
+                    // failure. Recreate the engine after a short delay; restart() checks
+                    // the persisted enabled flag so a disabled profile is never revived.
+                    android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                        TelegramRuntime.restart(context, profile.id)
+                    }, 3_000L)
+                }
+            }
         }
     }
     fun submitPhone(phone: String) { log("Submitting phone number"); client?.send(TdApi.SetAuthenticationPhoneNumber(phone, null), this) }
@@ -314,8 +328,10 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
             return
         }
         log("Logging out; TDLib will clear local session data")
+        closeRequested = true
         activeClient.send(TdApi.LogOut()) { response ->
             if (response.constructor == TdApi.Error.CONSTRUCTOR) {
+                closeRequested = false
                 _error.value = (response as TdApi.Error).message
                 log(_error.value!!, true)
             } else {
@@ -327,6 +343,7 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
     }
     @Synchronized
     fun close() {
+        closeRequested = true
         // Detach the client first so repeated lifecycle callbacks are harmless.
         val active = client
         client = null
