@@ -294,9 +294,24 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
     fun submitPhone(phone: String) { log("Submitting phone number"); client?.send(TdApi.SetAuthenticationPhoneNumber(phone, null), this) }
     fun submitCode(code: String) { log("Submitting login code"); client?.send(TdApi.CheckAuthenticationCode(code), this) }
     fun submitPassword(password: String) { log("Submitting two-step verification password"); client?.send(TdApi.CheckAuthenticationPassword(password), this) }
-    fun logout() { log("Logging out"); client?.send(TdApi.LogOut()) { r ->
-        if (r.constructor == TdApi.Error.CONSTRUCTOR) { _error.value = (r as TdApi.Error).message; log(_error.value!!, true) }
-    } }
+    fun logout(onComplete: () -> Unit = {}) {
+        val activeClient = client
+        if (activeClient == null) {
+            onComplete()
+            return
+        }
+        log("Logging out; TDLib will clear local session data")
+        activeClient.send(TdApi.LogOut()) { response ->
+            if (response.constructor == TdApi.Error.CONSTRUCTOR) {
+                _error.value = (response as TdApi.Error).message
+                log(_error.value!!, true)
+            } else {
+                client = null
+                log("Logged out; local Telegram session data cleared")
+                onComplete()
+            }
+        }
+    }
     fun close() {
         val active = client
         if (active != null) {
