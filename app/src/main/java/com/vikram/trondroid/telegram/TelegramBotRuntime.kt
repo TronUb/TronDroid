@@ -196,42 +196,40 @@ object TelegramBotRuntime {
             return buildString {
                 append("🧩 **${plugin.title}**\n")
                 append("${plugin.summary}\n\n")
+                val prefix = if (userbot) pluginSettings.handler() else "/"
                 plugin.commands.filter { pluginSettings.commandEnabled(plugin.id, it.name) }.forEach { command ->
-                    append("✦ **/${command.name}**\n")
-                    append("${command.description}\n")
-                    append("**Usage:** `/${command.usage}`\n")
-                    append("**Example:** `/${command.example}`\n\n")
-                }
-            }.take(950)
+                    append("✦ **${prefix}${command.name}**\\n")
+                    append("${command.description}\\n")
+                    append("**Usage:** `${prefix}${command.usage}`\\n")
+                    append("**Example:** `${prefix}${command.example}`\\n\\n")
+                }            }.take(950)
         }
 
         private fun sendBotPhoto(chatId: Long, caption: String, markup: JSONObject): JSONObject =
             request("sendPhoto?chat_id=$chatId&photo=${encode(tronBotImage)}" +
                 "&caption=${encode(caption)}&parse_mode=Markdown&reply_markup=${encode(markup.toString())}")
 
+        private fun switchInlineButton(label: String, query: String): JSONObject =
+            JSONObject().put("text", label).put("switch_inline_query", query)
+
+        private fun inlineLauncher(query: String): JSONObject =
+            JSONObject().put("inline_keyboard", org.json.JSONArray().put(
+                org.json.JSONArray().put(switchInlineButton("Open in inline mode", query))
+            ))
+
         fun sendUserbotHelpDex(chatId: Long): Boolean = runCatching {
-            sendBotPhoto(chatId, helpCaption(userbot = true), helpKeyboard(0, userbot = true)).optBoolean("ok")
+            sendBotText(chatId,
+                "✦ **TRON USERBOT HELPDEX**\\n\\nOpen the Helpdex in any chat using inline mode. Browse plugins, commands and usage without sending a command message.",
+                inlineLauncher("help")).optBoolean("ok")
         }.getOrDefault(false)
 
         fun sendUserbotAlive(chatId: Long, caption: String): Boolean = runCatching {
             lastUserbotAliveCaption = caption
-            val markup = JSONObject().put("inline_keyboard", org.json.JSONArray().apply {
-                put(org.json.JSONArray().put(button("Refresh", "ubalive:refresh")))
-                put(org.json.JSONArray().put(button("Plugins", "ubhelp:home")).put(button("Close", "ubalive:close")))
-            })
-            sendBotPhoto(chatId, caption, markup).optBoolean("ok")
+            sendBotText(chatId, caption, inlineLauncher("alive")).optBoolean("ok")
         }.getOrDefault(false)
 
         fun sendUserbotQuote(chatId: Long): Boolean = runCatching {
-            val quotes = listOf(
-                "“A lesson without pain is meaningless.” — Edward Elric",
-                "“If you don't take risks, you can't create a future.” — Monkey D. Luffy",
-                "“Whatever you lose, you'll find it again.” — Kenshin Himura",
-                "“Knowing you're different is only the beginning.” — Natsuki Subaru"
-            )
-            val markup = JSONObject().put("inline_keyboard", org.json.JSONArray().put(
-                org.json.JSONArray().put(button("More", "botquote:more"))))
-            sendBotText(chatId, "❝ ${quotes.random()} ❞", markup).optBoolean("ok")
+            sendBotText(chatId, "Open Tron quotes in inline mode.", inlineLauncher("quote")).optBoolean("ok")
         }.getOrDefault(false)
 
         private fun botAliveCaption(): String {
@@ -251,16 +249,22 @@ object TelegramBotRuntime {
         private fun handleCallback(callback: JSONObject) {
             val callbackId = callback.optString("id")
             val data = callback.optString("data")
-            val message = callback.optJSONObject("message") ?: return
-            val chatId = message.optJSONObject("chat")?.optLong("id") ?: return
-            val messageId = message.optLong("message_id")
+            val message = callback.optJSONObject("message")
+            val inlineMessageId = callback.optString("inline_message_id")
+            if (message == null && inlineMessageId.isBlank()) return
+            val chatId = message?.optJSONObject("chat")?.optLong("id") ?: 0L
+            val messageId = message?.optLong("message_id") ?: 0L
             request("answerCallbackQuery?callback_query_id=${encode(callbackId)}")
-            val hasPhoto = message.optJSONArray("photo") != null
+            val hasPhoto = message?.optJSONArray("photo") != null
             fun edit(caption: String, markup: JSONObject? = null) {
-                val method = if (hasPhoto) "editMessageCaption" else "editMessageText"
-                val field = if (hasPhoto) "caption" else "text"
                 val markupArg = markup?.let { "&reply_markup=${encode(it.toString())}" }.orEmpty()
-                request("$method?chat_id=$chatId&message_id=$messageId&$field=${encode(caption)}&parse_mode=Markdown$markupArg")
+                if (inlineMessageId.isNotBlank()) {
+                    request("editMessageText?inline_message_id=${encode(inlineMessageId)}&text=${encode(caption)}&parse_mode=Markdown$markupArg")
+                } else {
+                    val method = if (hasPhoto) "editMessageCaption" else "editMessageText"
+                    val field = if (hasPhoto) "caption" else "text"
+                    request("$method?chat_id=$chatId&message_id=$messageId&$field=${encode(caption)}&parse_mode=Markdown$markupArg")
+                }
             }
             when {
                 data == "bothelp:home" -> edit(helpCaption(), helpKeyboard(0))
@@ -314,7 +318,68 @@ object TelegramBotRuntime {
             }
         }
 
+        private fun inlineArticle(
+            id: String, title: String, description: String, message: String, markup: JSONObject? = null
+        ): JSONObject {
+            val content = JSONObject().put("message_text", message.take(4000)).put("parse_mode", "Markdown")
+            return JSONObject().put("type", "article").put("id", id).put("title", title.take(64))
+                .put("description", description.take(256)).put("input_message_content", content)
+                .apply { if (markup != null) put("reply_markup", markup) }
+        }
+
+        private fun userbotAliveKeyboard(): JSONObject =
+            JSONObject().put("inline_keyboard", org.json.JSONArray().apply {
+                put(org.json.JSONArray().put(button("Refresh", "ubalive:refresh")))
+                put(org.json.JSONArray().put(button("Plugins", "ubhelp:home")).put(button("Close", "ubalive:close")))
+            })
+
+        private fun handleInlineQuery(query: JSONObject) {
+            val queryId = query.optString("id")
+            val raw = query.optString("query").trim()
+            val command = raw.substringBefore(' ').lowercase()
+            val argument = raw.substringAfter(' ', "").trim()
+            val results = org.json.JSONArray()
+            when (command) {
+                "", "help", "plugins" -> {
+                    val page = argument.toIntOrNull()?.coerceAtLeast(0) ?: 0
+                    results.put(inlineArticle("userbot-help", "Tron Userbot Helpdex",
+                        "Browse enabled userbot plugins and command usage",
+                        helpCaption(userbot = true), helpKeyboard(page, userbot = true)))
+                    if (command.isEmpty()) {
+                        results.put(inlineArticle("userbot-alive", "Userbot status",
+                            "Show userbot uptime and runtime information",
+                            lastUserbotAliveCaption ?: botAliveCaption(), userbotAliveKeyboard()))
+                        results.put(inlineArticle("userbot-quote", "Tron quote", "Share an anime quote",
+                            "❝ “If you don't take risks, you can't create a future.” — Monkey D. Luffy ❞",
+                            inlineLauncher("quote")))
+                    }
+                }
+                "alive", "ialive", "stats" -> results.put(inlineArticle("userbot-alive", "Userbot status",
+                    "Uptime and runtime information", lastUserbotAliveCaption ?: botAliveCaption(),
+                    userbotAliveKeyboard()))
+                "quote" -> results.put(inlineArticle("userbot-quote", "Tron quote", "Share an anime quote",
+                    "❝ “A lesson without pain is meaningless.” — Edward Elric ❞", inlineLauncher("quote")))
+                "ping" -> results.put(inlineArticle("userbot-ping", "Pong!",
+                    "Check whether the companion bot is responding", "Pong! Telegram Bot API is responding."))
+                else -> {
+                    val plugin = helpPlugins(userbot = true).firstOrNull {
+                        it.id.equals(argument, true) || it.title.equals(raw, true) || it.title.contains(raw, true)
+                    }
+                    if (plugin != null) results.put(inlineArticle("plugin-${plugin.id}", plugin.title,
+                        plugin.summary, pluginCaption(plugin.id, userbot = true),
+                        JSONObject().put("inline_keyboard", org.json.JSONArray().put(
+                            org.json.JSONArray().put(button("Back to plugins", "ubhelp:home"))))))
+                }
+            }
+            val response = request("answerInlineQuery?inline_query_id=${encode(queryId)}" +
+                "&results=${encode(results.toString())}&cache_time=0&is_personal=true")
+            if (!response.optBoolean("ok")) {
+                android.util.Log.w("TronDroidBot", "Inline query failed: ${response.optString("description")}")
+            }
+        }
+
         private fun handleUpdate(update: JSONObject) {
+            update.optJSONObject("inline_query")?.let { handleInlineQuery(it); return }
             update.optJSONObject("callback_query")?.let { handleCallback(it); return }
             val message = update.optJSONObject("message") ?: return
             val text = message.optString("text").trim()
