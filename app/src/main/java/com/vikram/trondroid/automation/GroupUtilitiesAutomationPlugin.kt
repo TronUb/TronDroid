@@ -63,6 +63,7 @@ class GroupUtilitiesAutomationPlugin : AutomationPlugin {
                 ?: return@send context.reply(if (chatResult is TdApi.Error) chatResult.message else "Chat unavailable.")
             val supergroup = chat.type as? TdApi.ChatTypeSupergroup
                 ?: return@send context.reply("This command supports supergroups only.")
+            if (supergroup.isChannel) return@send context.reply("Member listing is supported for groups, not broadcast channels.")
             val filter: TdApi.SupergroupMembersFilter =
                 if (context.command == "bots") TdApi.SupergroupMembersFilterBots() else TdApi.SupergroupMembersFilterRecent()
             gateway.send(TdApi.GetSupergroupMembers(supergroup.supergroupId, filter, 0, requested)) { result ->
@@ -94,6 +95,9 @@ class GroupUtilitiesAutomationPlugin : AutomationPlugin {
                         ?: return@send context.reply(if (chatResult is TdApi.Error) chatResult.message else "Chat unavailable.")
                     if (chat.type !is TdApi.ChatTypeSupergroup && chat.type !is TdApi.ChatTypeBasicGroup) {
                         return@send context.reply("Inviting members is only supported in groups and supergroups.")
+                    }
+                    if ((chat.type as? TdApi.ChatTypeSupergroup)?.isChannel == true) {
+                        return@send context.reply("Use a group or supergroup, not a broadcast channel.")
                     }
                     gateway.send(TdApi.AddChatMember(context.message.chatId, userId, 0)) { result ->
                         context.reply(if (result is TdApi.Error) "Invite failed: ${result.message}" else "Telegram processed the invite request for $userId.")
