@@ -5,6 +5,7 @@ import org.drinkless.tdlib.TdApi
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
+import com.vikram.trondroid.plugins.PluginCatalog
 
 /**
  * Shares portable, declarative plugin manifests.
