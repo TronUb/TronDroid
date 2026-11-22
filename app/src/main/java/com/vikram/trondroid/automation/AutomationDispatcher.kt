@@ -67,13 +67,14 @@ class AutomationDispatcher(
     fun dispatchUpdate(update: TdApi.Update) {
         executor.execute {
             if (isSleeping()) return@execute
-            val context = AutomationUpdateContext(
-                update = update,
-                reply = { chatId, text -> if (text.isNotBlank()) sendText(chatId, text) },
-                telegram = telegramGateway()
-            )
             plugins.forEach { plugin ->
                 if (plugin.id == "core" || isPluginEnabled(plugin.id)) {
+                    val context = AutomationUpdateContext(
+                        update = update,
+                        reply = { chatId, text -> if (text.isNotBlank()) sendText(chatId, text) },
+                        telegram = telegramGateway(),
+                        isCommandEnabled = { command -> isCommandEnabled(plugin.id, command) }
+                    )
                     runCatching { plugin.onTelegramUpdate(context) }
                         .onFailure {
                             logger("Plugin ${plugin.id} update handler failed: ${it.message}", true)
@@ -117,7 +118,8 @@ class AutomationDispatcher(
                             message = message,
                             reply = messageReply,
                             replyAfter = delayedMessageReply,
-                            telegram = telegramGateway()
+                            telegram = telegramGateway(),
+                            isCommandEnabled = { command -> isCommandEnabled(handler.pluginId, command) }
                         )
                     )
                 }.onFailure { logger("Plugin ${handler.pluginId} failed: ${it.message}", true) }
@@ -152,7 +154,10 @@ class AutomationDispatcher(
         val commandDelayedReply: (Long, String) -> Unit = { delay, text ->
             executor.schedule({ commandReply(text) }, delay.coerceAtLeast(0), TimeUnit.MILLISECONDS)
         }
-        val context = AutomationContext(message, name, arguments, commandReply, commandDelayedReply, telegramGateway())
+        val context = AutomationContext(
+            message, name, arguments, commandReply, commandDelayedReply, telegramGateway(),
+            isCommandEnabled = { command -> isCommandEnabled(plugin.id, command) }
+        )
         runCatching { plugin.onCommand(context) }
             .onFailure { logger("Command $name in ${plugin.id} failed: ${it.message}", true) }
     }
