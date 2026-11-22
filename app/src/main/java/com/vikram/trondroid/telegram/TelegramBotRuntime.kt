@@ -126,7 +126,7 @@ object TelegramBotRuntime {
                     // Telegram remembers allowed_updates between long-poll requests.
                     // Explicitly include inline_query so /setinline results are actually delivered.
                     val allowedUpdates = encode("""["message","callback_query","inline_query"]""")
-                    val updates = request("getUpdates?timeout=25&offset=$offset&allowed_updates=$allowedUpdates")
+                    val updates = request("getUpdates?timeout=50&offset=$offset&allowed_updates=$allowedUpdates")
                     if (!updates.optBoolean("ok")) {
                         if (!preferences.getBoolean("auto_reconnect_bots", true)) break
                         Thread.sleep(retryDelayMs)
@@ -583,7 +583,7 @@ object TelegramBotRuntime {
                 .openConnection() as HttpURLConnection
             connection.requestMethod = "GET"
             connection.connectTimeout = 15_000
-            connection.readTimeout = 35_000
+            connection.readTimeout = 55_000
             connection.setRequestProperty("Accept", "application/json")
             return try {
                 val stream = if (connection.responseCode in 200..299) connection.inputStream
