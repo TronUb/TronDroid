@@ -353,6 +353,7 @@ private fun UserbotDetailScreen(
                                 UserbotSection.CREDENTIALS -> Icons.Rounded.Key
                                 UserbotSection.INSIGHTS -> Icons.Rounded.Insights
                                 UserbotSection.SETTINGS -> Icons.Rounded.Settings
+                                else -> Icons.Rounded.Settings
                             },
                             contentDescription = null
                         )
