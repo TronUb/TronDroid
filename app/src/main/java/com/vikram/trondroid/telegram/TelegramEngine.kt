@@ -142,10 +142,19 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
         nativePlugins += RedditAutomationPlugin()
         nativePlugins += TranslateAutomationPlugin()
         nativePlugins += TimeAutomationPlugin()
-        nativePlugins += AliveAutomationPlugin({ profile.name }, context)
+        nativePlugins += AliveAutomationPlugin(
+            { profile.name },
+            context,
+            { chatId -> TelegramBotRuntime.sendUserbotAlive(profile.id, chatId) },
+            { chatId -> TelegramBotRuntime.sendUserbotQuote(profile.id, chatId) }
+        )
         nativePlugins += AnimeAutomationPlugin()
         nativePlugins += FunAutomationPlugin()
-        nativePlugins += HelpAutomationPlugin({ pluginSettings.handler() }) { nativePlugins }
+        nativePlugins += HelpAutomationPlugin(
+            { pluginSettings.handler() },
+            { nativePlugins },
+            { chatId -> TelegramBotRuntime.sendUserbotHelpDex(profile.id, chatId) }
+        )
         nativePlugins += AfkAutomationPlugin({ pluginSettings.handler() }, { _account.value?.id }) { _account.value?.username }
         nativePlugins += NotesAutomationPlugin(context.getSharedPreferences("trondroid.userbot.notes", Context.MODE_PRIVATE))
         nativePlugins += ProfileAutomationPlugin()
