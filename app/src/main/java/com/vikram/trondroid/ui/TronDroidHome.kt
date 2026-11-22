@@ -96,16 +96,7 @@ fun TronDroidHome(
         is Page.PluginDetail -> PluginCatalog.find(p.id)?.title ?: "Plugin"
     }
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(title, style = MaterialTheme.typography.titleLarge) },
-                navigationIcon = {
-                    if (!isHome) IconButton(onClick = {
-                        goBack()
-                    }) { Icon(Icons.Rounded.ArrowBack, "Back") }
-                }
-            )
-        },
+        topBar = {},
         bottomBar = {
             if (isHome) {
                 FloatingGlassBottomBar(selected = tab, onSelect = { tab = it })
@@ -129,7 +120,7 @@ fun TronDroidHome(
             }
         }
     ) { padding ->
-        AnimatedContent(targetState = page, transitionSpec = {
+        AnimatedContent(modifier = Modifier.fillMaxSize().statusBarsPadding(), targetState = page, transitionSpec = {
             val direction = navigationDirection
             (slideInHorizontally { width -> if (direction > 0) width else -width } + fadeIn()) togetherWith
                 (slideOutHorizontally { width -> if (direction > 0) -width else width } + fadeOut())
@@ -871,93 +862,101 @@ private fun PluginsScreen(modifier: Modifier, selectedOwner: Int, onOwnerChange:
         }
     }
     val enabledCount = allPlugins.count { settings.enabled(it.id) }
-
-    Column(modifier.fillMaxSize().padding(horizontal = 18.dp)) {
-        PrimaryTabRow(selectedTabIndex = selectedOwner, modifier = Modifier.padding(top = 4.dp)) {
-            Tab(selected = selectedOwner == 0, onClick = { onOwnerChange(0) }, text = { Text("Userbot") }, icon = { Icon(Icons.Rounded.Person, null) })
-            Tab(selected = selectedOwner == 1, onClick = { onOwnerChange(1) }, text = { Text("Bot") }, icon = { Icon(Icons.Rounded.SmartToy, null) })
+    LazyColumn(state = listState, modifier = modifier.fillMaxSize().padding(horizontal = 16.dp),
+        contentPadding = PaddingValues(top = 10.dp, bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        item {
+            Text("Plugins", style = MaterialTheme.typography.headlineMedium)
+            Text("Manage automation tools and individual commands.", style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-
-        if (selectedOwner == 0) {
-            Card(Modifier.fillMaxWidth().padding(top = 12.dp), shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
-                Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        item {
+            Surface(shape = RoundedCornerShape(22.dp), color = MaterialTheme.colorScheme.surfaceContainerLow, modifier = Modifier.fillMaxWidth()) {
+                Row(Modifier.padding(4.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    listOf("Userbot", "Bot").forEachIndexed { index, label ->
+                        val active = selectedOwner == index
+                        Surface(onClick = { if (!active) onOwnerChange(index) }, shape = RoundedCornerShape(18.dp),
+                            color = if (active) MaterialTheme.colorScheme.primaryContainer else androidx.compose.ui.graphics.Color.Transparent,
+                            modifier = Modifier.weight(1f)) {
+                            Row(Modifier.padding(vertical = 11.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                                Icon(if (index == 0) Icons.Rounded.Person else Icons.Rounded.SmartToy, null,
+                                    tint = if (active) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(7.dp))
+                                Text(label, style = MaterialTheme.typography.labelLarge,
+                                    color = if (active) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if (selectedOwner == 0) item {
+            Card(shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+                Column(Modifier.fillMaxWidth().padding(horizontal = 13.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Rounded.Terminal, null, tint = MaterialTheme.colorScheme.primary)
+                        Icon(Icons.Rounded.Terminal, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))
                         Text("Command prefix", style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
-                        Text("Current: $savedPrefix", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                        Text("Current $savedPrefix", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        OutlinedTextField(value = handler, onValueChange = { handler = it.take(8) }, modifier = Modifier.weight(1f),
-                            label = { Text("Prefix") }, placeholder = { Text(".") }, singleLine = true)
+                        OutlinedTextField(handler, { handler = it.take(8) }, modifier = Modifier.weight(1f).heightIn(min = 52.dp),
+                            singleLine = true, placeholder = { Text(".") }, label = { Text("Prefix") })
                         Button(onClick = {
-                            val saved = handler.trim().ifBlank { "." }
-                            settings.setHandler(saved); handler = saved; savedPrefix = saved
+                            val value = handler.trim().ifBlank { "." }
+                            settings.setHandler(value); handler = value; savedPrefix = value
                             focusManager.clearFocus(); keyboard?.hide()
                         }, enabled = handler.isNotBlank() && handler.trim() != savedPrefix) { Text("Save") }
                     }
                 }
             }
         }
-
-        Card(Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 10.dp), shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
-            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 13.dp), verticalAlignment = Alignment.CenterVertically) {
+        item {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text(if (selectedOwner == 0) "Userbot plugins" else "Bot plugins", style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer)
-                    Text("$enabledCount enabled · ${allPlugins.size} available", style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f))
+                    Text(if (selectedOwner == 0) "Userbot plugins" else "Bot plugins", style = MaterialTheme.typography.titleMedium)
+                    Text("$enabledCount enabled of ${allPlugins.size}", style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                Icon(if (selectedOwner == 0) Icons.Rounded.Extension else Icons.Rounded.SmartToy, null,
-                    tint = MaterialTheme.colorScheme.onSecondaryContainer, modifier = Modifier.size(28.dp))
+                Surface(shape = RoundedCornerShape(14.dp), color = MaterialTheme.colorScheme.secondaryContainer) {
+                    Icon(Icons.Rounded.Extension, null, Modifier.padding(10.dp).size(21.dp), tint = MaterialTheme.colorScheme.onSecondaryContainer)
+                }
             }
         }
-
-        OutlinedTextField(value = search, onValueChange = { search = it }, modifier = Modifier.fillMaxWidth(),
-            singleLine = true, shape = RoundedCornerShape(18.dp), placeholder = { Text("Search plugins or commands") },
-            leadingIcon = { Icon(Icons.Rounded.Search, null) },
-            trailingIcon = { if (search.isNotEmpty()) IconButton(onClick = { search = "" }) { Icon(Icons.Rounded.Close, "Clear search") } })
-
-        LazyColumn(state = listState, modifier = Modifier.weight(1f).padding(top = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(bottom = 28.dp)) {
-            if (plugins.isEmpty()) item {
-                Column(Modifier.fillMaxWidth().padding(vertical = 44.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(Icons.Rounded.SearchOff, null, Modifier.size(38.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(Modifier.height(8.dp))
-                    Text("No matching plugins", style = MaterialTheme.typography.titleMedium)
-                    Text("Try another plugin name or command.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
+        item {
+            OutlinedTextField(value = search, onValueChange = { search = it }, modifier = Modifier.fillMaxWidth(),
+                singleLine = true, shape = RoundedCornerShape(16.dp), placeholder = { Text("Search plugins or commands") },
+                leadingIcon = { Icon(Icons.Rounded.Search, null) },
+                trailingIcon = { if (search.isNotEmpty()) IconButton(onClick = { search = "" }) { Icon(Icons.Rounded.Close, "Clear search") } })
+        }
+        if (plugins.isEmpty()) item {
+            Column(Modifier.fillMaxWidth().padding(vertical = 28.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(Icons.Rounded.SearchOff, null, Modifier.size(32.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("No matching plugins", style = MaterialTheme.typography.titleSmall)
+                Text("Try another name or command.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            items(plugins, key = { it.id }) { plugin ->
-                var enabled by remember(plugin.id) { mutableStateOf(settings.enabled(plugin.id)) }
-                Card(shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
-                    Column(Modifier.fillMaxWidth().clickable { onOpen(plugin.id) }.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Surface(shape = RoundedCornerShape(14.dp), color = MaterialTheme.colorScheme.primaryContainer, modifier = Modifier.size(44.dp)) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(if (selectedOwner == 0) Icons.Rounded.Extension else Icons.Rounded.SmartToy, null,
-                                        tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(23.dp))
-                                }
-                            }
-                            Spacer(Modifier.width(12.dp))
-                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                Text(plugin.title, style = MaterialTheme.typography.titleMedium)
-                                Text(plugin.category, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
-                            }
-                            Switch(checked = enabled, onCheckedChange = { enabled = it; settings.setEnabled(plugin.id, it) })
-                        }
-                        Text(plugin.summary, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("${plugin.commands.size} commands", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Spacer(Modifier.weight(1f))
-                            Text(if (plugin.implemented) "Native Android" else "Not ported", style = MaterialTheme.typography.labelSmall,
-                                color = if (plugin.implemented) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary)
-                            Spacer(Modifier.width(6.dp))
-                            Icon(Icons.Rounded.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        items(plugins, key = { it.id }) { plugin ->
+            var enabled by remember(plugin.id) { mutableStateOf(settings.enabled(plugin.id)) }
+            Card(onClick = { onOpen(plugin.id) }, shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+                Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.secondaryContainer, modifier = Modifier.size(38.dp)) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(if (selectedOwner == 0) Icons.Rounded.Extension else Icons.Rounded.SmartToy, null,
+                                tint = MaterialTheme.colorScheme.onSecondaryContainer, modifier = Modifier.size(20.dp))
                         }
                     }
+                    Spacer(Modifier.width(10.dp))
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(plugin.title, style = MaterialTheme.typography.titleSmall, maxLines = 1)
+                        Text("${plugin.category} · ${plugin.commands.size} commands", style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                        Text(plugin.summary, style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                    }
+                    Switch(checked = enabled, onCheckedChange = { enabled = it; settings.setEnabled(plugin.id, it) })
+                    Icon(Icons.Rounded.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
                 }
             }
         }
