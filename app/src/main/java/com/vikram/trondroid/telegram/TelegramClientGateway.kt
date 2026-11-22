@@ -41,14 +41,29 @@ class TelegramClientGateway(
         }
     }
 
+    /**
+     * Parse Tron-style Markdown into Telegram entities using TDLib.
+     * TDLib calculates UTF-16 entity offsets, avoiding broken formatting around emoji.
+     */
+    private fun parseFormattedText(text: String, limit: Int, callback: (TdApi.FormattedText) -> Unit) {
+        val source = text.take(limit)
+        // Tron templates use **bold**; TDLib legacy Markdown uses *bold*.
+        val markdown = source.replace("**", "*")
+        send(TdApi.ParseTextEntities(markdown, TdApi.TextParseModeMarkdown(1))) { result ->
+            callback(result as? TdApi.FormattedText ?: TdApi.FormattedText(source, emptyArray()))
+        }
+    }
+
     fun sendText(
         chatId: Long,
         text: String,
         replyMarkup: TdApi.ReplyMarkup? = null,
         callback: (TdApi.Object) -> Unit = {}
     ) {
-        val content = TdApi.InputMessageText(TdApi.FormattedText(text.take(4000), emptyArray()), null, true)
-        send(TdApi.SendMessage(chatId, null, null, null, replyMarkup, content), callback)
+        parseFormattedText(text, 4000) { formatted ->
+            val content = TdApi.InputMessageText(formatted, null, true)
+            send(TdApi.SendMessage(chatId, null, null, null, replyMarkup, content), callback)
+        }
     }
 
     fun editText(
@@ -58,8 +73,10 @@ class TelegramClientGateway(
         replyMarkup: TdApi.ReplyMarkup? = null,
         callback: (TdApi.Object) -> Unit = {}
     ) {
-        val content = TdApi.InputMessageText(TdApi.FormattedText(text.take(4000), emptyArray()), null, true)
-        send(TdApi.EditMessageText(chatId, messageId, replyMarkup, content), callback)
+        parseFormattedText(text, 4000) { formatted ->
+            val content = TdApi.InputMessageText(formatted, null, true)
+            send(TdApi.EditMessageText(chatId, messageId, replyMarkup, content), callback)
+        }
     }
 
     fun deleteMessage(chatId: Long, messageId: Long, callback: (TdApi.Object) -> Unit = {}) {
@@ -136,19 +153,20 @@ class TelegramClientGateway(
                     connection.disconnect()
                 }
 
-                val formattedCaption = TdApi.FormattedText(caption.take(1024), emptyArray())
-                val content: TdApi.InputMessageContent = if (animation) {
-                    TdApi.InputMessageAnimation(
-                        TdApi.InputFileLocal(destination.absolutePath), null, intArrayOf(),
-                        0, 0, 0, formattedCaption, false, false
-                    )
-                } else {
-                    TdApi.InputMessagePhoto(
-                        TdApi.InputFileLocal(destination.absolutePath), null, null, intArrayOf(),
-                        0, 0, formattedCaption, false, null, false
-                    )
+                parseFormattedText(caption, 1024) { formattedCaption ->
+                    val content: TdApi.InputMessageContent = if (animation) {
+                        TdApi.InputMessageAnimation(
+                            TdApi.InputFileLocal(destination.absolutePath), null, intArrayOf(),
+                            0, 0, 0, formattedCaption, false, false
+                        )
+                    } else {
+                        TdApi.InputMessagePhoto(
+                            TdApi.InputFileLocal(destination.absolutePath), null, null, intArrayOf(),
+                            0, 0, formattedCaption, false, null, false
+                        )
+                    }
+                    send(TdApi.SendMessage(chatId, null, null, null, replyMarkup, content), callback)
                 }
-                send(TdApi.SendMessage(chatId, null, null, null, replyMarkup, content), callback)
             }.onFailure { error ->
                 callback(TdApi.Error(400, error.message ?: "Unable to send media"))
             }
@@ -157,11 +175,13 @@ class TelegramClientGateway(
 
 
     fun sendPhotoPath(chatId: Long, path: String, caption: String = "", callback: (TdApi.Object) -> Unit = {}) {
-        val content = TdApi.InputMessagePhoto(
-            TdApi.InputFileLocal(path), null, null, intArrayOf(), 0, 0,
-            TdApi.FormattedText(caption.take(1024), emptyArray()), false, null, false
-        )
-        send(TdApi.SendMessage(chatId, null, null, null, null, content), callback)
+        parseFormattedText(caption, 1024) { formatted ->
+            val content = TdApi.InputMessagePhoto(
+                TdApi.InputFileLocal(path), null, null, intArrayOf(), 0, 0,
+                formatted, false, null, false
+            )
+            send(TdApi.SendMessage(chatId, null, null, null, null, content), callback)
+        }
     }
     fun sendDocumentPath(chatId: Long, path: String, caption: String = "", callback: (TdApi.Object) -> Unit = {}) {
         val content = TdApi.InputMessageDocument(
