@@ -27,6 +27,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import android.graphics.BitmapFactory
 import androidx.compose.ui.input.pointer.pointerInput
@@ -191,38 +194,37 @@ fun TronDroidHome(
 private fun FloatingGlassBottomBar(selected: Tab, onSelect: (Tab) -> Unit) {
     val tabs = listOf(Tab.USERBOTS, Tab.PLUGINS, Tab.SETTINGS)
     val selectedIndex = tabs.indexOf(selected).coerceAtLeast(0)
+    val dark = androidx.compose.foundation.isSystemInDarkTheme()
+    val glass = if (dark) Color(0xFF17181D).copy(alpha = 0.82f) else Color.White.copy(alpha = 0.78f)
+    val edge = if (dark) Color.White.copy(alpha = 0.12f) else Color.White.copy(alpha = 0.72f)
+    val shadowTint = if (dark) Color.Black else Color(0xFF64748B)
     Column(
-        Modifier
-            .fillMaxWidth()
-            .navigationBarsPadding()
+        Modifier.fillMaxWidth().navigationBarsPadding()
+            .drawBehind {
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(Color.Transparent, shadowTint.copy(alpha = if (dark) 0.22f else 0.12f), Color.Transparent)
+                    )
+                )
+            }
             .padding(horizontal = 22.dp, vertical = 8.dp)
     ) {
         BoxWithConstraints(
-            Modifier
-                .fillMaxWidth()
-                .height(68.dp)
-                .shadow(14.dp, RoundedCornerShape(50))
-                .clip(RoundedCornerShape(50))
-                .background(MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.82f))
-                .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.48f), RoundedCornerShape(50))
+            Modifier.fillMaxWidth().height(66.dp).clip(RoundedCornerShape(50))
+                .background(glass)
+                .border(1.dp, edge, RoundedCornerShape(50))
                 .padding(5.dp)
         ) {
             val itemWidth = maxWidth / 3
             val animatedX by androidx.compose.animation.core.animateDpAsState(
                 targetValue = itemWidth * selectedIndex,
-                animationSpec = androidx.compose.animation.core.spring(
-                    dampingRatio = 0.78f,
-                    stiffness = 520f
-                ),
+                animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.78f, stiffness = 520f),
                 label = "glass-tab-indicator"
             )
             Box(
-                Modifier
-                    .offset(x = animatedX)
-                    .width(itemWidth)
-                    .fillMaxHeight()
+                Modifier.offset(x = animatedX).width(itemWidth).fillMaxHeight()
                     .clip(RoundedCornerShape(50))
-                    .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.92f))
+                    .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f))
             )
             Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
                 tabs.forEach { tab ->
@@ -238,28 +240,15 @@ private fun FloatingGlassBottomBar(selected: Tab, onSelect: (Tab) -> Unit) {
                         Tab.SETTINGS -> "Settings"
                     }
                     Column(
-                        Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                            .clip(RoundedCornerShape(50))
-                            .clickable { onSelect(tab) },
+                        Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(50)).clickable { onSelect(tab) },
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center
                     ) {
-                        Icon(
-                            icon,
-                            contentDescription = label,
-                            tint = if (active) MaterialTheme.colorScheme.onPrimaryContainer
-                                else MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(22.dp)
-                        )
+                        Icon(icon, label, tint = if (active) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(21.dp))
                         Spacer(Modifier.height(3.dp))
-                        Text(
-                            label,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = if (active) MaterialTheme.colorScheme.onPrimaryContainer
-                                else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        Text(label, style = MaterialTheme.typography.labelSmall,
+                            color = if (active) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
@@ -271,6 +260,10 @@ private fun FloatingGlassBottomBar(selected: Tab, onSelect: (Tab) -> Unit) {
 private fun UserbotsScreen(modifier: Modifier, bots: List<BotProfile>, listState: LazyListState, onOpen: (String) -> Unit, onToggle: (String, Boolean) -> Unit) {
     LazyColumn(state = listState, modifier = modifier.fillMaxSize().padding(horizontal = 18.dp),
         contentPadding = PaddingValues(top = 12.dp, bottom = 100.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        item {
+            Text("Userbots", style = MaterialTheme.typography.headlineMedium)
+            Text("Manage your Telegram account sessions.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
         if (bots.isEmpty()) item {
             Box(Modifier.fillMaxWidth().padding(top = 90.dp), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -398,7 +391,7 @@ private fun UserbotDetailScreen(
                                         modifier = Modifier.size(56.dp)) {
                                         Box(contentAlignment = Alignment.Center) {
                                             Icon(Icons.Rounded.Person, contentDescription = null,
-                                                tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(34.dp))
+                                                tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(34.dp))
                                         }
                                     }
                                 }
@@ -985,16 +978,16 @@ private fun PluginDetailScreen(modifier: Modifier, id: String) {
                         }
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
-                            Text(plugin.title, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                            Text(plugin.title, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface)
                             Text(plugin.owner.label + " plugin · " + plugin.category, style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.78f))
                         }
                     }
-                    Text(plugin.summary, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                    Text(plugin.summary, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Surface(shape = RoundedCornerShape(50), color = MaterialTheme.colorScheme.surface.copy(alpha = 0.65f)) {
                             Text(if (plugin.implemented) "Native Android" else "Not ported", Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                                style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                                style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                         }
                         Surface(shape = RoundedCornerShape(50), color = MaterialTheme.colorScheme.surface.copy(alpha = 0.65f)) {
                             Text("$enabledCommands / ${plugin.commands.size} commands enabled", Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
@@ -1061,6 +1054,8 @@ private fun SettingsScreen(
     onDynamicColorsChange: (Boolean) -> Unit
 ) {
     Column(modifier.fillMaxSize().padding(horizontal = 18.dp).verticalScroll(rememberScrollState())) {
+        Text("Settings", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(top = 12.dp))
+        Text("Personalize the app and manage connections.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text("Appearance", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.padding(top = 12.dp, bottom = 8.dp))
         Card(shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
@@ -1107,7 +1102,7 @@ private fun AboutScreen(modifier: Modifier) {
     LazyColumn(modifier.fillMaxSize().padding(horizontal = 18.dp), verticalArrangement = Arrangement.spacedBy(14.dp),
         contentPadding = PaddingValues(top = 14.dp, bottom = 30.dp)) {
         item {
-            Card(shape = RoundedCornerShape(28.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
+            Card(shape = RoundedCornerShape(28.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
                 Column(Modifier.fillMaxWidth().padding(22.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surface.copy(alpha = 0.55f), modifier = Modifier.size(64.dp)) {
                         Box(contentAlignment = Alignment.Center) { Icon(Icons.Rounded.Send, null, Modifier.size(34.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer) }
