@@ -41,27 +41,59 @@ class TelegramClientGateway(
         }
     }
 
+    fun sendText(
+        chatId: Long,
+        text: String,
+        replyMarkup: TdApi.ReplyMarkup? = null,
+        callback: (TdApi.Object) -> Unit = {}
+    ) {
+        val content = TdApi.InputMessageText(TdApi.FormattedText(text.take(4000), emptyArray()), null, true)
+        send(TdApi.SendMessage(chatId, null, null, null, replyMarkup, content), callback)
+    }
+
+    fun editText(
+        chatId: Long,
+        messageId: Long,
+        text: String,
+        replyMarkup: TdApi.ReplyMarkup? = null,
+        callback: (TdApi.Object) -> Unit = {}
+    ) {
+        val content = TdApi.InputMessageText(TdApi.FormattedText(text.take(4000), emptyArray()), null, true)
+        send(TdApi.EditMessageText(chatId, messageId, replyMarkup, content), callback)
+    }
+
+    fun deleteMessage(chatId: Long, messageId: Long, callback: (TdApi.Object) -> Unit = {}) {
+        send(TdApi.DeleteMessages(chatId, longArrayOf(messageId), false), callback)
+    }
+
+    fun answerCallbackQuery(queryId: Long, text: String = "") {
+        send(TdApi.AnswerCallbackQuery(queryId, text.take(200), false, null, 0)) {}
+    }
+
     /** Download an HTTPS image and send it as a real Telegram photo message. */
     fun sendPhotoUrl(
         chatId: Long,
         url: String,
         caption: String = "",
+        replyMarkup: TdApi.ReplyMarkup? = null,
         callback: (TdApi.Object) -> Unit = {}
-    ) = sendMediaUrl(chatId, url, caption, animation = false, callback = callback)
+    ) = sendMediaUrl(chatId, url, caption, animation = false, replyMarkup = replyMarkup, callback = callback)
 
     /** Download an HTTPS GIF/MP4 and send it as a Telegram animation message. */
     fun sendAnimationUrl(
         chatId: Long,
         url: String,
         caption: String = "",
+        replyMarkup: TdApi.ReplyMarkup? = null,
         callback: (TdApi.Object) -> Unit = {}
-    ) = sendMediaUrl(chatId, url, caption, animation = true, callback = callback)
+    ) = sendMediaUrl(chatId, url, caption, animation = true, replyMarkup = replyMarkup, callback = callback)
 
     private fun sendMediaUrl(
         chatId: Long,
         url: String,
         caption: String,
         animation: Boolean,
+        replyMarkup: TdApi.ReplyMarkup? = null,
         callback: (TdApi.Object) -> Unit
     ) {
         mediaExecutor.execute {
@@ -116,7 +148,7 @@ class TelegramClientGateway(
                         0, 0, formattedCaption, false, null, false
                     )
                 }
-                send(TdApi.SendMessage(chatId, null, null, null, null, content), callback)
+                send(TdApi.SendMessage(chatId, null, null, null, replyMarkup, content), callback)
             }.onFailure { error ->
                 callback(TdApi.Error(400, error.message ?: "Unable to send media"))
             }
