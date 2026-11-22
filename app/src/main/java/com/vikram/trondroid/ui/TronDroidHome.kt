@@ -204,19 +204,24 @@ private fun FloatingGlassBottomBar(
     val edge = if (dark) Color.White.copy(alpha = 0.12f) else Color.White.copy(alpha = 0.72f)
     val shadowTint = if (dark) Color.Black else Color(0xFF64748B)
     Box(
-        modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 22.dp, vertical = 8.dp),
-        contentAlignment = Alignment.Center
+        modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 22.dp, vertical = 8.dp)
+            .height(76.dp)
+            .drawBehind {
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        colorStops = arrayOf(
+                            0.0f to Color.Transparent,
+                            0.55f to Color.Transparent,
+                            0.82f to shadowTint.copy(alpha = if (dark) 0.30f else 0.18f),
+                            1.0f to Color.Transparent
+                        )
+                    )
+                )
+            },
+        contentAlignment = Alignment.TopCenter
     ) {
         BoxWithConstraints(
             Modifier.fillMaxWidth().height(66.dp)
-                .drawBehind {
-                    drawRoundRect(
-                        brush = Brush.verticalGradient(
-                            colors = listOf(Color.Transparent, shadowTint.copy(alpha = if (dark) 0.30f else 0.17f), Color.Transparent)
-                        ),
-                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(size.height / 2)
-                    )
-                }
                 .clip(RoundedCornerShape(50))
                 .background(glass)
                 .border(1.dp, edge, RoundedCornerShape(50))
