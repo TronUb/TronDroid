@@ -291,11 +291,17 @@ object TelegramBotRuntime {
             val messageId = message?.optLong("message_id") ?: 0L
             request("answerCallbackQuery?callback_query_id=${encode(callbackId)}")
             val hasPhoto = message?.optJSONArray("photo") != null
+            val inlinePhotoMessage = inlineMessageId.isNotBlank() &&
+                (data.startsWith("ubhelp:") || data.startsWith("ubalive:"))
             fun edit(caption: String, markup: JSONObject? = null) {
                 val safeCaption = caption.replace("**", "*")
                 val markupArg = markup?.let { "&reply_markup=${encode(it.toString())}" }.orEmpty()
                 if (inlineMessageId.isNotBlank()) {
-                    request("editMessageText?inline_message_id=${encode(inlineMessageId)}&text=${encode(safeCaption)}&parse_mode=Markdown$markupArg")
+                    if (inlinePhotoMessage) {
+                        request("editMessageCaption?inline_message_id=${encode(inlineMessageId)}&caption=${encode(safeCaption)}&parse_mode=Markdown$markupArg")
+                    } else {
+                        request("editMessageText?inline_message_id=${encode(inlineMessageId)}&text=${encode(safeCaption)}&parse_mode=Markdown$markupArg")
+                    }
                 } else {
                     val method = if (hasPhoto) "editMessageCaption" else "editMessageText"
                     val field = if (hasPhoto) "caption" else "text"
