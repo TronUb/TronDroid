@@ -715,7 +715,7 @@ class AfkAutomationPlugin(
     }
 
     override fun onMessage(context: AutomationContext) {
-        if (!context.isCommandEnabled("afk") || !active) return
+        if (!context.isCommandEnabled("userbot:afk", "afk") || !active) return
         val message = context.message
         val text = message.text
         if (message.isOutgoing) {
