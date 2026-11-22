@@ -45,7 +45,7 @@ class PublishingAutomationPlugin(private val cacheDir: File) : AutomationPlugin 
     private fun telegraph(context: AutomationContext) {
         val gateway = context.telegram ?: return context.reply("Telegram session is unavailable.")
         val replied = context.message.tdMessage?.let(gateway::repliedMessage)
-            ?: return context.reply("Reply to text or supported media with .telegraph")
+            ?: return context.reply("Reply to text, photo, video or animation with .telegraph")
         val text = when (val content = replied.content) {
             is TdApi.MessageText -> content.text.text
             is TdApi.MessagePhoto -> content.caption.text
@@ -79,6 +79,8 @@ class PublishingAutomationPlugin(private val cacheDir: File) : AutomationPlugin 
             } else "The replied message contains no publishable text.")
         }
         if (text.length > 4000) return context.reply("Text must be 1–4000 characters.")
+        val supportedMedia = replied.content is TdApi.MessagePhoto || replied.content is TdApi.MessageVideo || replied.content is TdApi.MessageAnimation
+        if (fileId != null && !supportedMedia) return context.reply("Telegraph supports text, photos, videos and animations only.")
         context.reply("Preparing Telegraph page…")
         val publish: (String?) -> Unit = { mediaPath ->
             Thread({
