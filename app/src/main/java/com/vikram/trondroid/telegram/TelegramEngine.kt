@@ -90,6 +90,8 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
     companion object { init { System.loadLibrary("tdjni") } }
     private var client: Client? = null
     @Volatile private var closeRequested = false
+    private val reconnectScheduled = java.util.concurrent.atomic.AtomicBoolean(false)
+    private val reconnectAttempt = java.util.concurrent.atomic.AtomicInteger(0)
     private val _authorization = MutableStateFlow<TdApi.AuthorizationState?>(null)
     val authorization: StateFlow<TdApi.AuthorizationState?> = _authorization.asStateFlow()
     private val _error = MutableStateFlow<String?>(null)
@@ -232,13 +234,27 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
     }
     fun hasActiveClient(): Boolean = client != null
 
+    private fun scheduleReconnect() {
+        if (closeRequested || !reconnectScheduled.compareAndSet(false, true)) return
+        val attempt = reconnectAttempt.getAndIncrement().coerceAtMost(4)
+        val delayMs = (3_000L * (1L shl attempt)).coerceAtMost(60_000L)
+        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+            reconnectScheduled.set(false)
+            if (!closeRequested) TelegramRuntime.restart(context, profile.id)
+        }, delayMs)
+    }
+
     fun start() {
         if (client != null) return
         log("Initializing Telegram session for ${profile.name}")
         runCatching {
             Client.execute(TdApi.SetLogVerbosityLevel(0))
             client = Client.create(this, null, null)
-        }.onFailure { _error.value = it.message ?: "Unable to initialize TDLib"; log(_error.value!!, true) }
+        }.onFailure {
+            _error.value = it.message ?: "Unable to initialize TDLib"
+            log(_error.value!!, true)
+            scheduleReconnect()
+        }
     }
     override fun onResult(result: TdApi.Object) {
         // TDLib is the single source of truth: forward every Update subtype to the
@@ -303,18 +319,18 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
             TdApi.AuthorizationStateWaitPhoneNumber.CONSTRUCTOR -> log("Waiting for phone number")
             TdApi.AuthorizationStateWaitCode.CONSTRUCTOR -> log("Telegram verification code required")
             TdApi.AuthorizationStateWaitPassword.CONSTRUCTOR -> log("Two-step verification password required")
-            TdApi.AuthorizationStateReady.CONSTRUCTOR -> { log("Telegram account connected"); loadChats(); loadAccount() }
+            TdApi.AuthorizationStateReady.CONSTRUCTOR -> {
+                reconnectAttempt.set(0)
+                log("Telegram account connected")
+                loadChats()
+                loadAccount()
+            }
             TdApi.AuthorizationStateClosed.CONSTRUCTOR -> {
                 log("Telegram session closed")
                 client = null
-                if (!closeRequested) {
-                    // TDLib can close a session after an unrecoverable transport/runtime
-                    // failure. Recreate the engine after a short delay; restart() checks
-                    // the persisted enabled flag so a disabled profile is never revived.
-                    android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                        TelegramRuntime.restart(context, profile.id)
-                    }, 3_000L)
-                }
+                // Recreate closed sessions with bounded backoff. The runtime checks
+                // the persisted enabled flag before replacing an engine.
+                scheduleReconnect()
             }
         }
     }
