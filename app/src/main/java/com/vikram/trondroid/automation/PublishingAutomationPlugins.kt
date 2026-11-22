@@ -79,8 +79,8 @@ class PublishingAutomationPlugin(private val cacheDir: File) : AutomationPlugin 
             } else "The replied message contains no publishable text.")
         }
         if (text.length > 4000) return context.reply("Text must be 1–4000 characters.")
-        val supportedMedia = replied.content is TdApi.MessagePhoto || replied.content is TdApi.MessageVideo || replied.content is TdApi.MessageAnimation
-        if (fileId != null && !supportedMedia) return context.reply("Telegraph supports text, photos, videos and animations only.")
+        val knownMediaSize = mediaFile?.first?.let { gateway.cachedFile(it)?.size } ?: 0L
+        if (knownMediaSize > 5L * 1024 * 1024) return context.reply("Telegraph media must be 5 MB or smaller.")
         context.reply("Preparing Telegraph page…")
         val publish: (String?) -> Unit = { mediaPath ->
             Thread({
