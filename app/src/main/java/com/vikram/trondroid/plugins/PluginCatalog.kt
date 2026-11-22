@@ -24,7 +24,7 @@ object PluginCatalog {
         id, title, summary, category, owner, source,
         commands.map { name ->
             val usage = when (name) {
-                in setOf("wiki", "imdb", "reddit", "r", "translate", "tr", "tl", "upcase", "joke", "weather", "currency", "paste", "google", "img", "download", "upload", "ytsearch", "song", "lyrics", "whois", "id", "qrcode", "tts", "ud", "short", "unshort", "telegraph", "carbon", "search", "pic", "pfp", "deezer", "spotify", "webshot", "itos", "vsubclip") -> "$name <query>"
+                in setOf("wiki", "imdb", "reddit", "r", "translate", "tr", "tl", "upcase", "joke", "weather", "currency", "paste", "google", "img", "download", "upload", "ytsearch", "song", "lyrics", "whois", "id", "qrcode", "tts", "ud", "short", "unshort", "telegraph", "search", "pic", "pfp", "deezer", "spotify", "webshot", "itos", "vsubclip") -> "$name <query>"
                 in setOf("ban", "unban", "kick", "mute", "unmute", "promote", "demote") -> "$name <reply or user> [duration]"
                 in setOf("broadcast", "bdt") -> "$name <message>"
                 in setOf("carbon", "cb") -> "$name [colour] <code>"
