@@ -108,7 +108,7 @@ class ToolsExtrasAutomationPlugin(context: Context, private val isDeletedCacheEn
                     if (result is TdApi.Error) return@send context.reply("Telegram error: ${result.message}")
                     val chats: LongArray = (result as? TdApi.Chats)?.chatIds ?: longArrayOf()
                     val names = chats.map { id -> gateway.cachedChat(id)?.title ?: "Chat $id" }
-                    context.reply(if (names.isEmpty()) "No shared groups returned." else "Common groups:\\n" + names.joinToString("\\n").take(3800))
+                    context.reply(if (names.isEmpty()) "No shared groups returned." else "Common groups:\n" + names.joinToString("\n").take(3800))
                 }
             }
             "speedtest" -> speedTest(context)
@@ -121,7 +121,7 @@ class ToolsExtrasAutomationPlugin(context: Context, private val isDeletedCacheEn
                     val chatName = gateway.cachedChat(chatId)?.title ?: "chat $chatId"
                     "• " + chatName + " [" + item.optLong("message_id") + "]: " + item.optString("text")
                 }
-                context.reply("Locally cached deleted messages:\\n" + lines.joinToString("\\n").take(3900))
+                context.reply("Locally cached deleted messages:\n" + lines.joinToString("\n").take(3900))
             }
         }
     }
@@ -145,7 +145,7 @@ class ToolsExtrasAutomationPlugin(context: Context, private val isDeletedCacheEn
                 val text = (message.content as? TdApi.MessageText)?.text?.text.orEmpty()
                 if (text.contains(query, ignoreCase = true)) {
                     val link = privateMessageLink(gateway, message.chatId, message.id)
-                    found += (link ?: "Message ID ${message.id}") + " — " + text.replace("\\n", " ").take(140)
+                    found += (link ?: "Message ID ${message.id}") + " — " + text.replace("\n", " ").take(140)
                 }
             }
             val oldest = page.messages.minOfOrNull { it.id } ?: 0L
@@ -155,7 +155,7 @@ class ToolsExtrasAutomationPlugin(context: Context, private val isDeletedCacheEn
     }
 
     private fun finishSearch(context: AutomationContext, query: String, found: List<String>) {
-        context.reply(if (found.isEmpty()) "No matches found for: $query" else "Matches for “$query” (up to 500 recent messages):\\n" + found.take(25).joinToString("\\n").take(3900))
+        context.reply(if (found.isEmpty()) "No matches found for: $query" else "Matches for “$query” (up to 500 recent messages):\n" + found.take(25).joinToString("\n").take(3900))
     }
 
     private fun privateMessageLink(
@@ -205,7 +205,7 @@ class ToolsExtrasAutomationPlugin(context: Context, private val isDeletedCacheEn
                     } finally { connection.disconnect() }
                 }.coerceAtLeast(1L)
                 val mbps = bytes * 8.0 / elapsed / 1000.0
-                "Downloaded %.2f MB in %.2f s\\nApprox. download speed: %.2f Mbps".format(bytes / 1_000_000.0, elapsed / 1000.0, mbps)
+                "Downloaded %.2f MB in %.2f s\nApprox. download speed: %.2f Mbps".format(bytes / 1_000_000.0, elapsed / 1000.0, mbps)
             }.onSuccess(context.reply).onFailure { context.reply("Speed test failed: ${it.message}") }
         }, "TronDroid-SpeedTest").apply { isDaemon = true; start() }
     }
