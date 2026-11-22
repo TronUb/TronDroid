@@ -1699,6 +1699,49 @@ private fun CredentialDetailScreen(
     var showCustomCredentialsDialog by remember { mutableStateOf(false) }
     var editingCredentialKey by remember { mutableStateOf<String?>(null) }
     var pendingCredentialDelete by remember { mutableStateOf<String?>(null) }
+    val exportCredentialsLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json")
+    ) { uri ->
+        if (uri != null) {
+            val result = runCatching {
+                val json = org.json.JSONObject()
+                customCredentials.forEach { (key, value) -> json.put(key, value) }
+                context.contentResolver.openOutputStream(uri)?.bufferedWriter()?.use { it.write(json.toString(2)) }
+                    ?: error("Unable to open the selected destination.")
+            }
+            android.widget.Toast.makeText(context,
+                result.fold({ "Credentials exported." }, { "Export failed: ${it.message}" }),
+                android.widget.Toast.LENGTH_LONG).show()
+        }
+    }
+    val importCredentialsLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            val result = runCatching {
+                val raw = context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+                    ?: error("Unable to read the selected JSON file.")
+                require(raw.toByteArray(Charsets.UTF_8).size <= 512 * 1024) { "JSON file is larger than 512 KB." }
+                val json = org.json.JSONObject(raw)
+                require(json.length() in 1..200) { "JSON must contain between 1 and 200 key/value entries." }
+                val imported = buildMap {
+                    val keys = json.keys()
+                    while (keys.hasNext()) {
+                        val key = keys.next().trim()
+                        val value = json.optString(key).trim()
+                        require(key.matches(Regex("[A-Za-z0-9_.-]{1,80}"))) { "Invalid credential key: $key" }
+                        require(value.isNotBlank()) { "Credential value for $key is empty." }
+                        put(key, value)
+                    }
+                }
+                require(imported.size == json.length()) { "Duplicate or invalid credential entries." }
+                onSaveCustomCredentials(customCredentials + imported)
+            }
+            android.widget.Toast.makeText(context,
+                result.fold({ "Credentials imported." }, { "Import failed: ${it.message ?: "Invalid JSON"}" }),
+                android.widget.Toast.LENGTH_LONG).show()
+        }
+    }
     LazyColumn(modifier.fillMaxSize().padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         item {
             Text("Saved credentials", style = MaterialTheme.typography.titleMedium)
@@ -1735,10 +1778,21 @@ private fun CredentialDetailScreen(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    FilledTonalButton(onClick = { showCustomCredentialsDialog = true }) {
-                        Icon(Icons.Rounded.Add, null)
-                        Spacer(Modifier.width(6.dp))
-                        Text("Add more")
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        IconButton(onClick = { importCredentialsLauncher.launch(arrayOf("application/json", "text/json", "*/*")) }) {
+                            Icon(Icons.Rounded.FileOpen, "Import credentials JSON")
+                        }
+                        IconButton(onClick = { exportCredentialsLauncher.launch("trondroid-credentials.json") }) {
+                            Icon(Icons.Rounded.FileDownload, "Export credentials JSON")
+                        }
+                        FilledTonalButton(onClick = {
+                            editingCredentialKey = null
+                            showCustomCredentialsDialog = true
+                        }) {
+                            Icon(Icons.Rounded.Add, null)
+                            Spacer(Modifier.width(6.dp))
+                            Text("Add")
+                        }
                     }
 
                 }
