@@ -60,6 +60,7 @@ private sealed interface Page {
     data object Permissions : Page
     data object About : Page
     data object Updater : Page
+    data object SettingsBackup : Page
     data class PluginDetail(val id: String) : Page
 }
 
@@ -74,7 +75,9 @@ fun TronDroidHome(
     onSaveCustomCredentials: (String, Map<String, String>) -> Unit,
     onBotToggle: (String, Boolean) -> Unit,
     themeMode: String, onThemeChange: (String) -> Unit,
-    dynamicColors: Boolean, onDynamicColorsChange: (Boolean) -> Unit
+    dynamicColors: Boolean, onDynamicColorsChange: (Boolean) -> Unit,
+    onExportSettings: () -> String,
+    onImportSettings: (String) -> Unit
 ) {
     var tab by remember { mutableStateOf(Tab.USERBOTS) }
     var pageStack by remember { mutableStateOf(listOf<Page>(Page.Home)) }
@@ -154,6 +157,7 @@ fun TronDroidHome(
                 Tab.SETTINGS -> SettingsScreen(Modifier.fillMaxSize(),
                     onSessions = { navigate(Page.SessionPreferences) }, onBots = { navigate(Page.BotConnections) },
                     onPermissions = { navigate(Page.Permissions) }, onAbout = { navigate(Page.About) }, onUpdater = { navigate(Page.Updater) },
+                    onBackup = { navigate(Page.SettingsBackup) },
                     themeMode = themeMode, onThemeChange = onThemeChange, dynamicColors = dynamicColors, onDynamicColorsChange = onDynamicColorsChange)
             }
             is Page.Userbot -> {
@@ -179,6 +183,12 @@ fun TronDroidHome(
             Page.Permissions -> PermissionsScreen(Modifier.fillMaxSize())
             Page.About -> AboutScreen(Modifier.fillMaxSize())
             Page.Updater -> AppUpdaterScreen(Modifier.fillMaxSize())
+            Page.SettingsBackup -> SettingsBackupScreen(
+                Modifier.fillMaxSize(),
+                onBack = { goBack() },
+                exportJson = onExportSettings,
+                importJson = onImportSettings
+            )
             is Page.PluginDetail -> PluginDetailScreen(Modifier.fillMaxSize(), current.id)
             }
         }
@@ -1205,6 +1215,7 @@ private fun SettingsScreen(
     onPermissions: () -> Unit,
     onAbout: () -> Unit,
     onUpdater: () -> Unit,
+    onBackup: () -> Unit,
     themeMode: String,
     onThemeChange: (String) -> Unit,
     dynamicColors: Boolean,
@@ -1245,10 +1256,102 @@ private fun SettingsScreen(
             Triple("Permissions", "Required, optional and battery/background access", Icons.Rounded.Security)
         ), listOf(onPermissions))
         SettingsGroup("Application", listOf(
+            Triple("Import / Export", "Back up and restore app settings, accounts and plugin states", Icons.Rounded.ImportExport),
             Triple("App updates", "Check and install the latest APK", Icons.Rounded.SystemUpdate),
             Triple("About TronDroid", "Version, project information and developer", Icons.Rounded.Info)
-        ), listOf(onUpdater, onAbout))
+        ), listOf(onBackup, onUpdater, onAbout))
         Spacer(Modifier.height(120.dp))
+    }
+}
+
+@Composable
+private fun SettingsBackupScreen(
+    modifier: Modifier,
+    onBack: () -> Unit,
+    exportJson: () -> String,
+    importJson: (String) -> Unit
+) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val exportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json")
+    ) { uri ->
+        if (uri != null) {
+            val result = runCatching {
+                context.contentResolver.openOutputStream(uri)?.bufferedWriter()?.use { it.write(exportJson()) }
+                    ?: error("Unable to open the selected destination.")
+            }
+            android.widget.Toast.makeText(
+                context,
+                result.fold({ "Settings backup exported." }, { "Export failed: ${it.message}" }),
+                android.widget.Toast.LENGTH_LONG
+            ).show()
+        }
+    }
+    val importLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            val result = runCatching {
+                val raw = context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+                    ?: error("Unable to read the selected backup.")
+                require(raw.toByteArray(Charsets.UTF_8).size <= 2 * 1024 * 1024) { "Backup is larger than 2 MB." }
+                importJson(raw)
+            }
+            android.widget.Toast.makeText(
+                context,
+                result.fold({ "Settings backup restored." }, { "Import failed: ${it.message ?: "Invalid backup"}" }),
+                android.widget.Toast.LENGTH_LONG
+            ).show()
+        }
+    }
+    Column(
+        modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onBack) { Icon(Icons.Rounded.ArrowBack, "Back") }
+            Column {
+                Text("Import / Export", style = MaterialTheme.typography.headlineSmall)
+                Text("Back up and restore your TronDroid configuration.", style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        Card(shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+            Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Icon(Icons.Rounded.CloudDownload, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
+                Text("Export backup", style = MaterialTheme.typography.titleMedium)
+                Text("Save app preferences, account profiles, encrypted credential records, and enabled/disabled plugin and command states into a JSON file.",
+                    style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Button(onClick = { exportLauncher.launch("trondroid-backup.json") }, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Rounded.FileDownload, null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Export JSON")
+                }
+            }
+        }
+        Card(shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+            Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Icon(Icons.Rounded.CloudUpload, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
+                Text("Import backup", style = MaterialTheme.typography.titleMedium)
+                Text("Restore a previously exported TronDroid JSON backup. Import replaces the matching saved preferences and account records.",
+                    style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                OutlinedButton(onClick = { importLauncher.launch(arrayOf("application/json", "text/json", "*/*")) },
+                    modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Rounded.FileOpen, null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Import JSON")
+                }
+            }
+        }
+        Card(shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)) {
+            Text(
+                "Security note: credential records are exported in their locally encrypted form. A backup restored on another device may not be able to decrypt secrets protected by the original device's Android Keystore.",
+                Modifier.padding(16.dp),
+                color = MaterialTheme.colorScheme.onTertiaryContainer,
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+        Spacer(Modifier.height(28.dp))
     }
 }
 
