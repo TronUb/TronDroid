@@ -9,7 +9,7 @@ class GroupUtilitiesAutomationPlugin : AutomationPlugin {
         AutomationCommand("adminlist", "Alias for admins.", "adminlist"),
         AutomationCommand("members", "List recently active members of a supergroup (1–100).", "members [1-100]"),
         AutomationCommand("bots", "List bots in a supergroup (1–100).", "bots [1-100]"),
-        AutomationCommand("settitle", "Change the current group title (Telegram admin rights required).", "settitle <new title>"),
+        AutomationCommand("gtitle", "Change the current group title (Telegram admin rights required). Custom administrator titles are not exposed by TDLib for this user session.", "gtitle <new group title>"),
         AutomationCommand("invite", "Invite one user by replying to them or supplying their numeric ID.", "invite <user id> (or reply)"),
         AutomationCommand("join", "Join a public username or invite link.", "join <@username or t.me invite link>"),
         AutomationCommand("kickme", "Leave the current group. This action is immediate.", "kickme")
@@ -20,9 +20,9 @@ class GroupUtilitiesAutomationPlugin : AutomationPlugin {
         when (context.command) {
             "admins", "adminlist" -> listAdmins(context, gateway)
             "members", "bots" -> listMembers(context, gateway)
-            "settitle" -> {
+            "gtitle" -> {
                 val title = context.arguments.joinToString(" ").trim()
-                if (title.isBlank()) return context.reply("Usage: .settitle <new title>")
+                if (title.isBlank()) return context.reply("Usage: .gtitle <new group title>")
                 if (title.length > 128) return context.reply("Group title must be 128 characters or fewer.")
                 gateway.send(TdApi.SetChatTitle(context.message.chatId, title)) { result ->
                     context.reply(if (result is TdApi.Error) "Telegram rejected the title change: ${result.message}" else "Group title updated.")
