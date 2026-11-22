@@ -48,8 +48,8 @@ class PowerAutomationPlugin(
     }
 
     private fun formatDuration(seconds: Long): String = when {
-        seconds < 60 -> "$" + "seconds second(s)"
-        seconds < 3600 -> "$" + "seconds / 60 minute(s)"
-        else -> "$" + "seconds / 3600 hour(s)"
+        seconds < 60 -> "${seconds} second(s)"
+        seconds < 3600 -> "${seconds / 60} minute(s)"
+        else -> "${seconds / 3600} hour(s)"
     }
 }
