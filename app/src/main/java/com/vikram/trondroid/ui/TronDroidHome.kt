@@ -750,6 +750,8 @@ private fun AddBotDialog(onDismiss: () -> Unit, onSave: (String, String, Int, St
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
 private fun PluginsScreen(modifier: Modifier, selectedOwner: Int, onOwnerChange: (Int) -> Unit, listState: LazyListState, onOpen: (String) -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val settings = remember { PluginSettings(context) }
@@ -757,78 +759,101 @@ private fun PluginsScreen(modifier: Modifier, selectedOwner: Int, onOwnerChange:
     val keyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
     var handler by remember { mutableStateOf(settings.handler()) }
     var savedPrefix by remember { mutableStateOf(settings.handler()) }
+    var search by remember(selectedOwner) { mutableStateOf("") }
+    val allPlugins = if (selectedOwner == 0) PluginCatalog.userbot else PluginCatalog.bot
+    val plugins = remember(allPlugins, search) {
+        if (search.isBlank()) allPlugins else allPlugins.filter { plugin ->
+            plugin.title.contains(search, true) || plugin.summary.contains(search, true) ||
+                plugin.category.contains(search, true) || plugin.commands.any { it.name.contains(search, true) || it.description.contains(search, true) }
+        }
+    }
+    val enabledCount = allPlugins.count { settings.enabled(it.id) }
 
     Column(modifier.fillMaxSize().padding(horizontal = 18.dp)) {
         PrimaryTabRow(selectedTabIndex = selectedOwner, modifier = Modifier.padding(top = 4.dp)) {
-            Tab(selected = selectedOwner == 0, onClick = { onOwnerChange(0) }, text = { Text("Userbot") },
-                icon = { Icon(Icons.Rounded.Person, null) })
-            Tab(selected = selectedOwner == 1, onClick = { onOwnerChange(1) }, text = { Text("Bot") },
-                icon = { Icon(Icons.Rounded.SmartToy, null) })
+            Tab(selected = selectedOwner == 0, onClick = { onOwnerChange(0) }, text = { Text("Userbot") }, icon = { Icon(Icons.Rounded.Person, null) })
+            Tab(selected = selectedOwner == 1, onClick = { onOwnerChange(1) }, text = { Text("Bot") }, icon = { Icon(Icons.Rounded.SmartToy, null) })
         }
 
         if (selectedOwner == 0) {
-            Text("Command handler", style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(top = 14.dp, bottom = 8.dp))
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedTextField(
-                    value = handler,
-                    onValueChange = { handler = it.take(8) },
-                    modifier = Modifier.weight(1f),
-                    label = { Text("Command prefix") },
-                    supportingText = { Text("Example: .ban, .mute, .afk") },
-                    singleLine = true
-                )
-                Button(
-                    onClick = {
-                        val saved = handler.trim().ifBlank { "." }
-                        settings.setHandler(saved)
-                        handler = saved
-                        savedPrefix = saved
-                        focusManager.clearFocus()
-                        keyboard?.hide()
-                    },
-                    enabled = handler.isNotBlank() && handler.trim() != savedPrefix
-                ) { Text("Save") }
+            Card(Modifier.fillMaxWidth().padding(top = 12.dp), shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+                Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Rounded.Terminal, null, tint = MaterialTheme.colorScheme.primary)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Command prefix", style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+                        Text("Current: $savedPrefix", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        OutlinedTextField(value = handler, onValueChange = { handler = it.take(8) }, modifier = Modifier.weight(1f),
+                            label = { Text("Prefix") }, placeholder = { Text(".") }, singleLine = true)
+                        Button(onClick = {
+                            val saved = handler.trim().ifBlank { "." }
+                            settings.setHandler(saved); handler = saved; savedPrefix = saved
+                            focusManager.clearFocus(); keyboard?.hide()
+                        }, enabled = handler.isNotBlank() && handler.trim() != savedPrefix) { Text("Save") }
+                    }
+                }
             }
         }
 
-        val plugins = if (selectedOwner == 0) PluginCatalog.userbot else PluginCatalog.bot
-        Text(
-            if (selectedOwner == 0) "Userbot plugin library · " + plugins.size
-            else "Bot plugin library · " + plugins.size,
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(top = 14.dp, bottom = 8.dp)
-        )
-        LazyColumn(state = listState, modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp),
-            contentPadding = PaddingValues(bottom = 24.dp)) {
+        Card(Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 10.dp), shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 13.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(if (selectedOwner == 0) "Userbot plugins" else "Bot plugins", style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer)
+                    Text("$enabledCount enabled · ${allPlugins.size} available", style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f))
+                }
+                Icon(if (selectedOwner == 0) Icons.Rounded.Extension else Icons.Rounded.SmartToy, null,
+                    tint = MaterialTheme.colorScheme.onSecondaryContainer, modifier = Modifier.size(28.dp))
+            }
+        }
+
+        OutlinedTextField(value = search, onValueChange = { search = it }, modifier = Modifier.fillMaxWidth(),
+            singleLine = true, shape = RoundedCornerShape(18.dp), placeholder = { Text("Search plugins or commands") },
+            leadingIcon = { Icon(Icons.Rounded.Search, null) },
+            trailingIcon = { if (search.isNotEmpty()) IconButton(onClick = { search = "" }) { Icon(Icons.Rounded.Close, "Clear search") } })
+
+        LazyColumn(state = listState, modifier = Modifier.weight(1f).padding(top = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(bottom = 28.dp)) {
+            if (plugins.isEmpty()) item {
+                Column(Modifier.fillMaxWidth().padding(vertical = 44.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(Icons.Rounded.SearchOff, null, Modifier.size(38.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(Modifier.height(8.dp))
+                    Text("No matching plugins", style = MaterialTheme.typography.titleMedium)
+                    Text("Try another plugin name or command.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
             items(plugins, key = { it.id }) { plugin ->
-                Card(onClick = { onOpen(plugin.id) }, shape = RoundedCornerShape(20.dp)) {
-                    Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Surface(
-                            shape = RoundedCornerShape(14.dp),
-                            color = MaterialTheme.colorScheme.secondaryContainer,
-                            modifier = Modifier.size(42.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    if (plugin.owner == com.vikram.trondroid.plugins.PluginOwner.BOT)
-                                        Icons.Rounded.SmartToy else Icons.Rounded.Extension,
-                                    null,
-                                    tint = MaterialTheme.colorScheme.onSecondaryContainer
-                                )
+                var enabled by remember(plugin.id) { mutableStateOf(settings.enabled(plugin.id)) }
+                Card(shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+                    Column(Modifier.fillMaxWidth().clickable { onOpen(plugin.id) }.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Surface(shape = RoundedCornerShape(14.dp), color = MaterialTheme.colorScheme.primaryContainer, modifier = Modifier.size(44.dp)) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(if (selectedOwner == 0) Icons.Rounded.Extension else Icons.Rounded.SmartToy, null,
+                                        tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(23.dp))
+                                }
                             }
+                            Spacer(Modifier.width(12.dp))
+                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                Text(plugin.title, style = MaterialTheme.typography.titleMedium)
+                                Text(plugin.category, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                            }
+                            Switch(checked = enabled, onCheckedChange = { enabled = it; settings.setEnabled(plugin.id, it) })
                         }
-                        Spacer(Modifier.width(12.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(plugin.title, style = MaterialTheme.typography.titleMedium)
-                            Text(
-                                plugin.category + " · " + plugin.commands.size + " commands · " + (if (plugin.implemented) "Native" else "Not ported"),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                        Text(plugin.summary, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("${plugin.commands.size} commands", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Spacer(Modifier.weight(1f))
+                            Text(if (plugin.implemented) "Native Android" else "Not ported", style = MaterialTheme.typography.labelSmall,
+                                color = if (plugin.implemented) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary)
+                            Spacer(Modifier.width(6.dp))
+                            Icon(Icons.Rounded.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-                        Icon(Icons.Rounded.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
@@ -840,106 +865,85 @@ private fun PluginsScreen(modifier: Modifier, selectedOwner: Int, onOwnerChange:
 private fun PluginDetailScreen(modifier: Modifier, id: String) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val plugin = PluginCatalog.find(id) ?: return
-    val isBot = plugin.owner == com.vikram.trondroid.plugins.PluginOwner.BOT
-    val pluginSettings = remember { PluginSettings(context) }
-    LazyColumn(
-        modifier.fillMaxSize().padding(horizontal = 18.dp),
-        contentPadding = PaddingValues(vertical = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
+    val isBot = plugin.owner == PluginOwner.BOT
+    val settings = remember { PluginSettings(context) }
+    val listState = rememberLazyListState()
+    val prefix = if (isBot) "/" else settings.handler()
+    var refresh by remember { mutableIntStateOf(0) }
+    val enabledCommands = plugin.commands.count { settings.commandEnabled(plugin.id, it.name) }
+    LazyColumn(state = listState, modifier = modifier.fillMaxSize().padding(horizontal = 16.dp),
+        contentPadding = PaddingValues(top = 12.dp, bottom = 28.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         item {
-            Card(shape = RoundedCornerShape(22.dp)) {
-                Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
+                Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            if (isBot) Icons.Rounded.SmartToy else Icons.Rounded.Extension,
-                            null,
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text(plugin.owner.label + " plugin", style = MaterialTheme.typography.labelLarge)
+                        Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surface.copy(alpha = 0.55f), modifier = Modifier.size(48.dp)) {
+                            Box(contentAlignment = Alignment.Center) { Icon(if (isBot) Icons.Rounded.SmartToy else Icons.Rounded.Extension, null,
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(25.dp)) }
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(plugin.title, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                            Text(plugin.owner.label + " plugin · " + plugin.category, style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.78f))
+                        }
                     }
-                    Text(plugin.summary, style = MaterialTheme.typography.bodyLarge)
-                    Text(plugin.category, style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary)
-                    Surface(
-                        shape = RoundedCornerShape(50),
-                        color = if (plugin.implemented) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.tertiaryContainer
-                    ) {
-                        Text(if (plugin.implemented) "Native Android implementation" else "Not yet ported to Android",
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = if (plugin.implemented) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onTertiaryContainer)
+                    Text(plugin.summary, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Surface(shape = RoundedCornerShape(50), color = MaterialTheme.colorScheme.surface.copy(alpha = 0.65f)) {
+                            Text(if (plugin.implemented) "Native Android" else "Not ported", Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                        }
+                        Surface(shape = RoundedCornerShape(50), color = MaterialTheme.colorScheme.surface.copy(alpha = 0.65f)) {
+                            Text("$enabledCommands / ${plugin.commands.size} commands enabled", Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                        }
                     }
                 }
             }
         }
         item {
-            Text("Commands", style = MaterialTheme.typography.titleMedium)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Commands", style = MaterialTheme.typography.titleLarge)
+                    Text("Enable only the actions you want available in chat.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                TextButton(onClick = { plugin.commands.forEach { settings.setCommandEnabled(plugin.id, it.name, true) }; refresh++ }) { Text("Enable all") }
+                TextButton(onClick = { plugin.commands.forEach { settings.setCommandEnabled(plugin.id, it.name, false) }; refresh++ }) { Text("Disable all") }
+            }
         }
         items(plugin.commands, key = { it.name }) { command ->
-            var commandEnabled by remember(plugin.id, command.name) {
-                mutableStateOf(pluginSettings.commandEnabled(plugin.id, command.name))
-            }
-            Card(shape = RoundedCornerShape(18.dp)) {
-                Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            var commandEnabled by remember(plugin.id, command.name, refresh) { mutableStateOf(settings.commandEnabled(plugin.id, command.name)) }
+            Card(shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+                Column(Modifier.fillMaxWidth().padding(15.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            (if (isBot) "/" else pluginSettings.handler()) + command.name,
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.weight(1f)
-                        )
-                        Switch(
-                            checked = commandEnabled,
-                            onCheckedChange = {
-                                commandEnabled = it
-                                pluginSettings.setCommandEnabled(plugin.id, command.name, it)
-                            }
-                        )
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            Text(prefix + command.name, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                            Text(if (commandEnabled) "Enabled" else "Disabled", style = MaterialTheme.typography.labelSmall,
+                                color = if (commandEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Switch(checked = commandEnabled, onCheckedChange = {
+                            commandEnabled = it; settings.setCommandEnabled(plugin.id, command.name, it)
+                        })
                     }
                     Text(command.description, style = MaterialTheme.typography.bodyMedium)
-                    Text(
-                        "Usage: " + (if (isBot) "/" else pluginSettings.handler()) + command.usage,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        "Example: " + (if (isBot) "/" else pluginSettings.handler()) + command.example,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surfaceContainerHighest) {
+                        Column(Modifier.fillMaxWidth().padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text("USAGE", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(prefix + command.usage, style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                    Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surfaceContainerHighest) {
+                        Column(Modifier.fillMaxWidth().padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text("EXAMPLE", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(prefix + command.example, style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
                 }
-            }
-        }
-        item {
-            Card(shape = RoundedCornerShape(22.dp)) {
-                ListItem(
-                    headlineContent = { Text("Source module") },
-                    supportingContent = { Text(plugin.sourcePath) },
-                    leadingContent = { Icon(Icons.Rounded.Code, null) }
-                )
-            }
-        }
-        item {
-            OutlinedButton(
-                onClick = {
-                    val intent = android.content.Intent(
-                        android.content.Intent.ACTION_VIEW,
-                        android.net.Uri.parse("https://github.com/TronUb/Tron/blob/master/" + plugin.sourcePath)
-                    )
-                    context.startActivity(intent)
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(Icons.Rounded.OpenInNew, null)
-                Spacer(Modifier.width(8.dp))
-                Text("View source on GitHub")
             }
         }
     }
 }
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SettingsScreen(modifier: Modifier, onGeneral: () -> Unit, onAbout: () -> Unit, onUpdater: () -> Unit, themeMode: String, onThemeChange: (String) -> Unit, dynamicColors: Boolean, onDynamicColorsChange: (Boolean) -> Unit) {
