@@ -1,87 +1,100 @@
 package com.vikram.trondroid.automation
 
-import org.drinkless.tdlib.TdApi
-import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
+import org.json.JSONObject
 
+/**
+ * Native YouTube search and metadata only.
+ * It intentionally does not extract/download copyrighted streams or bypass YouTube access controls.
+ */
 class WebMediaAutomationPlugin : AutomationPlugin {
-    override val id = "userbot:webmedia"
+    override val id = "userbot:utube"
     override val commands = listOf(
-        AutomationCommand("ytsearch", "Search YouTube and return matching video links.", "ytsearch <query>"),
-        AutomationCommand("ytinfo", "Find a YouTube video and show its link.", "ytinfo <query or video URL>"),
-        AutomationCommand("lyrics", "Search LRCLIB for song lyrics.", "lyrics <song title>"),
-        AutomationCommand("song", "Search for a track and return a YouTube result.", "song <track name>"),
-        AutomationCommand("pic", "Find an image using Wikimedia Commons.", "pic <query>"),
-        AutomationCommand("img", "Alias for image search.", "img <query>")
+        AutomationCommand("ytsearch", "Search YouTube and return up to five official video links.", "ytsearch <query>"),
+        AutomationCommand("ytinfo", "Show title, channel and thumbnail for a YouTube URL or search query.", "ytinfo <query or YouTube URL>")
     )
 
     override fun onCommand(context: AutomationContext) {
         val query = context.arguments.joinToString(" ").trim()
-        if (query.isBlank()) return context.reply("Usage: .${context.command} <query>")
-        context.reply("Searching…")
+        if (query.isBlank()) return context.reply("Usage: .${context.command} <query or YouTube URL>")
+        if (query.length > 200) return context.reply("Search query must be 200 characters or fewer.")
+        context.reply("Searching YouTube…")
         Thread({
             val result = runCatching {
                 when (context.command) {
-                    "lyrics" -> lyrics(query)
-                    "pic", "img" -> image(context, query)
-                    "ytsearch", "ytinfo", "song" -> youtube(query)
-                    else -> "Unsupported command."
+                    "ytsearch" -> search(query)
+                    "ytinfo" -> info(query)
+                    else -> "Unsupported YouTube command."
                 }
-            }.getOrElse { "Search failed: ${it.message ?: "unknown error"}" }
-            if (result.isNotBlank()) context.reply(result.take(3900))
-        }, "TronDroid-WebMedia").apply { isDaemon = true }.start()
+            }.getOrElse { "YouTube request failed: ${it.message ?: "unknown error"}" }
+            context.reply(result.take(3900))
+        }, "TronDroid-YouTube").apply { isDaemon = true; start() }
     }
 
-    private fun get(url: String): String {
+    private fun request(url: String, maxBytes: Int = 3 * 1024 * 1024): String {
         val connection = URL(url).openConnection() as HttpURLConnection
-        connection.connectTimeout = 10000
-        connection.readTimeout = 15000
-        connection.setRequestProperty("User-Agent", "TronDroid/1.0")
+        connection.connectTimeout = 10_000
+        connection.readTimeout = 15_000
+        connection.instanceFollowRedirects = true
+        connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/120 Mobile Safari/537.36")
         return try {
             val code = connection.responseCode
             require(code in 200..299) { "HTTP $code" }
-            connection.inputStream.bufferedReader().use { it.readText() }
-        } finally { connection.disconnect() }
+            require(connection.contentLengthLong <= maxBytes || connection.contentLengthLong < 0L) { "Response is too large." }
+            connection.inputStream.use { input ->
+                val output = java.io.ByteArrayOutputStream()
+                val buffer = ByteArray(8192)
+                var total = 0
+                while (true) {
+                    val count = input.read(buffer)
+                    if (count < 0) break
+                    total += count
+                    require(total <= maxBytes) { "Response exceeded the size limit." }
+                    output.write(buffer, 0, count)
+                }
+                output.toString(Charsets.UTF_8.name())
+            }
+        } finally {
+            connection.disconnect()
+        }
     }
 
     private fun encode(value: String) = URLEncoder.encode(value, Charsets.UTF_8.name())
 
-    private fun youtube(query: String): String {
-        val id = Regex("\"videoId\":\"([A-Za-z0-9_-]{11})\"").find(get("https://www.youtube.com/results?search_query=${encode(query)}"))?.groupValues?.get(1)
-            ?: return "No YouTube result found."
-        return "YouTube result for: $query\nhttps://www.youtube.com/watch?v=$id"
+    private fun search(query: String): String {
+        val html = request("https://www.youtube.com/results?search_query=${encode(query)}")
+        val ids = Regex("\\\"videoId\\\":\\\"([A-Za-z0-9_-]{11})\\\"")
+            .findAll(html)
+            .map { it.groupValues[1] }
+            .distinct()
+            .take(5)
+            .toList()
+        if (ids.isEmpty()) return "No YouTube results found for: $query"
+        return "YouTube results for: $query\n\n" + ids.mapIndexed { index, id ->
+            "${index + 1}. https://www.youtube.com/watch?v=$id"
+        }.joinToString("\n")
     }
 
-    private fun lyrics(query: String): String {
-        val root = org.json.JSONArray(get("https://lrclib.net/api/search?q=${encode(query)}"))
-        if (root.length() == 0) return "No lyrics found for: $query"
-        val item = root.optJSONObject(0) ?: return "No lyrics found."
-        val title = item.optString("trackName", query)
-        val artist = item.optString("artistName")
-        val body = item.optString("plainLyrics").ifBlank { item.optString("syncedLyrics") }
-        if (body.isBlank()) return "Lyrics are unavailable for $title."
-        return "$title — $artist\n\n$body"
+    private fun info(input: String): String {
+        val id = extractVideoId(input) ?: run {
+            val html = request("https://www.youtube.com/results?search_query=${encode(input)}")
+            Regex("\\\"videoId\\\":\\\"([A-Za-z0-9_-]{11})\\\"")
+                .find(html)?.groupValues?.get(1)
+        } ?: return "No valid YouTube video was found."
+        val watchUrl = "https://www.youtube.com/watch?v=$id"
+        val data = JSONObject(request("https://www.youtube.com/oembed?url=${encode(watchUrl)}&format=json", 256 * 1024))
+        return "Title: ${data.optString("title", "Unknown")}\nChannel: ${data.optString("author_name", "Unknown")}\nVideo: $watchUrl\nThumbnail: ${data.optString("thumbnail_url")}"
     }
 
-    private fun image(context: AutomationContext, query: String): String {
-        val root = JSONObject(get("https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch=${encode(query)}&gsrnamespace=6&gsrlimit=5&prop=imageinfo&iiprop=url&iiurlwidth=1200&format=json"))
-        val pages = root.optJSONObject("query")?.optJSONObject("pages") ?: return "No Wikimedia images found."
-        val iterator = pages.keys()
-        val gateway = context.telegram ?: return "Telegram session is unavailable."
-        var sent = 0
-        while (iterator.hasNext() && sent < 3) {
-            val page = pages.optJSONObject(iterator.next()) ?: continue
-            val info = page.optJSONArray("imageinfo")?.optJSONObject(0) ?: continue
-            val url = info.optString("thumburl").ifBlank { info.optString("url") }
-            if (url.startsWith("https://")) {
-                gateway.sendPhotoUrl(context.message.chatId, url, page.optString("title").removePrefix("File:")) { response ->
-                    if (response is TdApi.Error) context.reply("Image send failed: ${response.message}")
-                }
-                sent++
-            }
-        }
-        return if (sent == 0) "No sendable images found." else "Sending $sent image result(s)."
+    private fun extractVideoId(input: String): String? {
+        val url = runCatching { URL(if (input.startsWith("http://") || input.startsWith("https://")) input else "https://$input") }.getOrNull()
+            ?: return null
+        val host = url.host.lowercase()
+        if (host !in setOf("youtube.com", "www.youtube.com", "m.youtube.com", "music.youtube.com", "youtu.be", "www.youtu.be")) return null
+        val id = if (host.endsWith("youtu.be")) url.path.trim('/').substringBefore('/')
+            else url.path.substringAfter("/watch", "").let { url.query?.split("&")?.firstOrNull { part -> part.startsWith("v=") }?.substringAfter("v=") }
+        return id?.takeIf { it.matches(Regex("[A-Za-z0-9_-]{11}")) }
     }
 }
