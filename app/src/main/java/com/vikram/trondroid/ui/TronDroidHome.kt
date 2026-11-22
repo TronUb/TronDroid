@@ -297,8 +297,14 @@ private fun UserbotsScreen(modifier: Modifier, bots: List<BotProfile>, listState
     }
 }
 
-private enum class UserbotSection(val label: String) {
-    GENERAL("General"), LOGS("Logs"), CREDENTIALS("Credentials"), INSIGHTS("Insights"), SETTINGS("Settings")
+private data class UserbotSection(val label: String) {
+    companion object {
+        val GENERAL = UserbotSection("General")
+        val LOGS = UserbotSection("Logs")
+        val CREDENTIALS = UserbotSection("Credentials")
+        val INSIGHTS = UserbotSection("Insights")
+        val SETTINGS = UserbotSection("Settings")
+    }
 }
 
 private val userbotSections = listOf(
