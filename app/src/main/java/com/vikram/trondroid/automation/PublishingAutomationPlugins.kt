@@ -1,5 +1,6 @@
 package com.vikram.trondroid.automation
 
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import org.drinkless.tdlib.TdApi
 import org.json.JSONObject
