@@ -6,11 +6,13 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
+import java.util.ArrayDeque
 import kotlin.system.measureTimeMillis
 
-class ToolsExtrasAutomationPlugin(context: Context) : AutomationPlugin {
+class ToolsExtrasAutomationPlugin(context: Context, private val isDeletedCacheEnabled: () -> Boolean = { true }) : AutomationPlugin {
     override val id = "userbot:tools"
-    private val prefs = context.applicationContext.getSharedPreferences("trondroid.tools.deleted_cache", Context.MODE_PRIVATE)
+    private val recentMessages = LinkedHashMap<Pair<Long, Long>, JSONObject>()
+    private val deletedMessages = ArrayDeque<JSONObject>()
     override val commands = listOf(
         AutomationCommand("wlink", "Search up to 500 recent messages in this chat and return links where Telegram supports them.", "wlink <word or phrase>"),
         AutomationCommand("json", "Show a structured JSON summary of this or a replied Telegram message.", "json (reply optional)"),
@@ -23,35 +25,34 @@ class ToolsExtrasAutomationPlugin(context: Context) : AutomationPlugin {
     )
 
     override fun onTelegramUpdate(context: AutomationUpdateContext) {
+        if (!isDeletedCacheEnabled()) return
         when (val update = context.update) {
             is TdApi.UpdateNewMessage -> {
                 val message = update.message
                 val text = (message.content as? TdApi.MessageText)?.text?.text ?: return
                 if (text.isBlank()) return
-                val recent = readArray("recent")
-                recent.put(JSONObject()
-                    .put("chat_id", message.chatId)
-                    .put("message_id", message.id)
-                    .put("date", message.date)
-                    .put("sender_id", (message.senderId as? TdApi.MessageSenderUser)?.userId ?: 0L)
-                    .put("outgoing", message.isOutgoing)
-                    .put("text", text.take(3500)))
-                writeArray("recent", trimArray(recent, 500))
+                synchronized(recentMessages) {
+                    recentMessages[message.chatId to message.id] = JSONObject()
+                        .put("chat_id", message.chatId)
+                        .put("message_id", message.id)
+                        .put("date", message.date)
+                        .put("sender_id", (message.senderId as? TdApi.MessageSenderUser)?.userId ?: 0L)
+                        .put("outgoing", message.isOutgoing)
+                        .put("text", text.take(3500))
+                    while (recentMessages.size > 500) {
+                        val oldest = recentMessages.keys.firstOrNull() ?: break
+                        recentMessages.remove(oldest)
+                    }
+                }
             }
             is TdApi.UpdateDeleteMessages -> {
-                val ids = update.messageIds.toSet()
-                if (ids.isEmpty()) return
-                val recent = readArray("recent")
-                val deleted = readArray("deleted")
-                val kept = JSONArray()
-                for (index in 0 until recent.length()) {
-                    val item = recent.optJSONObject(index) ?: continue
-                    if (item.optLong("chat_id") == update.chatId && item.optLong("message_id") in ids) {
-                        deleted.put(item)
-                    } else kept.put(item)
+                synchronized(recentMessages) {
+                    update.messageIds.forEach { messageId ->
+                        val cached = recentMessages.remove(update.chatId to messageId) ?: return@forEach
+                        deletedMessages.addLast(cached)
+                        while (deletedMessages.size > 100) deletedMessages.removeFirst()
+                    }
                 }
-                writeArray("recent", trimArray(kept, 500))
-                writeArray("deleted", trimArray(deleted, 100))
             }
         }
     }
