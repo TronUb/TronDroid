@@ -57,7 +57,7 @@ class SharingAutomationPlugin(private val context: Context) : AutomationPlugin {
                 }
             })
         val safeName = plugin.id.replace(Regex("[^A-Za-z0-9._-]"), "_")
-        val file = File(context.cacheDir, "$safeName.tdplugin")
+        val file = File(this.context.cacheDir, "$safeName.tdplugin")
         runCatching { file.writeText(manifest.toString(2)) }
             .onFailure { return context.reply("Unable to export plugin manifest: ${it.message}") }
         val gateway = context.telegram ?: run {
