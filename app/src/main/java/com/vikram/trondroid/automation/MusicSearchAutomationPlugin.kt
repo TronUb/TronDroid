@@ -37,6 +37,7 @@ private object MusicSearchHttp {
     }
 
     fun encode(value: String) = URLEncoder.encode(value, Charsets.UTF_8.name())
+    fun encodePath(value: String) = encode(value).replace("+", "%20")
 }
 
 class MusicSearchAutomationPlugin : AutomationPlugin {
@@ -117,7 +118,7 @@ class MusicSearchAutomationPlugin : AutomationPlugin {
     private fun findLyrics(query: String): String {
         val track = tracks(query).firstOrNull() ?: return "No matching track found for: $query"
         if (track.artist.isBlank()) return "The artist name was not returned by Deezer."
-        val endpoint = "https://api.lyrics.ovh/v1/${MusicSearchHttp.encode(track.artist)}/${MusicSearchHttp.encode(track.title)}"
+        val endpoint = "https://api.lyrics.ovh/v1/${MusicSearchHttp.encodePath(track.artist)}/${MusicSearchHttp.encodePath(track.title)}"
         val root = JSONObject(MusicSearchHttp.get(endpoint))
         val lyrics = root.optString("lyrics").trim()
         if (lyrics.isBlank()) return "No lyrics found for ${track.title} — ${track.artist}.\nTrack: ${track.link}"
@@ -141,7 +142,7 @@ class SpotifyAutomationPlugin : AutomationPlugin {
             "spotify" -> {
                 val query = context.arguments.joinToString(" ").trim()
                 if (query.isBlank()) return context.reply("Usage: .spotify <song or artist>")
-                context.reply("Spotify search: https://open.spotify.com/search/${MusicSearchHttp.encode(query)}")
+                context.reply("Spotify search: https://open.spotify.com/search?q=${MusicSearchHttp.encode(query)}")
             }
             "now" -> context.reply(
                 "Spotify currently-playing lookup needs a Spotify OAuth access token with user-read-currently-playing permission. " +
