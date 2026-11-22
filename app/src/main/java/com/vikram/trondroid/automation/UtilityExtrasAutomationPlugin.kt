@@ -63,8 +63,8 @@ class UtilityExtrasAutomationPlugin : AutomationPlugin {
     private fun validatePublicUrl(raw: String) {
         val parsed = URL(raw)
         require(parsed.protocol.equals("https", true) || parsed.protocol.equals("http", true)) { "Only HTTP(S) URLs are supported." }
-        val host = parsed.host.lowercase()
-        require(host.isNotBlank() && !host.startsWith("[") && !host.matches(Regex("[0-9.]+"))) { "IP-address URLs are not accepted." }
+        val host = parsed.host.lowercase().trimEnd('.')
+        require(host.isNotBlank() && !host.startsWith("[") && !host.contains(":") && !host.matches(Regex("[0-9.]+"))) { "IP-address URLs are not accepted." }
         require(parsed.userInfo == null && parsed.port in listOf(-1, 80, 443)) { "URLs with credentials or custom ports are not accepted." }
         require(host !in setOf("localhost", "localhost.localdomain") && !host.endsWith(".local") && !host.endsWith(".internal") && !host.endsWith(".test") && !host.endsWith(".localhost")) { "Local and private hostnames are not accepted." }
     }
