@@ -312,20 +312,31 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
             }
         }
     }
+    @Synchronized
     fun close() {
+        // Detach the client first so repeated lifecycle callbacks are harmless.
         val active = client
+        client = null
         if (active != null) {
-            log("Closing Telegram session")
-            active.send(TdApi.Close()) {}
-            client = null
+            runCatching {
+                log("Closing Telegram session")
+                active.send(TdApi.Close()) {}
+            }.onFailure {
+                android.util.Log.w("TronDroidTelegram", "TDLib close request failed", it)
+            }
         }
-        // Tear down plugin infrastructure even if TDLib already transitioned
-        // to AuthorizationStateClosed or failed during initialization.
-        updateSubscription.close()
-        updateHub.close()
-        updateStore.clear()
-        telegramGateway.shutdown()
-        automation.shutdown()
+        // Cleanup is deliberately isolated: one already-closed plugin component
+        // must not crash the Activity when a session is switched off.
+        runCatching { updateSubscription.close() }
+            .onFailure { android.util.Log.w("TronDroidTelegram", "Update subscription cleanup failed", it) }
+        runCatching { updateHub.close() }
+            .onFailure { android.util.Log.w("TronDroidTelegram", "Update hub cleanup failed", it) }
+        runCatching { updateStore.clear() }
+            .onFailure { android.util.Log.w("TronDroidTelegram", "Update store cleanup failed", it) }
+        runCatching { telegramGateway.shutdown() }
+            .onFailure { android.util.Log.w("TronDroidTelegram", "Telegram gateway cleanup failed", it) }
+        runCatching { automation.shutdown() }
+            .onFailure { android.util.Log.w("TronDroidTelegram", "Automation cleanup failed", it) }
     }
     private fun loadAccount() {
         client?.send(TdApi.GetMe()) { result ->
