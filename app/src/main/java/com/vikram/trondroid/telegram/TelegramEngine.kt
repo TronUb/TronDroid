@@ -91,7 +91,6 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
     private var client: Client? = null
     @Volatile private var closeRequested = false
     private val reconnectScheduled = java.util.concurrent.atomic.AtomicBoolean(false)
-    private val reconnectAttempt = java.util.concurrent.atomic.AtomicInteger(0)
     private val _authorization = MutableStateFlow<TdApi.AuthorizationState?>(null)
     val authorization: StateFlow<TdApi.AuthorizationState?> = _authorization.asStateFlow()
     private val _error = MutableStateFlow<String?>(null)
@@ -236,8 +235,7 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
 
     private fun scheduleReconnect() {
         if (closeRequested || !reconnectScheduled.compareAndSet(false, true)) return
-        val attempt = reconnectAttempt.getAndIncrement().coerceAtMost(4)
-        val delayMs = (3_000L * (1L shl attempt)).coerceAtMost(60_000L)
+        val delayMs = TelegramRuntime.nextReconnectDelay(profile.id)
         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
             reconnectScheduled.set(false)
             if (!closeRequested) TelegramRuntime.restart(context, profile.id)
@@ -320,7 +318,7 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
             TdApi.AuthorizationStateWaitCode.CONSTRUCTOR -> log("Telegram verification code required")
             TdApi.AuthorizationStateWaitPassword.CONSTRUCTOR -> log("Two-step verification password required")
             TdApi.AuthorizationStateReady.CONSTRUCTOR -> {
-                reconnectAttempt.set(0)
+                TelegramRuntime.markConnected(profile.id)
                 log("Telegram account connected")
                 loadChats()
                 loadAccount()
