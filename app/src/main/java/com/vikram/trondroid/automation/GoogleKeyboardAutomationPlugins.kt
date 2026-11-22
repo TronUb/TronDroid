@@ -115,6 +115,8 @@ class KeyboardAutomationPlugin : AutomationPlugin {
                 arrayOf(
                     TdApi.InlineKeyboardButton(
                         buttonText,
+                        0L,
+                        TdApi.ButtonStyleDefault(),
                         TdApi.InlineKeyboardButtonTypeUrl(url)
                     )
                 )
