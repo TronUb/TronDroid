@@ -8,6 +8,7 @@ import org.drinkless.tdlib.TdApi
 import java.io.File
 import java.nio.ByteBuffer
 import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicBoolean
 
 class VideoToolsAutomationPlugin(private val cacheDir: File) : AutomationPlugin {
     override val id = "userbot:videotools"
@@ -17,6 +18,7 @@ class VideoToolsAutomationPlugin(private val cacheDir: File) : AutomationPlugin 
         AutomationCommand("vsubclip", "Extract a keyframe-aligned time range from a replied video.", "vsubclip <start hh:mm:ss> <end hh:mm:ss> (reply to video)")
     )
     private val worker = Executors.newSingleThreadExecutor { r -> Thread(r, "TronDroid-VideoTools").apply { isDaemon = true } }
+    private val processing = AtomicBoolean(false)
 
     override fun onCommand(context: AutomationContext) {
         val gateway = context.telegram ?: return context.reply("Telegram session is unavailable.")
@@ -44,11 +46,16 @@ class VideoToolsAutomationPlugin(private val cacheDir: File) : AutomationPlugin 
         if (requested.first < 0 || requested.second > durationMs || requested.second <= requested.first ||
             requested.second - requested.first < 1000L
         ) return context.reply("Invalid time range. It must be at least 1 second and stay within the video duration (${video.duration}s).")
+        if (!processing.compareAndSet(false, true)) return context.reply("A video job is already running. Wait for it to finish.")
         context.reply("Downloading video for processing (100 MB limit)…")
         gateway.downloadFile(inputFile.id) { file, error ->
-            if (file == null || error != null) return@downloadFile context.reply("Video download failed: ${error ?: "unknown error"}")
+            if (file == null || error != null) {
+                processing.set(false)
+                return@downloadFile context.reply("Video download failed: ${error ?: "unknown error"}")
+            }
             val source = File(file.local.path)
             if (!source.isFile || source.length() <= 0L || source.length() > MAX_INPUT_BYTES) {
+                processing.set(false)
                 return@downloadFile context.reply("Downloaded video is missing, empty or exceeds the 100 MB limit.")
             }
             worker.execute {
@@ -57,15 +64,18 @@ class VideoToolsAutomationPlugin(private val cacheDir: File) : AutomationPlugin 
                     .onSuccess {
                         if (output.length() > MAX_OUTPUT_BYTES) {
                             output.delete()
+                            processing.set(false)
                             context.reply("Processed video exceeds the 100 MB output limit.")
                         } else {
                             gateway.sendDocumentPath(context.message.chatId, output.absolutePath, "Processed video · TronDroid") { result ->
                                 context.reply(if (result is TdApi.Error) "Video upload failed: ${result.message}" else "Video processing complete.")
                                 output.delete()
+                                processing.set(false)
                             }
                         }
                     }.onFailure {
                         output.delete()
+                        processing.set(false)
                         context.reply("Video processing failed: ${it.message ?: "unknown error"}")
                     }
             }
