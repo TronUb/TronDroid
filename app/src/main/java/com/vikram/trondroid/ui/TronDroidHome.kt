@@ -1243,7 +1243,7 @@ private fun pluginIcon(plugin: com.vikram.trondroid.plugins.BotPlugin): androidx
         title.contains("admin") || title.contains("purge") || title.contains("zombie") || category == "moderation" ->
             Icons.Rounded.Security
         title.contains("clone") -> Icons.Rounded.ContentCopy
-        category == "automation" -> Icons.Rounded.AutoRenew
+        category == "automation" -> Icons.Rounded.Refresh
         category == "profile" -> Icons.Rounded.Person
         category == "media" || title.contains("image") || title.contains("anime") -> Icons.Rounded.Image
         category == "files" || title.contains("download") -> Icons.Rounded.Folder
