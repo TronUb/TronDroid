@@ -59,6 +59,7 @@ import com.vikram.trondroid.automation.ImageConversionAutomationPlugin
 import com.vikram.trondroid.automation.UpdateAutomationPlugin
 import com.vikram.trondroid.automation.TextToSpeechAutomationPlugin
 import com.vikram.trondroid.automation.VideoToolsAutomationPlugin
+import com.vikram.trondroid.automation.PowerAutomationPlugin
 import com.vikram.trondroid.plugins.PluginSettings
 import com.vikram.trondroid.plugins.ExternalPluginLoader
 import android.net.Uri
@@ -179,6 +180,7 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
         nativePlugins += UpdateAutomationPlugin()
         nativePlugins += TextToSpeechAutomationPlugin(context.cacheDir)
         nativePlugins += VideoToolsAutomationPlugin(context.cacheDir)
+        nativePlugins += PowerAutomationPlugin({ seconds -> automation.sleepFor(seconds) }) { TelegramRuntime.restart(context, profile.id) }
         nativePlugins += WeatherAutomationPlugin()
         nativePlugins += CurrencyAutomationPlugin()
         nativePlugins += TemperatureAutomationPlugin()
