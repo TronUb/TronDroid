@@ -750,8 +750,6 @@ private fun AddBotDialog(onDismiss: () -> Unit, onSave: (String, String, Int, St
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
 private fun PluginsScreen(modifier: Modifier, selectedOwner: Int, onOwnerChange: (Int) -> Unit, listState: LazyListState, onOpen: (String) -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val settings = remember { PluginSettings(context) }
