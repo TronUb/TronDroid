@@ -420,7 +420,9 @@ object TelegramBotRuntime {
                     "Uptime and runtime information", tronBotImage, currentUserbotAliveCaption(),
                     userbotAliveKeyboard()))
                 "quote" -> results.put(inlineArticle("userbot-quote", "Tron quote", "Share an anime quote",
-                    "❝ “A lesson without pain is meaningless.” — Edward Elric ❞", inlineLauncher("quote")))
+                    "❝ “A lesson without pain is meaningless.” — Edward Elric ❞",
+                    JSONObject().put("inline_keyboard", org.json.JSONArray().put(
+                        org.json.JSONArray().put(button("More", "botquote:more"))))))
                 "ping" -> results.put(inlineArticle("userbot-ping", "Pong!",
                     "Check whether the companion bot is responding", "Pong! Telegram Bot API is responding."))
                 else -> {
