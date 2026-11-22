@@ -8,6 +8,9 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.ui.draw.shadow
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.clickable
@@ -197,10 +200,6 @@ fun TronDroidHome(
 private fun FloatingGlassBottomBar(selected: Tab, onSelect: (Tab) -> Unit) {
     val tabs = listOf(Tab.USERBOTS, Tab.PLUGINS, Tab.SETTINGS)
     val selectedIndex = tabs.indexOf(selected).coerceAtLeast(0)
-    val indicatorOffset by androidx.compose.animation.core.animateDpAsState(
-        targetValue = (selectedIndex * 1f).let { it },
-        label = "bottom-bar-tab"
-    )
     Column(
         Modifier
             .fillMaxWidth()
