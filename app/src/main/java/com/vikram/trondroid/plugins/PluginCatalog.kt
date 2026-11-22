@@ -63,7 +63,7 @@ object PluginCatalog {
                 "pin" -> "pin (reply required) [loud]"
                 "unpin" -> "unpin (reply required) | unpin all"
                 "banall" -> "banall confirm"
-                in setOf("afk", "setwelcome", "welcome", "save", "setdv", "filter", "schedule", "gtitle", "colourtemplate", "tts") -> "$name <text>"
+                in setOf("afk", "setwelcome", "welcome", "save", "setdv", "filter", "schedule", "colourtemplate", "tts") -> "$name <text>"
                 in setOf("purge", "purgecount", "spam", "dspam") -> "$name <count or options>"
                 in setOf("members", "bots") -> "$name [1-100]"
                 in setOf("vcut", "vmute", "vsubclip") -> "$name <time options>"
