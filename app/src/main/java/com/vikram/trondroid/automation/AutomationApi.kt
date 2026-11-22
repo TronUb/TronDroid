@@ -38,7 +38,7 @@ data class AutomationUpdateContext(
     val update: TdApi.Update,
     val reply: (chatId: Long, text: String) -> Unit,
     val telegram: TelegramClientGateway? = null,
-    val isCommandEnabled: (String) -> Boolean = { true }
+    val isCommandEnabled: (String, String) -> Boolean = { _, _ -> true }
 )
 
 interface AutomationPlugin {
