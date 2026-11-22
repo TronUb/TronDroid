@@ -145,8 +145,7 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
             { profile.name },
             context,
             { BotStore(context).all().firstOrNull { it.id == profile.id }?.botTelegramId },
-            { caption -> TelegramBotRuntime.cacheUserbotAlive(profile.id, caption) },
-            { chatId -> TelegramBotRuntime.sendUserbotQuote(profile.id, chatId) }
+            { caption -> TelegramBotRuntime.cacheUserbotAlive(profile.id, caption) }
         )
         nativePlugins += AnimeAutomationPlugin()
         nativePlugins += FunAutomationPlugin()
