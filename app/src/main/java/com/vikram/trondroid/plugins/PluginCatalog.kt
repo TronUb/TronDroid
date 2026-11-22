@@ -171,6 +171,7 @@ object PluginCatalog {
     )
 
     val bot = listOf(
+        plugin("bot:alive","Alive","Show bot identity, TronDroid app version, Kotlin runtime and uptime, with an interactive status card.","Status",PluginOwner.BOT,"main/userbot/modules/plugins/alive.py",true,"alive","ialive"),
         plugin("bot:botfun","Bot fun","Small group interaction and number game commands.","Entertainment",PluginOwner.BOT,"main/assistant/modules/plugins/botfun.py",true,"numbers"),
         plugin("bot:broadcast","Bot broadcast","Track users who start the bot and broadcast owner announcements to those users.","Messaging",PluginOwner.BOT,"main/assistant/modules/plugins/broadcast.py",true,"broadcast"),
         plugin("bot:eval","Bot evaluation","Owner-only code evaluation from the original server bot; not enabled in Android.","Developer",PluginOwner.BOT,"main/assistant/modules/plugins/eval.py",false,"eval"),
