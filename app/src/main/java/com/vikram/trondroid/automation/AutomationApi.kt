@@ -26,7 +26,7 @@ data class AutomationContext(
     val reply: (String) -> Unit,
     val replyAfter: (Long, String) -> Unit = { _, text -> reply(text) },
     val telegram: TelegramClientGateway? = null,
-    val isCommandEnabled: (String) -> Boolean = { true }
+    val isCommandEnabled: (String, String) -> Boolean = { _, _ -> true }
 )
 
 /**
