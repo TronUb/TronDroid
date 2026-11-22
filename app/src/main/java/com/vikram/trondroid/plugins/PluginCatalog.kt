@@ -25,16 +25,18 @@ object PluginCatalog {
         commands.map { name ->
             val usage = when (name) {
                 in setOf("wiki", "imdb", "reddit", "r", "translate", "tr", "tl", "upcase", "joke", "weather", "currency", "paste", "google", "img", "download", "upload", "ytsearch", "song", "lyrics", "whois", "id", "qrcode", "tts", "ud", "short", "unshort", "telegraph", "carbon", "search", "pic", "pfp", "deezer", "spotify", "webshot", "itos", "vsubclip") -> "$name <query>"
-                in setOf("ban", "unban", "kick", "mute", "unmute", "promote", "demote") -> "$name <reply or user> [duration]"\n                in setOf("broadcast", "bdt") -> "$name <message>"
+                in setOf("ban", "unban", "kick", "mute", "unmute", "promote", "demote") -> "$name <reply or user> [duration]"
+                in setOf("broadcast", "bdt") -> "$name <message>"
                 "pin" -> "pin (reply required) [loud]"
-                "unpin" -> "unpin (reply required) | unpin all"\n                "broadcast", "bdt" -> "$name <message>"
+                "unpin" -> "unpin (reply required) | unpin all"
                 "banall" -> "banall confirm"
                 in setOf("afk", "setwelcome", "welcome", "save", "setdv", "filter", "schedule", "settitle", "colourtemplate", "tts") -> "$name <text>"
                 in setOf("purge", "purgecount", "spam", "dspam", "vcut", "vspeed", "vmute", "vinvert") -> "$name <count or options>"
                 else -> name
             }
             val example = when (name) {
-                "broadcast", "bdt" -> "$name Hello everyone! Important announcement."\n                "wiki" -> "wiki quantum mechanics"
+                "broadcast", "bdt" -> "$name Hello everyone! Important announcement."
+                "wiki" -> "wiki quantum mechanics"
                 "imdb" -> "imdb Interstellar"
                 "translate", "tr", "tl" -> "$name en Hello, how are you?"
                 "reddit", "r" -> "$name android"
