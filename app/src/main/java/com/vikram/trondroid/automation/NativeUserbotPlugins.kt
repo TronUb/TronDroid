@@ -304,7 +304,8 @@ private object TronCommandMedia {
 class AliveAutomationPlugin(
     private val profileName: () -> String,
     private val appContext: android.content.Context,
-    private val sendInlineAlive: (Long, String) -> Boolean,
+    private val companionBotUserId: () -> Long?,
+    private val cacheInlineAlive: (String) -> Boolean,
     private val sendInlineQuote: (Long) -> Boolean
 ) : AutomationPlugin {
     override val id = "userbot:alive"
@@ -312,7 +313,7 @@ class AliveAutomationPlugin(
     @Volatile private var tdlibVersion = "bundled"
     override val commands = listOf(
         AutomationCommand("alive", "Show account, TronDroid, Kotlin, TDLib and uptime information with the Tron status image.", "alive"),
-        AutomationCommand("ialive", "Show the interactive inline-style alive card with refresh and navigation buttons.", "ialive"),
+        AutomationCommand("ialive", "Show the actual companion-bot inline status card with refresh and navigation buttons.", "ialive"),
         AutomationCommand("iquote", "Send an anime quote card with a More button.", "iquote"),
         AutomationCommand("iqt", "Alias for inline anime quotes.", "iqt")
     )
@@ -349,50 +350,52 @@ class AliveAutomationPlugin(
                     gateway.sendPhotoUrl(context.message.chatId, TronCommandMedia.USER_PIC, statusText()) { response ->
                         if (response is TdApi.Error) context.reply("Unable to send alive card: ${response.message}")
                     }
+                    if (context.message.isOutgoing) gateway.deleteMessage(context.message.chatId, context.message.messageId)
                 }
-                if (context.message.isOutgoing) gateway.deleteMessage(context.message.chatId, context.message.messageId)
             }
             "ialive" -> {
                 withTdlibVersion(gateway) {
                     val caption = "⛊ **Tron Inline Status**\n\n${statusText()}"
-                    if (!sendInlineAlive(context.message.chatId, caption)) {
-                        gateway.sendPhotoUrl(context.message.chatId, TronCommandMedia.USER_PIC,
-                            "$caption\n\nEnable this profile's Bot session to use interactive controls.") { response ->
-                            if (response is TdApi.Error) context.reply("Unable to send inline alive card: ${response.message}")
+                    val botId = companionBotUserId()
+                    if (botId == null || !cacheInlineAlive(caption)) {
+                        gateway.sendPhotoUrl(
+                            context.message.chatId, TronCommandMedia.USER_PIC,
+                            "$caption\n\nEnable this profile's companion Bot session and inline mode to use the interactive Tron card."
+                        ) { response ->
+                            if (response is TdApi.Error) context.reply("Unable to send alive card: ${response.message}")
+                        }
+                        if (context.message.isOutgoing) gateway.deleteMessage(context.message.chatId, context.message.messageId)
+                    } else {
+                        gateway.sendInlineBotResult(context.message.chatId, botId, "#ialive") { response ->
+                            if (response is TdApi.Error) {
+                                gateway.sendPhotoUrl(
+                                    context.message.chatId, TronCommandMedia.USER_PIC,
+                                    "$caption\n\nInline card unavailable: ${response.message}"
+                                )
+                            }
+                            if (context.message.isOutgoing) gateway.deleteMessage(context.message.chatId, context.message.messageId)
                         }
                     }
                 }
+            }
+            "iquote", "iqt" -> {
+                if (!sendInlineQuote(context.message.chatId)) {
+                    gateway.sendText(context.message.chatId, "Inline quotes require the companion Bot session.")
+                }
                 if (context.message.isOutgoing) gateway.deleteMessage(context.message.chatId, context.message.messageId)
             }
-            "iquote", "iqt" -> sendQuote(context)
         }
     }
-
-    private fun sendQuote(context: AutomationContext) {
-        val gateway = context.telegram ?: return context.reply("Telegram session is unavailable.")
-        val quotes = listOf(
-            "“A lesson without pain is meaningless.” — Edward Elric\n**Fullmetal Alchemist**",
-            "“If you don't take risks, you can't create a future.” — Monkey D. Luffy\n**One Piece**",
-            "“Whatever you lose, you'll find it again.” — Kenshin Himura\n**Rurouni Kenshin**",
-            "“Knowing you're different is only the beginning.” — Natsuki Subaru\n**Re:Zero**",
-            "“The world is not perfect. But it is there for us.” — Roy Mustang\n**Fullmetal Alchemist**"
-        )
-        val text = "❝ ${quotes.random()} ❞"
-        if (!sendInlineQuote(context.message.chatId)) gateway.sendText(context.message.chatId, text)
-        if (context.message.isOutgoing) gateway.deleteMessage(context.message.chatId, context.message.messageId)
-    }
-
-
 }
 
 class HelpAutomationPlugin(
     private val commandPrefix: () -> String,
     private val available: () -> List<AutomationPlugin>,
-    private val sendHelpDex: (Long) -> Boolean
+    private val companionBotUserId: () -> Long?
 ) : AutomationPlugin {
     override val id = "userbot:help"
     override val commands = listOf(
-        AutomationCommand("help", "Open the Tron-style Helpdex with paginated plugin buttons; add a plugin name for its command reference.", "help [plugin]"),
+        AutomationCommand("help", "Open the Tron-style paginated inline Helpdex; add a plugin name for its command reference.", "help [plugin]"),
         AutomationCommand("uplugs", "List installed userbot plugins.", "uplugs"),
         AutomationCommand("bplugs", "List installed bot plugins.", "bplugs"),
         AutomationCommand("inline", "Show how to enable Telegram inline mode for the connected assistant bot.", "inline")
@@ -410,8 +413,7 @@ class HelpAutomationPlugin(
     ): String {
         val commands = plugin.commands.filter { commandEnabled(plugin.id, it.name) }
         return buildString {
-            append("**PLUGIN:** ${plugin.id.substringAfter(':').replace('_', ' ').replaceFirstChar { it.uppercase() }}\n")
-            append("**COMMANDS:** ${commands.size}\n\n")
+            append("**MODULE:** ${plugin.id.substringAfter(':').replace('_', ' ').replaceFirstChar { it.uppercase() }}\n\n")
             commands.forEach { command ->
                 append("✦ **${prefix}${command.name}**\n")
                 append("${command.description}\n")
@@ -420,9 +422,6 @@ class HelpAutomationPlugin(
         }.take(3900)
     }
 
-    private fun helpCaption(items: List<AutomationPlugin>): String =
-        "✦ **TRON HELPDEx**\n\nExplore ${items.size} installed plugins. Select a plugin to view its commands, descriptions and exact usage."
-
     override fun onCommand(context: AutomationContext) {
         val prefix = commandPrefix().ifBlank { "." }
         val all = plugins(context)
@@ -430,7 +429,7 @@ class HelpAutomationPlugin(
         when (context.command) {
             "uplugs" -> context.reply("**USERBOT PLUGINS**\n\n" + all.joinToString("\n") { it.id.substringAfter(':') })
             "bplugs" -> context.reply("Bot plugins are listed in the Plugins → Bot tab. Bot runtime help is available with /help.")
-            "inline" -> context.reply("Enable inline mode for this profile's companion bot: open @BotFather → /mybots → select the bot → Bot Settings → Inline Mode → Turn on (or use /setinline). Also keep the Bot session enabled in TronDroid. Then .help and .ialive will show buttons that open @botusername help/alive results directly in the current chat.")
+            "inline" -> context.reply("Enable inline mode for this profile's companion bot: open @BotFather → /mybots → select the bot → Bot Settings → Inline Mode → Turn on (or use /setinline). Keep the Bot session enabled in TronDroid. The .help and .ialive commands then query the bot through TDLib and insert its actual inline result.")
             else -> {
                 if (!requested.isNullOrBlank()) {
                     val selected = all.firstOrNull {
@@ -438,16 +437,16 @@ class HelpAutomationPlugin(
                     } ?: return context.reply("Plugin '$requested' was not found. Use ${prefix}uplugs to list installed plugins.")
                     return context.reply(detail(selected, prefix, context.isCommandEnabled))
                 }
-                if (!sendHelpDex(context.message.chatId)) {
-                    val fallback = "Interactive Helpdex requires this profile's Bot session to be enabled.\n\n" +
-                        helpCaption(all) + "\n\n" +
-                        all.joinToString("\n") { "• ${prefix}${it.id.substringAfter(':')}" }
-                    val gateway = context.telegram
-                    if (gateway != null) gateway.sendText(context.message.chatId, fallback)
-                    else context.reply(fallback)
-                }
-                if (context.message.isOutgoing) {
-                    context.telegram?.deleteMessage(context.message.chatId, context.message.messageId)
+                val botId = companionBotUserId()
+                    ?: return context.reply("Interactive Helpdex is unavailable. Enable this profile's companion Bot session and make sure its inline mode is enabled with @BotFather.")
+                val gateway = context.telegram
+                    ?: return context.reply("Telegram session is unavailable.")
+                gateway.sendInlineBotResult(context.message.chatId, botId, "#helpmenu") { response ->
+                    if (response is TdApi.Error) {
+                        context.reply("Unable to open the inline Helpdex: ${response.message}. Check that the companion bot is online and inline mode is enabled.")
+                    } else if (context.message.isOutgoing) {
+                        gateway.deleteMessage(context.message.chatId, context.message.messageId)
+                    }
                 }
             }
         }
