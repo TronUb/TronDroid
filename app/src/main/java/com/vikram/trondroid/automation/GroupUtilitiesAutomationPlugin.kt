@@ -82,18 +82,41 @@ class GroupUtilitiesAutomationPlugin : AutomationPlugin {
 
     private fun invite(context: AutomationContext, gateway: com.vikram.trondroid.telegram.TelegramClientGateway) {
         val replied = context.message.tdMessage?.let(gateway::repliedMessage)
-        val userId = context.arguments.firstOrNull()?.toLongOrNull()
-            ?: (replied?.senderId as? TdApi.MessageSenderUser)?.userId
-            ?: return context.reply("Usage: .invite <numeric user id> or reply to a user's message.")
-        if (userId <= 0L) return context.reply("Invalid Telegram user ID.")
-        gateway.send(TdApi.GetChat(context.message.chatId)) { chatResult ->
-            val chat = chatResult as? TdApi.Chat
-                ?: return@send context.reply(if (chatResult is TdApi.Error) chatResult.message else "Chat unavailable.")
-            if (chat.type !is TdApi.ChatTypeSupergroup && chat.type !is TdApi.ChatTypeBasicGroup) {
-                return@send context.reply("Inviting members is only supported in groups and supergroups.")
+        val token = context.arguments.firstOrNull()?.trim().orEmpty()
+        val repliedId = (replied?.senderId as? TdApi.MessageSenderUser)?.userId
+        val numericId = token.toLongOrNull()
+        val addUser: (Long) -> Unit = { userId ->
+            if (userId <= 0L) {
+                context.reply("Invalid Telegram user ID.")
+            } else {
+                gateway.send(TdApi.GetChat(context.message.chatId)) { chatResult ->
+                    val chat = chatResult as? TdApi.Chat
+                        ?: return@send context.reply(if (chatResult is TdApi.Error) chatResult.message else "Chat unavailable.")
+                    if (chat.type !is TdApi.ChatTypeSupergroup && chat.type !is TdApi.ChatTypeBasicGroup) {
+                        return@send context.reply("Inviting members is only supported in groups and supergroups.")
+                    }
+                    gateway.send(TdApi.AddChatMember(context.message.chatId, userId, 0)) { result ->
+                        context.reply(if (result is TdApi.Error) "Invite failed: ${result.message}" else "Telegram processed the invite request for $userId.")
+                    }
+                }
             }
-            gateway.send(TdApi.AddChatMember(context.message.chatId, userId, 0)) { result ->
-                context.reply(if (result is TdApi.Error) "Invite failed: ${result.message}" else "Telegram processed the invite request for $userId.")
+        }
+        when {
+            repliedId != null -> addUser(repliedId)
+            numericId != null -> addUser(numericId)
+            token.isBlank() -> context.reply("Usage: .invite <user id or @username> or reply to a user.")
+            else -> {
+                val username = token.removePrefix("@")
+                if (!username.matches(Regex("[A-Za-z][A-Za-z0-9_]{3,31}"))) {
+                    context.reply("Provide a valid numeric user ID or Telegram username.")
+                } else {
+                    gateway.send(TdApi.SearchPublicChat(username)) { result ->
+                        val target = result as? TdApi.Chat
+                        val privateChat = target?.type as? TdApi.ChatTypePrivate
+                        if (privateChat == null) context.reply(if (result is TdApi.Error) "User lookup failed: ${result.message}" else "That username does not resolve to a user account.")
+                        else addUser(privateChat.userId)
+                    }
+                }
             }
         }
     }
