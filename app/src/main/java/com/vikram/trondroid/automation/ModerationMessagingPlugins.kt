@@ -270,38 +270,56 @@ class AdminAutomationPlugin : AutomationPlugin {
         gateway: com.vikram.trondroid.telegram.TelegramClientGateway,
         supergroupId: Long
     ) {
-        gateway.send(TdApi.GetSupergroupMembers(supergroupId, TdApi.SupergroupMembersFilterRecent(), 0, 200)) { result ->
-            val page = result as? TdApi.ChatMembers
-            if (page == null) {
-                context.reply((result as? TdApi.Error)?.let { "Unable to load members: ${it.message}" }
-                    ?: "Telegram did not return the member list.")
-                return@send
-            }
-            val candidates = page.members.mapNotNull { member ->
-                val user = member.memberId as? TdApi.MessageSenderUser ?: return@mapNotNull null
-                if (member.status is TdApi.ChatMemberStatusMember) user.userId else null
-            }.distinct().filter { it != gateway.currentUserId() }
-            if (candidates.isEmpty()) {
-                context.reply("No regular members were found to ban.")
-                return@send
-            }
-            context.reply("Bulk ban started for ${candidates.size} regular members. Administrators and the connected account are excluded.")
-            val completed = java.util.concurrent.atomic.AtomicInteger(0)
-            val banned = java.util.concurrent.atomic.AtomicInteger(0)
-            val failed = java.util.concurrent.atomic.AtomicInteger(0)
-            candidates.forEach { userId ->
-                gateway.send(TdApi.SetChatMemberStatus(
-                    context.message.chatId,
-                    TdApi.MessageSenderUser(userId),
-                    TdApi.ChatMemberStatusBanned(0)
-                )) { response ->
-                    if (response is TdApi.Error) failed.incrementAndGet() else banned.incrementAndGet()
-                    if (completed.incrementAndGet() == candidates.size) {
-                        context.reply("Bulk ban finished. Banned: ${banned.get()}, failed: ${failed.get()}. Telegram returned ${page.members.size} members in this request.")
+        val chatId = context.message.chatId
+        val userIds = linkedSetOf<Long>()
+
+        fun loadPage(offset: Int) {
+            gateway.send(TdApi.GetSupergroupMembers(
+                supergroupId, TdApi.SupergroupMembersFilterRecent(), offset, 200
+            )) { result ->
+                val page = result as? TdApi.ChatMembers
+                if (page == null) {
+                    context.reply((result as? TdApi.Error)?.let { "Unable to load members: ${it.message}" }
+                        ?: "Telegram did not return the member list.")
+                    return@send
+                }
+                page.members.forEach { member ->
+                    val user = member.memberId as? TdApi.MessageSenderUser
+                    if (user != null && member.status is TdApi.ChatMemberStatusMember &&
+                        user.userId != gateway.currentUserId()
+                    ) userIds += user.userId
+                }
+                val nextOffset = offset + page.members.size
+                if (page.members.size == 200 && nextOffset < 100_000) {
+                    loadPage(nextOffset)
+                } else {
+                    if (userIds.isEmpty()) {
+                        context.reply("No regular members were found to ban.")
+                        return@send
                     }
+                    context.reply("Bulk ban started for ${userIds.size} regular members. Administrators and the connected account are excluded.")
+                    val targets = userIds.toList()
+                    var index = 0
+                    var banned = 0
+                    var failed = 0
+                    fun banNext() {
+                        if (index >= targets.size) {
+                            context.reply("Bulk ban finished. Banned: $banned, failed: $failed.")
+                            return
+                        }
+                        val userId = targets[index++]
+                        gateway.send(TdApi.SetChatMemberStatus(
+                            chatId, TdApi.MessageSenderUser(userId), TdApi.ChatMemberStatusBanned(0)
+                        )) { response ->
+                            if (response is TdApi.Error) failed++ else banned++
+                            banNext()
+                        }
+                    }
+                    banNext()
                 }
             }
         }
+        loadPage(0)
     }
 
     private fun parseDuration(value: String): Long? {
