@@ -5,8 +5,22 @@ import com.vikram.trondroid.data.BotStore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicInteger
 
 object TelegramRuntime {
+    private val reconnectAttempts = ConcurrentHashMap<String, AtomicInteger>()
+
+    fun nextReconnectDelay(id: String): Long {
+        val attempt = reconnectAttempts.computeIfAbsent(id) { AtomicInteger(0) }
+            .getAndIncrement().coerceAtMost(4)
+        return (3_000L * (1L shl attempt)).coerceAtMost(60_000L)
+    }
+
+    fun markConnected(id: String) {
+        reconnectAttempts.remove(id)
+    }
+
     private val mutableEngines = MutableStateFlow<Map<String, TelegramEngine>>(emptyMap())
     val engines: StateFlow<Map<String, TelegramEngine>> = mutableEngines.asStateFlow()
 
@@ -17,6 +31,7 @@ object TelegramRuntime {
         val enabled = store.all().filter { it.enabled }.associateBy { it.id }
         val current = mutableEngines.value
         val stale = current.filterKeys { it !in enabled }
+        stale.keys.forEach(reconnectAttempts::remove)
         val retained = current.filterKeys { it in enabled }
         // A TDLib client can enter AuthorizationStateClosed without the profile
         // being disabled. Do not keep a dead engine in the registry.
