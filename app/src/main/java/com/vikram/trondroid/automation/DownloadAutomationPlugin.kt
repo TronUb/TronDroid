@@ -26,12 +26,11 @@ class DownloadAutomationPlugin(context: Context) : AutomationPlugin {
             "download" -> {
                 val replied = context.message.tdMessage?.let(gateway::repliedMessage)
                     ?: return context.reply("Reply to a Telegram media message with .download")
-                val fileId = fileId(replied.content)
+                val sourceFile = sourceFile(replied.content)
                     ?: return context.reply("The replied message does not contain a supported downloadable file.")
-                val knownSize = gateway.cachedFile(fileId)?.size ?: 0L
-                if (knownSize > MAX_FILE_BYTES) return context.reply("File exceeds the 50 MB download limit.")
+                if (sourceFile.size > MAX_FILE_BYTES) return context.reply("File exceeds the 50 MB download limit.")
                 context.reply("Downloading Telegram media (50 MB limit)…")
-                gateway.downloadFile(fileId) { file, error ->
+                gateway.downloadFile(sourceFile.id) { file, error ->
                     if (file == null || error != null) {
                         context.reply("Download failed: ${error ?: "unknown error"}")
                     } else {
@@ -67,15 +66,15 @@ class DownloadAutomationPlugin(context: Context) : AutomationPlugin {
         }
     }
 
-    private fun fileId(content: TdApi.MessageContent): Int? = when (content) {
-        is TdApi.MessageDocument -> content.document.document.id
-        is TdApi.MessagePhoto -> content.photo.sizes.maxByOrNull { it.width.toLong() * it.height }?.photo?.id
-        is TdApi.MessageVideo -> content.video.video.id
-        is TdApi.MessageAnimation -> content.animation.animation.id
-        is TdApi.MessageAudio -> content.audio.audio.id
-        is TdApi.MessageVoiceNote -> content.voiceNote.voice.id
-        is TdApi.MessageVideoNote -> content.videoNote.video.id
-        is TdApi.MessageSticker -> content.sticker.sticker.id
+    private fun sourceFile(content: TdApi.MessageContent): TdApi.File? = when (content) {
+        is TdApi.MessageDocument -> content.document.document
+        is TdApi.MessagePhoto -> content.photo.sizes.maxByOrNull { it.width.toLong() * it.height }?.photo
+        is TdApi.MessageVideo -> content.video.video
+        is TdApi.MessageAnimation -> content.animation.animation
+        is TdApi.MessageAudio -> content.audio.audio
+        is TdApi.MessageVoiceNote -> content.voiceNote.voice
+        is TdApi.MessageVideoNote -> content.videoNote.video
+        is TdApi.MessageSticker -> content.sticker.sticker
         else -> null
     }
 
