@@ -1,6 +1,5 @@
 package com.vikram.trondroid.automation
 
-import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import org.drinkless.tdlib.TdApi
 import org.json.JSONObject
@@ -34,11 +33,12 @@ private object TelegraphHttp {
 class PublishingAutomationPlugin(private val cacheDir: File) : AutomationPlugin {
     override val id = "userbot:telegraph"
     override val commands = listOf(
-        AutomationCommand("telegraph", "Publish replied text or supported media to a Telegraph page.", "telegraph (reply to text, photo or video)")
+        AutomationCommand("telegraph", "Publish replied text or supported media to a Telegraph page.", "telegraph (reply to text, photo or video)"),
+        AutomationCommand("tgm", "Alias for telegraph publishing.", "tgm (reply to text, photo or video)")
     )
 
     override fun onCommand(context: AutomationContext) {
-        if (context.command == "telegraph") telegraph(context)
+        if (context.command == "telegraph" || context.command == "tgm") telegraph(context)
     }
 
     private fun telegraph(context: AutomationContext) {
