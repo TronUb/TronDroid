@@ -144,7 +144,8 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
         nativePlugins += AliveAutomationPlugin(
             { profile.name },
             context,
-            { chatId, caption -> TelegramBotRuntime.sendUserbotAlive(profile.id, chatId, caption) },
+            { BotStore(context).all().firstOrNull { it.id == profile.id }?.botTelegramId },
+            { caption -> TelegramBotRuntime.cacheUserbotAlive(profile.id, caption) },
             { chatId -> TelegramBotRuntime.sendUserbotQuote(profile.id, chatId) }
         )
         nativePlugins += AnimeAutomationPlugin()
@@ -152,7 +153,7 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
         nativePlugins += HelpAutomationPlugin(
             { pluginSettings.handler() },
             { nativePlugins },
-            { chatId -> TelegramBotRuntime.sendUserbotHelpDex(profile.id, chatId) }
+            { BotStore(context).all().firstOrNull { it.id == profile.id }?.botTelegramId }
         )
         nativePlugins += AfkAutomationPlugin({ pluginSettings.handler() }, { _account.value?.id }) { _account.value?.username }
         nativePlugins += NotesAutomationPlugin(context.getSharedPreferences("trondroid.userbot.notes", Context.MODE_PRIVATE))
