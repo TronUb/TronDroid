@@ -73,7 +73,7 @@ class AutomationDispatcher(
                         update = update,
                         reply = { chatId, text -> if (text.isNotBlank()) sendText(chatId, text) },
                         telegram = telegramGateway(),
-                        isCommandEnabled = { command -> isCommandEnabled(plugin.id, command) }
+                        isCommandEnabled = { pluginId, command -> (pluginId == "core" || isPluginEnabled(pluginId)) && isCommandEnabled(pluginId, command) }
                     )
                     runCatching { plugin.onTelegramUpdate(context) }
                         .onFailure {
@@ -119,7 +119,7 @@ class AutomationDispatcher(
                             reply = messageReply,
                             replyAfter = delayedMessageReply,
                             telegram = telegramGateway(),
-                            isCommandEnabled = { command -> isCommandEnabled(handler.pluginId, command) }
+                            isCommandEnabled = { pluginId, command -> (pluginId == "core" || isPluginEnabled(pluginId)) && isCommandEnabled(pluginId, command) }
                         )
                     )
                 }.onFailure { logger("Plugin ${handler.pluginId} failed: ${it.message}", true) }
@@ -156,7 +156,7 @@ class AutomationDispatcher(
         }
         val context = AutomationContext(
             message, name, arguments, commandReply, commandDelayedReply, telegramGateway(),
-            isCommandEnabled = { command -> isCommandEnabled(plugin.id, command) }
+            isCommandEnabled = { pluginId, command -> (pluginId == "core" || isPluginEnabled(pluginId)) && isCommandEnabled(pluginId, command) }
         )
         runCatching { plugin.onCommand(context) }
             .onFailure { logger("Command $name in ${plugin.id} failed: ${it.message}", true) }
