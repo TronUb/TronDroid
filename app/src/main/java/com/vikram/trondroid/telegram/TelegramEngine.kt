@@ -3,6 +3,7 @@ package com.vikram.trondroid.telegram
 import android.content.Context
 import android.util.Log
 import com.vikram.trondroid.data.BotProfile
+import com.vikram.trondroid.data.BotStore
 import com.vikram.trondroid.automation.TelegramUpdateHub
 import com.vikram.trondroid.automation.AutomationDispatcher
 import com.vikram.trondroid.automation.AutomationMessage
@@ -184,7 +185,10 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
         nativePlugins += ToolsExtrasAutomationPlugin(context) { pluginSettings.commandEnabled("userbot:tools", "undlt") }
         nativePlugins += ZombieCleanupAutomationPlugin()
         nativePlugins += MusicSearchAutomationPlugin()
-        nativePlugins += SpotifyAutomationPlugin()
+        nativePlugins += SpotifyAutomationPlugin {
+            BotStore(context).customCredentials(profile.id).entries
+                .firstOrNull { it.key.equals("SPOTIFY_TOKEN", true) }?.value
+        }
         nativePlugins += SharingAutomationPlugin(context)
         nativePlugins += QuotlyAutomationPlugin(context.cacheDir)
         nativePlugins += CloneAutomationPlugin(context.getSharedPreferences("trondroid.userbot.clone", Context.MODE_PRIVATE)) { _account.value?.id }
