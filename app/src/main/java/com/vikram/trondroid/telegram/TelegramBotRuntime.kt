@@ -3,6 +3,7 @@ package com.vikram.trondroid.telegram
 import android.content.Context
 import com.vikram.trondroid.data.BotStore
 import com.vikram.trondroid.plugins.ExternalPluginLoader
+import com.vikram.trondroid.plugins.PluginSettings
 import android.net.Uri
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -78,6 +79,7 @@ object TelegramBotRuntime {
         private val app = context.applicationContext
         private val running = AtomicBoolean(true)
         private val store = BotStore(app)
+        private val pluginSettings = PluginSettings(app)
         private val preferences = app.getSharedPreferences("trondroid.settings", Context.MODE_PRIVATE)
 
         fun usesToken(value: String) = token == value
@@ -142,6 +144,15 @@ object TelegramBotRuntime {
             }
             val token = text.substringBefore(' ').substringBefore('@').removePrefix("/").lowercase()
             if (token == "start" && chat.optString("type") == "private") rememberStartedUser(chatId)
+            val builtInPluginId = when (token) {
+                "start" -> "bot:start"
+                "help" -> "bot:help"
+                "ping" -> "bot:ping"
+                "quote", "id" -> "bot:utils"
+                "broadcast" -> "bot:broadcast"
+                else -> null
+            }
+            if (builtInPluginId != null && !pluginSettings.commandEnabled(builtInPluginId, token)) return
             val builtInReply = when (token) {
                 "start" -> "Welcome! TronDroid bot is online. Send /help to see available commands."
                 "help" -> "Available commands:\n/start — Start the bot\n/help — Show this help\n/ping — Check bot response\n/id — Show user and chat IDs" +
@@ -182,8 +193,9 @@ object TelegramBotRuntime {
                 sendReply(chatId, builtInReply)
                 return
             }
-            val plugin = externalPlugins.firstOrNull { candidate -> candidate.commands.any { it.name.equals(token, true) } }
-                ?: return
+            val plugin = externalPlugins.firstOrNull { candidate ->
+                candidate.commands.any { it.name.equals(token, true) && pluginSettings.commandEnabled(candidate.id, it.name) }
+            } ?: return
             runCatching {
                 val arguments = text.substringAfter(' ', "").trim().split(Regex("\\s+")).filter { it.isNotBlank() }
                 plugin.onCommand(token, arguments, chatId) { response -> sendReply(chatId, response) }
