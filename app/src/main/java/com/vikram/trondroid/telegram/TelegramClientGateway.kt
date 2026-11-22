@@ -103,9 +103,18 @@ class TelegramClientGateway(
                     ?: TdApi.Error(404, "The companion bot returned no inline results for '$query'."))
                 return@send
             }
+            // InlineQueryResult is a polymorphic base class in TDLib; its
+            // concrete result subclasses expose the result ID as a generated field.
+            val resultId = runCatching {
+                first.javaClass.getField("id").get(first) as? String
+            }.getOrNull()
+            if (resultId.isNullOrBlank()) {
+                callback(TdApi.Error(500, "TDLib returned an inline result without a readable result ID."))
+                return@send
+            }
             send(
                 TdApi.SendInlineQueryResultMessage(
-                    chatId, 0, null, null, inline.inlineQueryId, first.id, false
+                    chatId, null, null, null, inline.inlineQueryId, resultId, false
                 ),
                 callback
             )
