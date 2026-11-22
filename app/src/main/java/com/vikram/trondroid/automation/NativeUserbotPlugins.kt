@@ -318,6 +318,7 @@ class AliveAutomationPlugin(
 ) : AutomationPlugin {
     override val id = "userbot:alive"
     private val startedAt = android.os.SystemClock.elapsedRealtime()
+    @Volatile private var tdlibVersion = "bundled"
     override val commands = listOf(
         AutomationCommand("alive", "Show account, TronDroid, Kotlin, TDLib and uptime information with the Tron status image.", "alive"),
         AutomationCommand("ialive", "Show the interactive inline-style alive card with refresh and navigation buttons.", "ialive"),
@@ -335,9 +336,17 @@ class AliveAutomationPlugin(
             append("⟜ **Account:** ${profileName()}\n")
             append("⟜ **TronDroid:** `$version`\n")
             append("⟜ **Kotlin:** `${KotlinVersion.CURRENT}`\n")
-            append("⟜ **TDLib:** `Native TDLib (bundled)`\n")
+            append("⟜ **TDLib:** `$tdlibVersion`\n")
             append("⟜ **Runtime:** `Android / JVM`\n")
             append("⟜ **Uptime:** `${TronCommandMedia.uptime(startedAt)}`\n")
+        }
+    }
+
+    private fun withTdlibVersion(gateway: com.vikram.trondroid.telegram.TelegramClientGateway, action: () -> Unit) {
+        gateway.send(TdApi.GetOption("version")) { result ->
+            tdlibVersion = (result as? TdApi.OptionValueString)?.value
+                ?.takeIf { it.isNotBlank() } ?: "bundled"
+            action()
         }
     }
 
@@ -345,8 +354,10 @@ class AliveAutomationPlugin(
         val gateway = context.telegram ?: return context.reply("Telegram session is unavailable.")
         when (context.command) {
             "alive" -> {
-                gateway.sendPhotoUrl(context.message.chatId, TronCommandMedia.USER_PIC, statusText()) { response ->
-                    if (response is TdApi.Error) context.reply("Unable to send alive card: ${response.message}")
+                withTdlibVersion(gateway) {
+                    gateway.sendPhotoUrl(context.message.chatId, TronCommandMedia.USER_PIC, statusText()) { response ->
+                        if (response is TdApi.Error) context.reply("Unable to send alive card: ${response.message}")
+                    }
                 }
                 if (context.message.isOutgoing) gateway.deleteMessage(context.message.chatId, context.message.messageId)
             }
@@ -362,9 +373,11 @@ class AliveAutomationPlugin(
                         TronCommandMedia.button("Close", "ialive:close")
                     )
                 )
-                gateway.sendPhotoUrl(context.message.chatId, TronCommandMedia.USER_PIC,
-                    "⛊ **Tron Inline Status**\n\n${statusText()}", keyboard) { response ->
-                    if (response is TdApi.Error) context.reply("Unable to send inline alive card: ${response.message}")
+                withTdlibVersion(gateway) {
+                    gateway.sendPhotoUrl(context.message.chatId, TronCommandMedia.USER_PIC,
+                        "⛊ **Tron Inline Status**\n\n${statusText()}", keyboard) { response ->
+                        if (response is TdApi.Error) context.reply("Unable to send inline alive card: ${response.message}")
+                    }
                 }
                 if (context.message.isOutgoing) gateway.deleteMessage(context.message.chatId, context.message.messageId)
             }
