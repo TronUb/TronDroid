@@ -188,11 +188,13 @@ class MusicSearchAutomationPlugin : AutomationPlugin {
     }
 }
 
-class SpotifyAutomationPlugin : AutomationPlugin {
+class SpotifyAutomationPlugin(
+    private val accessToken: () -> String? = { null }
+) : AutomationPlugin {
     override val id = "userbot:spotify"
     override val commands = listOf(
         AutomationCommand("spotify", "Search Spotify and open official track, album or artist results.", "spotify <song or artist>"),
-        AutomationCommand("now", "Explain how to enable current Spotify playback lookup.", "now")
+        AutomationCommand("now", "Show the currently playing Spotify track with album artwork and a Play on Spotify button. Requires a valid SPOTIFY_TOKEN credential.", "now")
     )
 
     override fun onCommand(context: AutomationContext) {
@@ -202,11 +204,69 @@ class SpotifyAutomationPlugin : AutomationPlugin {
                 if (query.isBlank()) return context.reply("Usage: .spotify <song or artist>")
                 context.reply("Spotify search: https://open.spotify.com/search?q=${MusicSearchHttp.encode(query)}")
             }
-            "now" -> context.reply(
-                "Spotify currently-playing lookup needs a Spotify OAuth access token with user-read-currently-playing permission. " +
-                    "TronDroid does not currently have a registered Spotify OAuth client, so it cannot read your private playback state. " +
-                    "Use .spotify <song or artist> to search Spotify."
-            )
+            "now" -> {
+                val token = accessToken()?.trim().orEmpty()
+                if (token.isBlank()) return context.reply(
+                    "Add a Spotify access token as a custom credential named SPOTIFY_TOKEN. " +
+                        "It must include the user-read-currently-playing scope."
+                )
+                val gateway = context.telegram ?: return context.reply("Telegram session is unavailable.")
+                context.reply("Checking Spotify playback…")
+                Thread({
+                    runCatching {
+                        val connection = URL("https://api.spotify.com/v1/me/player/currently-playing")
+                            .openConnection() as HttpURLConnection
+                        connection.connectTimeout = 10_000
+                        connection.readTimeout = 15_000
+                        connection.setRequestProperty("Authorization", "Bearer $token")
+                        connection.setRequestProperty("Accept", "application/json")
+                        val code = connection.responseCode
+                        val body = try {
+                            if (code == 204) "" else {
+                                val stream = if (code in 200..299) connection.inputStream else connection.errorStream
+                                stream?.bufferedReader()?.use { it.readText() }.orEmpty()
+                            }
+                        } finally {
+                            connection.disconnect()
+                        }
+                        when {
+                            code == 204 -> context.reply("Spotify is not playing anything right now.")
+                            code == 401 -> context.reply("Spotify access token expired or is invalid. Update SPOTIFY_TOKEN.")
+                            code == 403 -> context.reply("Spotify denied playback access. Ensure the token has user-read-currently-playing permission.")
+                            code !in 200..299 -> context.reply("Spotify request failed (HTTP $code).")
+                            else -> {
+                                val root = JSONObject(body)
+                                val item = root.optJSONObject("item")
+                                if (item == null) {
+                                    context.reply("Spotify is not playing anything right now.")
+                                } else {
+                                    val title = item.optString("name", "Unknown track")
+                                    val artists = item.optJSONArray("artists")
+                                    val artist = if (artists == null) "Unknown artist" else
+                                        (0 until artists.length()).mapNotNull { artists.optJSONObject(it)?.optString("name") }
+                                            .filter { it.isNotBlank() }.joinToString(", ")
+                                    val album = item.optJSONObject("album") ?: JSONObject()
+                                    val images = album.optJSONArray("images")
+                                    val cover = images?.optJSONObject(0)?.optString("url").orEmpty()
+                                    val link = item.optJSONObject("external_urls")?.optString("spotify").orEmpty()
+                                    val caption = "🎧 **${title}**\n**Artists:** $artist\n**Album:** ${album.optString("name", "Unknown")}"
+                                    val markup = if (link.startsWith("https://open.spotify.com/")) {
+                                        TdApi.ReplyMarkupInlineKeyboard(arrayOf(arrayOf(
+                                            TdApi.InlineKeyboardButton("Play on Spotify", 0L, TdApi.ButtonStyleDefault(),
+                                                TdApi.InlineKeyboardButtonTypeUrl(link))
+                                        )))
+                                    } else null
+                                    if (cover.startsWith("https://")) {
+                                        gateway.sendPhotoUrl(context.message.chatId, cover, caption, markup) { result ->
+                                            if (result is TdApi.Error) context.reply("$caption\n$link")
+                                        }
+                                    } else context.reply("$caption\n$link")
+                                }
+                            }
+                        }
+                    }.onFailure { context.reply("Spotify playback lookup failed: ${it.message ?: "unknown error"}") }
+                }, "TronDroid-SpotifyNow").apply { isDaemon = true; start() }
+            }
         }
     }
 }
