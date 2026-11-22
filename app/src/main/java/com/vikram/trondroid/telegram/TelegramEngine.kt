@@ -123,7 +123,8 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
             }
         },
         logger = { message, error -> log(message, error) },
-        telegramGateway = { telegramGateway }
+        telegramGateway = { telegramGateway },
+        isCommandEnabled = { pluginId, command -> pluginSettings.commandEnabled(pluginId, command) }
     )
     /** Shared TDLib update stream used by every native and external plugin. */
     val updateHub = TelegramUpdateHub { message, isError -> log(message, isError) }
