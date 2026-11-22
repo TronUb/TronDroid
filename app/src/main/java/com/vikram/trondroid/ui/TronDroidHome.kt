@@ -1771,6 +1771,10 @@ private fun BotConnectionsScreen(modifier: Modifier) {
                         supportingContent = { Text("Add BOT_TOKEN in an account's Credentials tab. The bot can then be enabled from that account's General tab.") },
                         leadingContent = { Icon(Icons.Rounded.SmartToy, null, tint = MaterialTheme.colorScheme.primary) })
                     HorizontalDivider(Modifier.padding(horizontal = 16.dp))
+                    ListItem(headlineContent = { Text("Enable inline mode") },
+                        supportingContent = { Text("In @BotFather, run /setinline and select this bot. Then use @botusername help, alive, quote or a plugin name in any chat to insert the userbot menus.") },
+                        leadingContent = { Icon(Icons.Rounded.Search, null, tint = MaterialTheme.colorScheme.primary) })
+                    HorizontalDivider(Modifier.padding(horizontal = 16.dp))
                     ListItem(headlineContent = { Text("Credential security") },
                         supportingContent = { Text("Saved API hashes and custom credentials are encrypted locally using Android Keystore.") },
                         leadingContent = { Icon(Icons.Rounded.Security, null, tint = MaterialTheme.colorScheme.primary) })
