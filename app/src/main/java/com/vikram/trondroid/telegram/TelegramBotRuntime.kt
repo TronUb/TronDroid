@@ -68,8 +68,8 @@ object TelegramBotRuntime {
     fun sendUserbotHelpDex(profileId: String, chatId: Long): Boolean =
         workers[profileId]?.sendUserbotHelpDex(chatId) ?: false
 
-    fun sendUserbotAlive(profileId: String, chatId: Long): Boolean =
-        workers[profileId]?.sendUserbotAlive(chatId) ?: false
+    fun sendUserbotAlive(profileId: String, chatId: Long, caption: String): Boolean =
+        workers[profileId]?.sendUserbotAlive(chatId, caption) ?: false
 
     fun sendUserbotQuote(profileId: String, chatId: Long): Boolean =
         workers[profileId]?.sendUserbotQuote(chatId) ?: false
@@ -144,6 +144,7 @@ object TelegramBotRuntime {
 
         private val workerStartedAt = android.os.SystemClock.elapsedRealtime()
         private val tronBotImage = "https://raw.githubusercontent.com/TronUb/Tron/master/main/others/resources/images/tron-square.png"
+        @Volatile private var lastUserbotAliveCaption: String? = null
 
         private fun encode(value: String) =
             java.net.URLEncoder.encode(value, Charsets.UTF_8.name())
@@ -212,12 +213,13 @@ object TelegramBotRuntime {
             sendBotPhoto(chatId, helpCaption(userbot = true), helpKeyboard(0, userbot = true)).optBoolean("ok")
         }.getOrDefault(false)
 
-        fun sendUserbotAlive(chatId: Long): Boolean = runCatching {
+        fun sendUserbotAlive(chatId: Long, caption: String): Boolean = runCatching {
+            lastUserbotAliveCaption = caption
             val markup = JSONObject().put("inline_keyboard", org.json.JSONArray().apply {
                 put(org.json.JSONArray().put(button("Refresh", "botalive:refresh")))
                 put(org.json.JSONArray().put(button("Plugins", "ubhelp:home")).put(button("Close", "botalive:close")))
             })
-            sendBotPhoto(chatId, botAliveCaption(), markup).optBoolean("ok")
+            sendBotPhoto(chatId, caption, markup).optBoolean("ok")
         }.getOrDefault(false)
 
         fun sendUserbotQuote(chatId: Long): Boolean = runCatching {
@@ -289,8 +291,11 @@ object TelegramBotRuntime {
                     ))
                     edit(pluginCaption(pluginId, userbot = true), back)
                 }
-                data == "botalive:refresh" -> edit(botAliveCaption(), JSONObject().put("inline_keyboard",
-                    org.json.JSONArray().put(org.json.JSONArray().put(button("Refresh", "botalive:refresh")))))
+                data == "botalive:refresh" -> edit(lastUserbotAliveCaption ?: botAliveCaption(), JSONObject().put("inline_keyboard",
+                    org.json.JSONArray().apply {
+                        put(org.json.JSONArray().put(button("Refresh", "botalive:refresh")))
+                        put(org.json.JSONArray().put(button("Plugins", "ubhelp:home")).put(button("Close", "botalive:close")))
+                    }))
                 data == "botalive:close" -> edit("TronDroid bot status menu closed.")
                 data == "botquote:more" -> {
                     val quotes = listOf(
