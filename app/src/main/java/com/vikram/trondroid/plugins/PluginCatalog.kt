@@ -54,6 +54,15 @@ object PluginCatalog {
                 "img" -> "img 3 mountain landscape"
                 "pic" -> "pic sunset beach"
                 "sauce" -> "Reply to a photo with .sauce"
+                "send" -> "send userbot:stickers"
+                "install" -> "Reply to a .tdplugin file with .install"
+                "uninstall" -> "uninstall userbot:stickers"
+                "sharedplugins" -> "sharedplugins"
+                "song", "music", "deezer", "dz" -> "$name Blinding Lights The Weeknd"
+                "lyrics", "ly" -> "$name Blinding Lights The Weeknd"
+                "spotify" -> "spotify Daft Punk Get Lucky"
+                "now" -> "now"
+                "kang", "unkang", "stinfo", "stickerinfo" -> "Reply to a sticker with .$name"
                 "reboot" -> "reboot"
                 "sleep" -> "sleep 300"
                 "q", "quotly" -> "Reply to a text message with .q blue"
@@ -105,12 +114,12 @@ object PluginCatalog {
         plugin("userbot:purge","Purge","Delete selected messages and count matching messages.","Moderation",PluginOwner.USERBOT,"main/userbot/modules/plugins/purge.py",true,"purge","purgecount","del"),
         plugin("userbot:quotly","Quotly","Render replied Telegram text locally into a shareable quote image with selectable colour themes; no third-party bot is required.","Media",PluginOwner.USERBOT,"main/userbot/modules/plugins/quotly.py",true,"q","quotly"),
         plugin("userbot:reddit","Reddit","Search public Reddit posts and show relevant results.","Search",PluginOwner.USERBOT,"main/userbot/modules/plugins/reddit.py",true,"reddit","r"),
-        plugin("userbot:share","Plugin sharing","Share, install and uninstall compatible plugin packages.","Plugins",PluginOwner.USERBOT,"main/userbot/modules/plugins/share.py",false,"send","install","uninstall"),
-        plugin("userbot:song","Music search","Search songs, Deezer tracks and lyrics.","Media",PluginOwner.USERBOT,"main/userbot/modules/plugins/song.py",false,"song","deezer","lyrics"),
+        plugin("userbot:share","Plugin sharing","Export, share, import and remove validated .tdplugin manifests. Imports are declarative metadata only; untrusted executable code is never loaded.","Plugins",PluginOwner.USERBOT,"main/userbot/modules/plugins/share.py",true,"send","install","uninstall","sharedplugins"),
+        plugin("userbot:song","Music search","Search Deezer tracks, open official track pages, get 30-second previews and retrieve lyrics by matched artist/title.","Media",PluginOwner.USERBOT,"main/userbot/modules/plugins/song.py",true,"song","music","deezer","dz","lyrics","ly"),
         plugin("userbot:spam","Spam tools","Repeat a message or text with bounded count and optional delay.","Messaging",PluginOwner.USERBOT,"main/userbot/modules/plugins/spam.py",true,"spam","dspam"),
-        plugin("userbot:spotify","Spotify","Search Spotify and inspect the currently playing track.","Media",PluginOwner.USERBOT,"main/userbot/modules/plugins/spotify.py",false,"spotify","now"),
+        plugin("userbot:spotify","Spotify","Open Spotify search results. Current playback lookup is documented but requires a registered Spotify OAuth client and user-read-currently-playing permission.","Media",PluginOwner.USERBOT,"main/userbot/modules/plugins/spotify.py",true,"spotify","now"),
         plugin("userbot:stats","Stats","Show Telegram dialog and chat statistics from loaded dialogs.","Information",PluginOwner.USERBOT,"main/userbot/modules/plugins/stats.py",true,"stats"),
-        plugin("userbot:stickers","Stickers","Create stickers from media and inspect sticker metadata.","Media",PluginOwner.USERBOT,"main/userbot/modules/plugins/stickers.py",false,"kang","stinfo"),
+        plugin("userbot:stickers","Stickers","Add or remove replied stickers from Telegram favorites and inspect sticker metadata. Sticker-pack creation from arbitrary images requires the official @Stickers bot.","Media",PluginOwner.USERBOT,"main/userbot/modules/plugins/stickers.py",true,"kang","unkang","stinfo","stickerinfo"),
         plugin("userbot:sudo","Sudo users","Manage trusted user IDs allowed to run privileged commands.","Security",PluginOwner.USERBOT,"main/userbot/modules/plugins/sudo.py",true,"addsudo","listsudo","delsudo"),
         plugin("userbot:supertools","Super tools","Dictionary, link shortening, weather and webpage screenshot utilities.","Utilities",PluginOwner.USERBOT,"main/userbot/modules/plugins/supertools.py",false,"tts","ud","short","unshort","weather","webshot","undlt"),
         plugin("userbot:telegraph","Telegraph","Publish replied text and supported media to Telegraph pages.","Publishing",PluginOwner.USERBOT,"main/userbot/modules/plugins/telegraph.py",false,"telegraph"),
