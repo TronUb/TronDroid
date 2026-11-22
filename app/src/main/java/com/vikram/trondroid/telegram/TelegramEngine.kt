@@ -172,7 +172,7 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
         nativePlugins += ImageExtrasAutomationPlugin()
         nativePlugins += GoogleExtrasAutomationPlugin()
         nativePlugins += SudoAutomationPlugin(context.getSharedPreferences("trondroid.userbot.sudo", Context.MODE_PRIVATE)) { _account.value?.id }
-        nativePlugins += ToolsExtrasAutomationPlugin()
+        nativePlugins += ToolsExtrasAutomationPlugin(context)
         nativePlugins += ZombieCleanupAutomationPlugin()
         nativePlugins += MusicSearchAutomationPlugin()
         nativePlugins += SpotifyAutomationPlugin()
