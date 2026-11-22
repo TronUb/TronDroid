@@ -97,7 +97,7 @@ class WebMediaAutomationPlugin : AutomationPlugin {
         val id = when {
             host.endsWith("youtu.be") -> segments.firstOrNull()
             url.path == "/watch" -> url.query?.split("&")?.firstOrNull { part -> part.startsWith("v=") }?.substringAfter("v=")
-            segments.firstOrNull() in setOf("shorts", "embed", "live") -> segments.getOrNull(1)
+            segments.firstOrNull()?.let { it in setOf("shorts", "embed", "live") } == true -> segments.getOrNull(1)
             else -> null
         }
         return id?.takeIf { it.matches(Regex("[A-Za-z0-9_-]{11}")) }
