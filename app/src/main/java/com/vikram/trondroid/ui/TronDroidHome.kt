@@ -64,6 +64,7 @@ private sealed interface Page {
     data object About : Page
     data object Updater : Page
     data object SettingsBackup : Page
+    data object ManageConnections : Page
     data class PluginDetail(val id: String) : Page
 }
 
@@ -80,7 +81,9 @@ fun TronDroidHome(
     themeMode: String, onThemeChange: (String) -> Unit,
     dynamicColors: Boolean, onDynamicColorsChange: (Boolean) -> Unit,
     onExportSettings: () -> String,
-    onImportSettings: (String) -> Unit
+    onImportSettings: (String) -> Unit,
+    onSetAllConnections: (Boolean) -> Unit,
+    onDeleteAllConnections: () -> Unit
 ) {
     var tab by remember { mutableStateOf(Tab.USERBOTS) }
     var pageStack by remember { mutableStateOf(listOf<Page>(Page.Home)) }
@@ -166,6 +169,10 @@ fun TronDroidHome(
                     onSessions = { navigate(Page.SessionPreferences) }, onBots = { navigate(Page.BotConnections) },
                     onPermissions = { navigate(Page.Permissions) }, onAbout = { navigate(Page.About) }, onUpdater = { navigate(Page.Updater) },
                     onBackup = { navigate(Page.SettingsBackup) },
+                    onManageConnections = { navigate(Page.ManageConnections) },
+                    bots = bots,
+                    onSetAllConnections = onSetAllConnections,
+                    onDeleteAllConnections = onDeleteAllConnections,
                     themeMode = themeMode, onThemeChange = onThemeChange, dynamicColors = dynamicColors, onDynamicColorsChange = onDynamicColorsChange)
             }
             is Page.Userbot -> {
@@ -196,6 +203,11 @@ fun TronDroidHome(
                 onBack = { goBack() },
                 exportJson = onExportSettings,
                 importJson = onImportSettings
+            )
+            Page.ManageConnections -> ManageConnectionsScreen(
+                Modifier.fillMaxSize(), bots, onBack = { goBack() },
+                onSetAllConnections = onSetAllConnections,
+                onDeleteAllConnections = { onDeleteAllConnections(); pageStack = listOf(Page.Home) }
             )
             is Page.PluginDetail -> PluginDetailScreen(Modifier.fillMaxSize(), current.id)
             }
@@ -427,11 +439,8 @@ private fun UserbotDetailScreen(
             Modifier.fillMaxWidth().padding(start = 8.dp, end = 18.dp, top = 8.dp, bottom = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.primaryContainer) {
-                IconButton(onClick = onBack) {
-                    Icon(Icons.Rounded.ArrowBack, contentDescription = "Back",
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer)
-                }
+            IconButton(onClick = onBack) {
+                Icon(Icons.Rounded.ArrowBack, contentDescription = "Back", tint = MaterialTheme.colorScheme.primary)
             }
             Column(Modifier.weight(1f)) {
                 Text("Configuration", style = MaterialTheme.typography.headlineSmall)
@@ -971,6 +980,7 @@ private fun AddBotDialog(onDismiss: () -> Unit, onSave: (String, String, Int, St
     var phone by remember { mutableStateOf("") }
     var apiId by remember { mutableStateOf("") }
     var apiHash by remember { mutableStateOf("") }
+    var revealApiHash by remember { mutableStateOf(false) }
     var country by remember { mutableStateOf(countries.first()) }
     var countryMenu by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -1016,8 +1026,14 @@ private fun AddBotDialog(onDismiss: () -> Unit, onSave: (String, String, Int, St
             }
             OutlinedTextField(apiId, { apiId = it }, label = { Text("Telegram API ID") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), singleLine = true, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(apiHash, { apiHash = it }, label = { Text("Telegram API Hash") },
-                visualTransformation = PasswordVisualTransformation(), singleLine = true, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(
+                value = apiHash, onValueChange = { apiHash = it }, label = { Text("Telegram API Hash") },
+                visualTransformation = if (revealApiHash) VisualTransformation.None else PasswordVisualTransformation(),
+                trailingIcon = { IconButton(onClick = { revealApiHash = !revealApiHash }) {
+                    Icon(if (revealApiHash) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility,
+                        if (revealApiHash) "Hide API hash" else "Show API hash")
+                } }, singleLine = true, modifier = Modifier.fillMaxWidth()
+            )
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         }
     }, confirmButton = {
@@ -1313,6 +1329,10 @@ private fun SettingsScreen(
     onAbout: () -> Unit,
     onUpdater: () -> Unit,
     onBackup: () -> Unit,
+    onManageConnections: () -> Unit,
+    bots: List<BotProfile>,
+    onSetAllConnections: (Boolean) -> Unit,
+    onDeleteAllConnections: () -> Unit,
     themeMode: String,
     onThemeChange: (String) -> Unit,
     dynamicColors: Boolean,
@@ -1346,9 +1366,10 @@ private fun SettingsScreen(
             }
         }
         SettingsGroup("Connections", listOf(
+            Triple("Manage settings", "Enable, disable or remove all userbot and bot connections", Icons.Rounded.ManageAccounts),
             Triple("Session preferences", "Userbot startup and background session behaviour", Icons.Rounded.Tune),
             Triple("Bot connections", "Bot API reconnect and connection behaviour", Icons.Rounded.SmartToy)
-        ), listOf(onSessions, onBots))
+        ), listOf(onManageConnections, onSessions, onBots))
         SettingsGroup("Device access", listOf(
             Triple("Permissions", "Required, optional and battery/background access", Icons.Rounded.Security)
         ), listOf(onPermissions))
