@@ -89,8 +89,8 @@ class PublishingAutomationPlugin(private val cacheDir: File) : AutomationPlugin 
                             val uploaded = uploadMedia(File(mediaPath))
                             val extension = File(mediaPath).extension.lowercase()
                             val tag = if (extension == "mp4") "video" else "img"
-                            nodes.put(JSONObject().put("tag", "figure").put("children").put(
-                                JSONObject().put("tag", tag).put("attrs", JSONObject().put("src", "https://telegra.ph" + uploaded))))
+                            nodes.put(JSONObject().put("tag", "figure").put("children",
+                                org.json.JSONArray().put(JSONObject().put("tag", tag).put("attrs", JSONObject().put("src", "https://telegra.ph" + uploaded)))))
                         }
                         val accountBody = "short_name=TronDroid&author_name=TronDroid"
                         val account = JSONObject(TelegraphHttp.request("https://api.telegra.ph/createAccount", "POST", accountBody, "application/x-www-form-urlencoded"))
