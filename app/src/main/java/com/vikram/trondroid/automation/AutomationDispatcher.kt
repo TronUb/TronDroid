@@ -11,7 +11,8 @@ class AutomationDispatcher(
     private val sendText: (Long, String) -> Unit,
     private val editText: (Long, Long, String) -> Unit,
     private val logger: (String, Boolean) -> Unit,
-    private val telegramGateway: () -> com.vikram.trondroid.telegram.TelegramClientGateway? = { null }
+    private val telegramGateway: () -> com.vikram.trondroid.telegram.TelegramClientGateway? = { null },
+    private val isCommandEnabled: (String, String) -> Boolean = { _, _ -> true }
 ) {
     private data class MessageHandler(
         val pluginId: String,
@@ -128,10 +129,21 @@ class AutomationDispatcher(
         val incomingAuthorized = message.isOutgoing || plugins.any { it.canExecuteIncoming(message) }
         val matches = plugins.filter { candidate ->
             (candidate.id == "core" || isPluginEnabled(candidate.id)) &&
-                candidate.commands.any { it.name.equals(name, true) } &&
+                candidate.commands.any { it.name.equals(name, true) && isCommandEnabled(candidate.id, it.name) } &&
                 incomingAuthorized
         }
-        if (matches.isEmpty()) return
+        if (matches.isEmpty()) {
+            val knownButDisabled = plugins.any { candidate ->
+                candidate.commands.any { it.name.equals(name, true) } &&
+                    (candidate.id == "core" || isPluginEnabled(candidate.id)) &&
+                    !isCommandEnabled(candidate.id, name)
+            }
+            if (knownButDisabled && message.isOutgoing) {
+                logger("Command '$name' is disabled in plugin settings", false)
+                editCommand("Command .$name is disabled. Enable it in Plugins → plugin → Commands.")
+            }
+            return
+        }
         if (matches.size > 1) {
             logger("Command collision for '$name': ${matches.joinToString { it.id }}; using first registered plugin", true)
         }
