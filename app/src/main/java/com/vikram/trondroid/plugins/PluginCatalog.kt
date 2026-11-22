@@ -68,7 +68,8 @@ object PluginCatalog {
                 in setOf("members", "bots") -> "$name [1-100]"
                 in setOf("vcut", "vmute", "vsubclip") -> "$name <time options>"
                 in setOf("ytsearch", "ytinfo") -> "$name <query or YouTube URL>"
-                in setOf("invite", "join") -> "$name <user id or public username/invite link>"
+                "invite" -> "invite <user id or @username> (or reply to a user)"
+                "join" -> "join <@username or t.me invite link>"
                 "gtitle" -> "gtitle <new group title>"
                 else -> name
             }
