@@ -47,10 +47,10 @@ class PublishingAutomationPlugin(private val cacheDir: File) : AutomationPlugin 
             ?: return context.reply("Reply to text or supported media with .telegraph")
         val text = when (val content = replied.content) {
             is TdApi.MessageText -> content.text.text
-            is TdApi.MessagePhoto -> content.photo.caption.text
-            is TdApi.MessageVideo -> content.video.caption.text
-            is TdApi.MessageAnimation -> content.animation.caption.text
-            is TdApi.MessageDocument -> content.document.caption.text
+            is TdApi.MessagePhoto -> content.caption.text
+            is TdApi.MessageVideo -> content.caption.text
+            is TdApi.MessageAnimation -> content.caption.text
+            is TdApi.MessageDocument -> content.caption.text
             else -> ""
         }
         val mediaFile = when (val media = replied.content) {
