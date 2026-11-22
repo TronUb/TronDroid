@@ -47,13 +47,28 @@ object PluginCatalog {
                 "forward" -> "Reply to a message with .forward [destination chat ID]"
                 "commonchat" -> "commonchat <user id> (or reply to a user)"
                 "speedtest" -> "speedtest"
+                "adminlist", "admins" -> name
+                "members", "bots" -> "$name 50"
+                "settitle" -> "settitle New group title"
+                "invite" -> "Reply to a user or use invite 123456789"
+                "join" -> "join @publicgroup or join https://t.me/+inviteHash"
+                "kickme" -> "kickme"
+                "ytsearch" -> "ytsearch Kotlin Android tutorial"
+                "ytinfo" -> "ytinfo https://youtu.be/dQw4w9WgXcQ"
+                "vcut" -> "Reply to a video with .vcut 00:00:30"
+                "vmute" -> "Reply to a video with .vmute"
+                "vsubclip" -> "Reply to a video with .vsubclip 00:00:05 00:00:20"
                 "undlt" -> "undlt [1-20]"
                 in setOf("carbon", "cb") -> "$name [colour] <code>"
                 "pin" -> "pin (reply required) [loud]"
                 "unpin" -> "unpin (reply required) | unpin all"
                 "banall" -> "banall confirm"
                 in setOf("afk", "setwelcome", "welcome", "save", "setdv", "filter", "schedule", "settitle", "colourtemplate", "tts") -> "$name <text>"
-                in setOf("purge", "purgecount", "spam", "dspam", "vcut", "vspeed", "vmute", "vinvert") -> "$name <count or options>"
+                in setOf("purge", "purgecount", "spam", "dspam") -> "$name <count or options>"
+                in setOf("members", "bots") -> "$name [1-100]"
+                in setOf("vcut", "vmute", "vsubclip") -> "$name <time options>"
+                in setOf("ytsearch", "ytinfo") -> "$name <query or YouTube URL>"
+                in setOf("invite", "join") -> "$name <user id or public username/invite link>"
                 else -> name
             }
             val example = when (name) {
@@ -139,9 +154,9 @@ object PluginCatalog {
         plugin("userbot:tools","Tools","Search recent chat history, inspect message JSON, create message links, save or forward replies, find common groups, run a download speed test and view locally cached deleted messages.","Utilities",PluginOwner.USERBOT,"main/userbot/modules/plugins/tools.py",true,"wlink","json","mlink","saved","forward","speedtest","commonchat","undlt"),
         plugin("userbot:translate","Translate","Translate text using the selected target language.","Utilities",PluginOwner.USERBOT,"main/userbot/modules/plugins/translate.py",true,"translate","tr","tl","trlist","tllist","translatelist","translatelang"),
         plugin("userbot:update","Update","Check the latest published TronDroid release and open its release notes.","System",PluginOwner.USERBOT,"main/userbot/modules/plugins/update.py",true,"update"),
-        plugin("userbot:utils","Group utilities","Group administration helpers for titles, invites, member lists, reporting and chat controls.","Groups",PluginOwner.USERBOT,"main/userbot/modules/plugins/utils.py",false,"settitle","invite","inviteall","admins","report","all","bots","kickme","members","join","slowmo"),
-        plugin("userbot:utube","YouTube","Search videos, inspect video information and download media.","Media",PluginOwner.USERBOT,"main/userbot/modules/plugins/utube.py",false,"ytsearch","ytinfo","ytmdl"),
-        plugin("userbot:videotools","Video tools","Trim, mute, invert, speed and transform video or audio.","Media",PluginOwner.USERBOT,"main/userbot/modules/plugins/videotools.py",false,"vcut","vinvert","vmute","vsubclip","vafadein","vafadeout","vsetaudio","vspeed","vfadeout","vfadein"),
+        plugin("userbot:utils","Group utilities","List administrators, recent members and bots; change the group title; invite a single user; join a public group or invite link; or leave the current group. Telegram permissions are always enforced by Telegram.","Groups",PluginOwner.USERBOT,"main/userbot/modules/plugins/utils.py",true,"admins","adminlist","members","bots","settitle","invite","join","kickme"),
+        plugin("userbot:utube","YouTube","Search YouTube and inspect video metadata with official links. Stream extraction and downloading are intentionally not included.","Media",PluginOwner.USERBOT,"main/userbot/modules/plugins/utube.py",true,"ytsearch","ytinfo"),
+        plugin("userbot:videotools","Video tools","Native Android media remuxing for mute, trim and subclip operations. Inputs and outputs are limited to 100 MB and 10 minutes; trims are keyframe-aligned.","Media",PluginOwner.USERBOT,"main/userbot/modules/plugins/videotools.py",true,"vcut","vmute","vsubclip"),
         plugin("userbot:welcome","Welcome","Configure text welcome messages for new group members.","Groups",PluginOwner.USERBOT,"main/userbot/modules/plugins/welcome.py",true,"welcome","setwelcome","delwelcome","getwelcome"),
         plugin("userbot:weather","Weather","Show current weather for a city.","Utilities",PluginOwner.USERBOT,"main/userbot/modules/plugins/supertools.py",true,"weather","wtr"),
         plugin("userbot:currency","Currency","Convert between supported currencies.","Utilities",PluginOwner.USERBOT,"main/userbot/modules/plugins/tools.py",true,"currency","cur"),
