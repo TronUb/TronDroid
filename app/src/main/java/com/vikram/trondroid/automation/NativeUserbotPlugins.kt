@@ -289,7 +289,12 @@ private object TronCommandMedia {
     const val BOT_PIC = "https://raw.githubusercontent.com/TronUb/Tron/master/main/others/resources/images/tron-square.png"
 
     fun button(text: String, data: String) =
-        TdApi.InlineKeyboardButton(text, TdApi.InlineKeyboardButtonTypeCallback(data.toByteArray(Charsets.UTF_8)))
+        TdApi.InlineKeyboardButton(
+            text,
+            0L,
+            TdApi.ButtonStyleDefault(),
+            TdApi.InlineKeyboardButtonTypeCallback(data.toByteArray(Charsets.UTF_8))
+        )
 
     fun markup(vararg rows: List<TdApi.InlineKeyboardButton>) =
         TdApi.ReplyMarkupInlineKeyboard(rows.map { it.toTypedArray() }.toTypedArray())
