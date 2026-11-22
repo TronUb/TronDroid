@@ -9,6 +9,7 @@ class UtilityExtrasAutomationPlugin : AutomationPlugin {
     override val commands = listOf(
         AutomationCommand("short", "Shorten an HTTP or HTTPS URL using is.gd.", "short <url>"),
         AutomationCommand("unshort", "Resolve a shortened URL without downloading its content.", "unshort <url>"),
+        AutomationCommand("noshort", "Alias for unshort.", "noshort <url>"),
         AutomationCommand("ud", "Look up an English word definition.", "ud <word>"),
         AutomationCommand("webshot", "Capture a webpage screenshot and send it as an image.", "webshot <https://url>")
     )
@@ -23,7 +24,7 @@ class UtilityExtrasAutomationPlugin : AutomationPlugin {
                         val url = "https://is.gd/create.php?format=simple&url=" + URLEncoder.encode(value, Charsets.UTF_8.name())
                         get(url).trim().also { require(it.startsWith("https://")) { it } }
                     }
-                    "unshort" -> {
+                    "unshort", "noshort" -> {
                         require(value.startsWith("https://") || value.startsWith("http://")) { "Provide a valid HTTP(S) URL." }
                         resolve(value)
                     }
