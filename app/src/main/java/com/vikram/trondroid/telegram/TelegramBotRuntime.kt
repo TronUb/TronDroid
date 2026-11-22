@@ -65,6 +65,15 @@ object TelegramBotRuntime {
 
     fun activeCount(): Int = workers.values.count { it.isRunning() }
 
+    fun sendUserbotHelpDex(profileId: String, chatId: Long): Boolean =
+        workers[profileId]?.sendUserbotHelpDex(chatId) ?: false
+
+    fun sendUserbotAlive(profileId: String, chatId: Long): Boolean =
+        workers[profileId]?.sendUserbotAlive(chatId) ?: false
+
+    fun sendUserbotQuote(profileId: String, chatId: Long): Boolean =
+        workers[profileId]?.sendUserbotQuote(chatId) ?: false
+
     @Synchronized
     fun stopAll() {
         workers.values.forEach { it.stopWorker() }
@@ -142,13 +151,16 @@ object TelegramBotRuntime {
         private fun button(text: String, data: String) =
             JSONObject().put("text", text).put("callback_data", data)
 
-        private fun botHelpPlugins() = com.vikram.trondroid.plugins.PluginCatalog.bot
-            .filter { pluginSettings.enabled(it.id) }
-            .filter { plugin -> plugin.commands.any { pluginSettings.commandEnabled(plugin.id, it.name) } }
-            .sortedBy { it.title.lowercase() }
+        private fun helpPlugins(userbot: Boolean = false) =
+            (if (userbot) com.vikram.trondroid.plugins.PluginCatalog.userbot
+             else com.vikram.trondroid.plugins.PluginCatalog.bot)
+                .filter { pluginSettings.enabled(it.id) }
+                .filter { plugin -> plugin.commands.any { pluginSettings.commandEnabled(plugin.id, it.name) } }
+                .sortedBy { it.title.lowercase() }
 
-        private fun helpKeyboard(page: Int): JSONObject {
-            val plugins = botHelpPlugins()
+        private fun helpKeyboard(page: Int, userbot: Boolean = false): JSONObject {
+            val plugins = helpPlugins(userbot)
+            val callbackPrefix = if (userbot) "ubhelp" else "bothelp"
             val pageSize = 8
             val pages = ((plugins.size + pageSize - 1) / pageSize).coerceAtLeast(1)
             val current = page.coerceIn(0, pages - 1)
@@ -156,30 +168,30 @@ object TelegramBotRuntime {
             plugins.drop(current * pageSize).take(pageSize).chunked(2).forEach { group ->
                 val row = org.json.JSONArray()
                 group.forEach { plugin ->
-                    row.put(button("🧩 ${plugin.title}", "bothelp:detail:${plugin.id}:$current"))
+                    row.put(button("🧩 ${plugin.title}", "$callbackPrefix:detail:${plugin.id}:$current"))
                 }
                 rows.put(row)
             }
             val navigation = org.json.JSONArray()
-            if (current > 0) navigation.put(button("❰ Prev", "bothelp:page:${current - 1}"))
-            navigation.put(button("Home", "bothelp:home"))
-            if (current < pages - 1) navigation.put(button("Next ❱", "bothelp:page:${current + 1}"))
+            if (current > 0) navigation.put(button("❰ Prev", "$callbackPrefix:page:${current - 1}"))
+            navigation.put(button("Home", "$callbackPrefix:home"))
+            if (current < pages - 1) navigation.put(button("Next ❱", "$callbackPrefix:page:${current + 1}"))
             rows.put(navigation)
             return JSONObject().put("inline_keyboard", rows)
         }
 
-        private fun helpCaption(): String {
-            val plugins = botHelpPlugins()
+        private fun helpCaption(userbot: Boolean = false): String {
+            val plugins = helpPlugins(userbot)
             val commands = plugins.sumOf { plugin ->
                 plugin.commands.count { pluginSettings.commandEnabled(plugin.id, it.name) }
             }
-            return "✦ **TRON BOT HELPDEx**\n\n" +
+            return (if (userbot) "✦ **TRON USERBOT HELPDEx**\n\n" else "✦ **TRON BOT HELPDEx**\n\n") +
                 "Explore **${plugins.size} plugins** and **$commands commands**. " +
                 "Choose a plugin below to view its commands, descriptions and usage."
         }
 
-        private fun pluginCaption(id: String): String {
-            val plugin = botHelpPlugins().firstOrNull { it.id == id } ?: return "This plugin is no longer available."
+        private fun pluginCaption(id: String, userbot: Boolean = false): String {
+            val plugin = helpPlugins(userbot).firstOrNull { it.id == id } ?: return "This plugin is no longer available."
             return buildString {
                 append("🧩 **${plugin.title}**\n")
                 append("${plugin.summary}\n\n")
@@ -192,10 +204,33 @@ object TelegramBotRuntime {
             }.take(950)
         }
 
-        private fun sendBotPhoto(chatId: Long, caption: String, markup: JSONObject) {
+        private fun sendBotPhoto(chatId: Long, caption: String, markup: JSONObject): JSONObject =
             request("sendPhoto?chat_id=$chatId&photo=${encode(tronBotImage)}" +
                 "&caption=${encode(caption)}&parse_mode=Markdown&reply_markup=${encode(markup.toString())}")
-        }
+
+        fun sendUserbotHelpDex(chatId: Long): Boolean = runCatching {
+            sendBotPhoto(chatId, helpCaption(userbot = true), helpKeyboard(0, userbot = true)).optBoolean("ok")
+        }.getOrDefault(false)
+
+        fun sendUserbotAlive(chatId: Long): Boolean = runCatching {
+            val markup = JSONObject().put("inline_keyboard", org.json.JSONArray().apply {
+                put(org.json.JSONArray().put(button("Refresh", "botalive:refresh")))
+                put(org.json.JSONArray().put(button("Plugins", "ubhelp:home")).put(button("Close", "botalive:close")))
+            })
+            sendBotPhoto(chatId, botAliveCaption(), markup).optBoolean("ok")
+        }.getOrDefault(false)
+
+        fun sendUserbotQuote(chatId: Long): Boolean = runCatching {
+            val quotes = listOf(
+                "“A lesson without pain is meaningless.” — Edward Elric",
+                "“If you don't take risks, you can't create a future.” — Monkey D. Luffy",
+                "“Whatever you lose, you'll find it again.” — Kenshin Himura",
+                "“Knowing you're different is only the beginning.” — Natsuki Subaru"
+            )
+            val markup = JSONObject().put("inline_keyboard", org.json.JSONArray().put(
+                org.json.JSONArray().put(button("More", "botquote:more"))))
+            sendBotText(chatId, "❝ ${quotes.random()} ❞", markup).optBoolean("ok")
+        }.getOrDefault(false)
 
         private fun botAliveCaption(): String {
             val elapsed = ((android.os.SystemClock.elapsedRealtime() - workerStartedAt) / 1000).coerceAtLeast(0)
@@ -239,6 +274,20 @@ object TelegramBotRuntime {
                         org.json.JSONArray().put(button("❰ Back to plugins", "bothelp:page:$page"))
                     ))
                     edit(pluginCaption(pluginId), back)
+                }
+                data == "ubhelp:home" -> edit(helpCaption(userbot = true), helpKeyboard(0, userbot = true))
+                data.startsWith("ubhelp:page:") -> {
+                    val page = data.substringAfterLast(':').toIntOrNull() ?: 0
+                    edit(helpCaption(userbot = true), helpKeyboard(page, userbot = true))
+                }
+                data.startsWith("ubhelp:detail:") -> {
+                    val body = data.removePrefix("ubhelp:detail:")
+                    val page = body.substringAfterLast(':').toIntOrNull() ?: 0
+                    val pluginId = body.substringBeforeLast(':')
+                    val back = JSONObject().put("inline_keyboard", org.json.JSONArray().put(
+                        org.json.JSONArray().put(button("❰ Back to plugins", "ubhelp:page:$page"))
+                    ))
+                    edit(pluginCaption(pluginId, userbot = true), back)
                 }
                 data == "botalive:refresh" -> edit(botAliveCaption(), JSONObject().put("inline_keyboard",
                     org.json.JSONArray().put(org.json.JSONArray().put(button("Refresh", "botalive:refresh")))))
@@ -413,9 +462,9 @@ object TelegramBotRuntime {
             }
         }
 
-        private fun sendBotText(chatId: Long, text: String, markup: JSONObject? = null) {
+        private fun sendBotText(chatId: Long, text: String, markup: JSONObject? = null): JSONObject {
             val markupArg = markup?.let { "&reply_markup=${encode(it.toString())}" }.orEmpty()
-            request("sendMessage?chat_id=$chatId&text=${encode(text.take(4000))}&parse_mode=Markdown$markupArg")
+            return request("sendMessage?chat_id=$chatId&text=${encode(text.take(4000))}&parse_mode=Markdown$markupArg")
         }
 
         private fun sendReply(chatId: Long, reply: String) {
