@@ -18,7 +18,7 @@ class TelegramClientGateway(
     private val cacheDirectory: File,
     private val currentUserId: () -> Long? = { null }
 ) {
-    private val mediaExecutor = Executors.newCachedThreadPool { runnable ->
+    private val mediaExecutor = Executors.newFixedThreadPool(2) { runnable ->
         Thread(runnable, "TronDroid-PluginMedia").apply { isDaemon = true }
     }
 
@@ -26,7 +26,11 @@ class TelegramClientGateway(
         function: TdApi.Function<*>,
         callback: (TdApi.Object) -> Unit
     ) {
-        val activeClient = clientProvider() ?: return
+        val activeClient = clientProvider()
+        if (activeClient == null) {
+            callback(TdApi.Error(503, "Telegram session is not connected. The command will work again after reconnecting."))
+            return
+        }
         @Suppress("UNCHECKED_CAST")
         val typedFunction = function as TdApi.Function<TdApi.Object>
         activeClient.send(typedFunction) { result -> callback(result) }
@@ -36,8 +40,10 @@ class TelegramClientGateway(
         val userId = currentUserId() ?: return callback(TdApi.Error(400, "Current Telegram account is unavailable."))
         send(TdApi.CreatePrivateChat(userId, false)) { chatResult ->
             if (chatResult !is TdApi.Chat) return@send callback(chatResult)
-            val content = TdApi.InputMessageText(TdApi.FormattedText(text.take(4000), emptyArray()), null, true)
-            send(TdApi.SendMessage(chatResult.id, null, null, null, null, content), callback)
+            parseFormattedText(text, 4000) { formatted ->
+                val content = TdApi.InputMessageText(formatted, null, true)
+                send(TdApi.SendMessage(chatResult.id, null, null, null, null, content), callback)
+            }
         }
     }
 
