@@ -155,8 +155,30 @@ object TelegramBotRuntime {
             if (builtInPluginId != null && !pluginSettings.commandEnabled(builtInPluginId, token)) return
             val builtInReply = when (token) {
                 "start" -> "Welcome! TronDroid bot is online. Send /help to see available commands."
-                "help" -> "Available commands:\n/start — Start the bot\n/help — Show this help\n/ping — Check bot response\n/id — Show user and chat IDs" +
-                    externalPlugins.flatMap { it.commands }.joinToString("") { "\n/" + it.name + " — " + it.description }
+                "help" -> {
+                    val builtins = listOf(
+                        "start" to "Start the bot",
+                        "help" to "Show this help",
+                        "ping" to "Check bot response",
+                        "id" to "Show user and chat IDs",
+                        "quote" to "Show a random quote",
+                        "broadcast" to "Broadcast an owner announcement"
+                    ).filter { (name, _) ->
+                        val pluginId = when (name) {
+                            "start" -> "bot:start"
+                            "help" -> "bot:help"
+                            "ping" -> "bot:ping"
+                            "id", "quote" -> "bot:utils"
+                            else -> "bot:broadcast"
+                        }
+                        pluginSettings.commandEnabled(pluginId, name)
+                    }.joinToString("\n") { "/" + it.first + " — " + it.second }
+                    val external = externalPlugins.flatMap { plugin ->
+                        plugin.commands.filter { pluginSettings.commandEnabled(plugin.id, it.name) }
+                            .map { "/" + it.name + " — " + it.description }
+                    }.joinToString("\n")
+                    "Available commands:\n" + listOf(builtins, external).filter { it.isNotBlank() }.joinToString("\n")
+                }
                 "ping" -> "Pong! Telegram Bot API is responding."
                 "quote" -> listOf(
                     "“The world is not perfect. But it is there for us, doing the best it can.” — Roy Mustang",
