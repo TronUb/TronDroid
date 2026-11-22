@@ -131,8 +131,8 @@ fun TronDroidHome(
                 Tab.USERBOTS -> UserbotsScreen(Modifier.fillMaxSize(), bots, listState = userbotsListState, onOpen = {
                     onSelect(it); navigate(Page.Userbot(it))
                 }, onToggle = { id, enabled -> onToggle(id, enabled) })
-                Tab.PLUGINS -> PluginsScreen(Modifier.padding(padding), selectedOwner = pluginOwner, onOwnerChange = { pluginOwner = it }, listState = if (pluginOwner == 0) userbotPluginsListState else botPluginsListState, onOpen = { navigate(Page.PluginDetail(it)) })
-                Tab.SETTINGS -> SettingsScreen(Modifier.padding(padding),
+                Tab.PLUGINS -> PluginsScreen(Modifier.fillMaxSize(), selectedOwner = pluginOwner, onOwnerChange = { pluginOwner = it }, listState = if (pluginOwner == 0) userbotPluginsListState else botPluginsListState, onOpen = { navigate(Page.PluginDetail(it)) })
+                Tab.SETTINGS -> SettingsScreen(Modifier.fillMaxSize(),
                     onSessions = { navigate(Page.SessionPreferences) }, onBots = { navigate(Page.BotConnections) },
                     onPermissions = { navigate(Page.Permissions) }, onAbout = { navigate(Page.About) }, onUpdater = { navigate(Page.Updater) },
                     themeMode = themeMode, onThemeChange = onThemeChange, dynamicColors = dynamicColors, onDynamicColorsChange = onDynamicColorsChange)
@@ -140,7 +140,7 @@ fun TronDroidHome(
             is Page.Userbot -> {
                 val bot = bots.firstOrNull { it.id == current.id }
                 UserbotDetailScreen(
-                    Modifier.padding(padding),
+                    Modifier.fillMaxSize(),
                     bot,
                     engine = if (selected?.id == current.id) engine else null,
                     apiHash = bot?.let { onReadApiHash(it.id) }.orEmpty(),
@@ -154,12 +154,12 @@ fun TronDroidHome(
                     onBotToggle = onBotToggle
                 )
             }
-            Page.SessionPreferences -> SessionPreferencesScreen(Modifier.padding(padding))
-            Page.BotConnections -> BotConnectionsScreen(Modifier.padding(padding))
-            Page.Permissions -> PermissionsScreen(Modifier.padding(padding))
-            Page.About -> AboutScreen(Modifier.padding(padding))
-            Page.Updater -> AppUpdaterScreen(Modifier.padding(padding))
-            is Page.PluginDetail -> PluginDetailScreen(Modifier.padding(padding), current.id)
+            Page.SessionPreferences -> SessionPreferencesScreen(Modifier.fillMaxSize())
+            Page.BotConnections -> BotConnectionsScreen(Modifier.fillMaxSize())
+            Page.Permissions -> PermissionsScreen(Modifier.fillMaxSize())
+            Page.About -> AboutScreen(Modifier.fillMaxSize())
+            Page.Updater -> AppUpdaterScreen(Modifier.fillMaxSize())
+            is Page.PluginDetail -> PluginDetailScreen(Modifier.fillMaxSize(), current.id)
             } 
             if (isHome) FloatingGlassBottomBar(selected = tab, onSelect = { tab = it },
                 modifier = Modifier.align(Alignment.BottomCenter))
@@ -885,22 +885,42 @@ private fun PluginsScreen(modifier: Modifier, selectedOwner: Int, onOwnerChange:
             }
         }
         if (selectedOwner == 0) item {
-            Card(shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
-                Column(Modifier.fillMaxWidth().padding(horizontal = 13.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+            Card(shape = RoundedCornerShape(22.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+                Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Rounded.Terminal, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("Command prefix", style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
-                        Text("Current $savedPrefix", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                        Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.secondaryContainer) {
+                            Icon(Icons.Rounded.Terminal, null, Modifier.padding(9.dp).size(20.dp),
+                                tint = MaterialTheme.colorScheme.onSecondaryContainer)
+                        }
+                        Spacer(Modifier.width(10.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text("Command prefix", style = MaterialTheme.typography.titleSmall)
+                            Text("Used before every userbot command", style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Surface(shape = RoundedCornerShape(50.dp), color = MaterialTheme.colorScheme.primaryContainer) {
+                            Text(savedPrefix, Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                                style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                        }
                     }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        OutlinedTextField(handler, { handler = it.take(8) }, modifier = Modifier.weight(1f).heightIn(min = 52.dp),
-                            singleLine = true, placeholder = { Text(".") }, label = { Text("Prefix") })
-                        Button(onClick = {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        OutlinedTextField(value = handler, onValueChange = { handler = it.take(8) },
+                            modifier = Modifier.weight(1f), shape = RoundedCornerShape(18.dp), singleLine = true,
+                            placeholder = { Text(".") },
+                            leadingIcon = { Text("⌘", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary) },
+                            supportingText = { Text("Choose a short prefix, e.g. . or !") })
+                        FilledTonalButton(onClick = {
                             val value = handler.trim().ifBlank { "." }
                             settings.setHandler(value); handler = value; savedPrefix = value
                             focusManager.clearFocus(); keyboard?.hide()
-                        }, enabled = handler.isNotBlank() && handler.trim() != savedPrefix) { Text("Save") }
+                        }, enabled = handler.isNotBlank() && handler.trim() != savedPrefix,
+                            shape = RoundedCornerShape(16.dp),
+                            contentPadding = PaddingValues(horizontal = 18.dp, vertical = 15.dp)) {
+                            Icon(Icons.Rounded.Check, null, Modifier.size(18.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Save")
+                        }
                     }
                 }
             }
