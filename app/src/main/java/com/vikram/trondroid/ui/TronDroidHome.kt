@@ -1,6 +1,8 @@
 package com.vikram.trondroid.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -42,6 +44,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.vikram.trondroid.data.BotProfile
 import com.vikram.trondroid.plugins.PluginCatalog
+import com.vikram.trondroid.plugins.ExternalPluginLoader
 import com.vikram.trondroid.plugins.PluginSettings
 import com.vikram.trondroid.telegram.TelegramEngine
 import com.vikram.trondroid.telegram.TelegramBotRuntime
@@ -87,6 +90,24 @@ fun TronDroidHome(
     val context = androidx.compose.ui.platform.LocalContext.current
     var pendingDelete by remember { mutableStateOf<BotProfile?>(null) }
     var pendingLogout by remember { mutableStateOf<BotProfile?>(null) }
+    var importingPlugin by remember { mutableStateOf(false) }
+    val importPluginLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            importingPlugin = true
+            val result = runCatching { ExternalPluginLoader.importManifest(context, uri) }
+            android.widget.Toast.makeText(
+                context,
+                result.fold(
+                    { "Imported $it manifest. Metadata only; external code is not executed." },
+                    { "Plugin import failed: ${it.message ?: "Invalid manifest"}" }
+                ),
+                android.widget.Toast.LENGTH_LONG
+            ).show()
+            importingPlugin = false
+        }
+    }
     val isHome = page == Page.Home
     Scaffold(
         topBar = {},
@@ -102,15 +123,17 @@ fun TronDroidHome(
             } else if (isHome && tab == Tab.PLUGINS) {
                 FloatingActionButton(
                     onClick = {
-                        android.widget.Toast.makeText(
-                            context,
-                            "External executable plugins require a trusted signing and isolation model. .tdplugin manifests can be imported as plugin metadata.",
-                            android.widget.Toast.LENGTH_LONG
-                        ).show()
+                        if (!importingPlugin) {
+                            importPluginLauncher.launch(arrayOf("application/json", "application/octet-stream", "*/*"))
+                        }
                     },
                     modifier = Modifier.offset(y = (-104).dp)
                 ) {
-                    Icon(Icons.Rounded.Extension, "Install external plugin")
+                    if (importingPlugin) {
+                        CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
+                    } else {
+                        Icon(Icons.Rounded.DownloadForOffline, "Import external plugin manifest")
+                    }
                 }
             }
         }
@@ -1211,7 +1234,7 @@ private fun SettingsScreen(
             Triple("App updates", "Check and install the latest APK", Icons.Rounded.SystemUpdate),
             Triple("About TronDroid", "Version, project information and developer", Icons.Rounded.Info)
         ), listOf(onUpdater, onAbout))
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(120.dp))
     }
 }
 
