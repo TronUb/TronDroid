@@ -123,7 +123,10 @@ object TelegramBotRuntime {
                             continue
                         }
                     }
-                    val updates = request("getUpdates?timeout=25&offset=$offset")
+                    // Telegram remembers allowed_updates between long-poll requests.
+                    // Explicitly include inline_query so /setinline results are actually delivered.
+                    val allowedUpdates = encode("""["message","callback_query","inline_query"]""")
+                    val updates = request("getUpdates?timeout=25&offset=$offset&allowed_updates=$allowedUpdates")
                     if (!updates.optBoolean("ok")) {
                         if (!preferences.getBoolean("auto_reconnect_bots", true)) break
                         Thread.sleep(retryDelayMs)
@@ -215,11 +218,14 @@ object TelegramBotRuntime {
                 "&caption=${encode(caption)}&parse_mode=Markdown&reply_markup=${encode(markup.toString())}")
 
         private fun switchInlineButton(label: String, query: String): JSONObject =
-            JSONObject().put("text", label).put("switch_inline_query", query)
+            JSONObject().put("text", label).put("switch_inline_query_current_chat", query)
 
         private fun inlineLauncher(query: String): JSONObject =
             JSONObject().put("inline_keyboard", org.json.JSONArray().put(
-                org.json.JSONArray().put(switchInlineButton("Open in inline mode", query))
+                org.json.JSONArray().put(switchInlineButton(
+                    if (query == "help") "Browse Helpdex inline" else "Show Alive inline",
+                    query
+                ))
             ))
 
         fun sendUserbotHelpDex(chatId: Long): Boolean = runCatching {
@@ -230,8 +236,16 @@ object TelegramBotRuntime {
 
         fun sendUserbotAlive(chatId: Long, caption: String): Boolean = runCatching {
             lastUserbotAliveCaption = caption
+            app.getSharedPreferences("trondroid.bot.runtime", Context.MODE_PRIVATE)
+                .edit().putString("userbot_alive_caption.$profileId", caption).apply()
             sendBotText(chatId, caption, inlineLauncher("alive")).optBoolean("ok")
         }.getOrDefault(false)
+
+        private fun currentUserbotAliveCaption(): String =
+            lastUserbotAliveCaption
+                ?: app.getSharedPreferences("trondroid.bot.runtime", Context.MODE_PRIVATE)
+                    .getString("userbot_alive_caption.$profileId", null)
+                ?: "Userbot status is not cached yet. Run .ialive once from this account to populate the live TDLib and uptime details."
 
         fun sendUserbotQuote(chatId: Long): Boolean = runCatching {
             sendBotText(chatId, "Open Tron quotes in inline mode.", inlineLauncher("quote")).optBoolean("ok")
@@ -300,7 +314,7 @@ object TelegramBotRuntime {
                     ))
                     edit(pluginCaption(pluginId, userbot = true), back)
                 }
-                data == "ubalive:refresh" -> edit(lastUserbotAliveCaption ?: botAliveCaption(), JSONObject().put("inline_keyboard",
+                data == "ubalive:refresh" -> edit(currentUserbotAliveCaption(), JSONObject().put("inline_keyboard",
                     org.json.JSONArray().apply {
                         put(org.json.JSONArray().put(button("Refresh", "ubalive:refresh")))
                         put(org.json.JSONArray().put(button("Plugins", "ubhelp:home")).put(button("Close", "ubalive:close")))
@@ -341,11 +355,13 @@ object TelegramBotRuntime {
         private fun handleInlineQuery(query: JSONObject) {
             val queryId = query.optString("id")
             val raw = query.optString("query").trim()
-            val command = raw.substringBefore(' ').lowercase()
-            val argument = raw.substringAfter(' ', "").trim()
+            val normalized = raw.removePrefix("/").removePrefix(".").removePrefix("!")
+                .substringBefore('@').trim()
+            val command = normalized.substringBefore(' ').lowercase()
+            val argument = normalized.substringAfter(' ', "").trim()
             val results = org.json.JSONArray()
             when (command) {
-                "", "help", "plugins" -> {
+                "", "help", "ihelp", "helpdex", "plugins" -> {
                     val page = argument.toIntOrNull()?.coerceAtLeast(0) ?: 0
                     results.put(inlineArticle("userbot-help", "Tron Userbot Helpdex",
                         "Browse enabled userbot plugins and command usage",
@@ -359,7 +375,7 @@ object TelegramBotRuntime {
                             inlineLauncher("quote")))
                     }
                 }
-                "alive", "ialive", "stats" -> results.put(inlineArticle("userbot-alive", "Userbot status",
+                "alive", "ialive", "stats", "ialive" -> results.put(inlineArticle("userbot-alive", "Userbot status",
                     "Uptime and runtime information", lastUserbotAliveCaption ?: botAliveCaption(),
                     userbotAliveKeyboard()))
                 "quote" -> results.put(inlineArticle("userbot-quote", "Tron quote", "Share an anime quote",
@@ -367,14 +383,21 @@ object TelegramBotRuntime {
                 "ping" -> results.put(inlineArticle("userbot-ping", "Pong!",
                     "Check whether the companion bot is responding", "Pong! Telegram Bot API is responding."))
                 else -> {
+                    val pluginQuery = if (command == "plugin") argument else normalized
                     val plugin = helpPlugins(userbot = true).firstOrNull {
-                        it.id.equals(argument, true) || it.title.equals(raw, true) || it.title.contains(raw, true)
+                        it.id.equals(pluginQuery, true) || it.title.equals(pluginQuery, true) ||
+                            it.title.contains(pluginQuery, true)
                     }
                     if (plugin != null) results.put(inlineArticle("plugin-${plugin.id}", plugin.title,
                         plugin.summary, pluginCaption(plugin.id, userbot = true),
                         JSONObject().put("inline_keyboard", org.json.JSONArray().put(
                             org.json.JSONArray().put(button("Back to plugins", "ubhelp:home"))))))
                 }
+            }
+            if (results.length() == 0) {
+                results.put(inlineArticle("userbot-help-fallback", "Tron Userbot Helpdex",
+                    "No exact match. Browse all available plugins and commands.",
+                    helpCaption(userbot = true), helpKeyboard(0, userbot = true)))
             }
             val response = request("answerInlineQuery?inline_query_id=${encode(queryId)}" +
                 "&results=${encode(results.toString())}&cache_time=0&is_personal=true")
