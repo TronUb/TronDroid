@@ -104,16 +104,8 @@ fun TronDroidHome(
             )
         },
         bottomBar = {
-            if (isHome) NavigationBar {
-                listOf(Tab.USERBOTS, Tab.PLUGINS, Tab.SETTINGS).forEach { t ->
-                    NavigationBarItem(selected = tab == t, onClick = { tab = t },
-                        icon = { Icon(when (t) {
-                            Tab.USERBOTS -> Icons.Rounded.SmartToy
-                            Tab.PLUGINS -> Icons.Rounded.Extension
-                            Tab.SETTINGS -> Icons.Rounded.Settings
-                        }, t.name.lowercase()) },
-                        label = { Text(t.name.lowercase().replaceFirstChar { it.uppercase() }) })
-                }
+            if (isHome) {
+                FloatingGlassBottomBar(selected = tab, onSelect = { tab = it })
             }
         },
         floatingActionButton = {
@@ -198,6 +190,90 @@ fun TronDroidHome(
             },
             dismissButton = { TextButton(onClick = { pendingDelete = null }) { Text("Cancel") } }
         )
+    }
+}
+
+@Composable
+private fun FloatingGlassBottomBar(selected: Tab, onSelect: (Tab) -> Unit) {
+    val tabs = listOf(Tab.USERBOTS, Tab.PLUGINS, Tab.SETTINGS)
+    val selectedIndex = tabs.indexOf(selected).coerceAtLeast(0)
+    val indicatorOffset by androidx.compose.animation.core.animateDpAsState(
+        targetValue = (selectedIndex * 1f).let { it },
+        label = "bottom-bar-tab"
+    )
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .padding(horizontal = 22.dp, vertical = 8.dp)
+    ) {
+        BoxWithConstraints(
+            Modifier
+                .fillMaxWidth()
+                .height(68.dp)
+                .shadow(14.dp, RoundedCornerShape(50))
+                .clip(RoundedCornerShape(50))
+                .background(MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.82f))
+                .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.48f), RoundedCornerShape(50))
+                .padding(5.dp)
+        ) {
+            val itemWidth = maxWidth / 3
+            val animatedX by androidx.compose.animation.core.animateDpAsState(
+                targetValue = itemWidth * selectedIndex,
+                animationSpec = androidx.compose.animation.core.spring(
+                    dampingRatio = 0.78f,
+                    stiffness = 520f
+                ),
+                label = "glass-tab-indicator"
+            )
+            Box(
+                Modifier
+                    .offset(x = animatedX)
+                    .width(itemWidth)
+                    .fillMaxHeight()
+                    .clip(RoundedCornerShape(50))
+                    .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.92f))
+            )
+            Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
+                tabs.forEach { tab ->
+                    val active = selected == tab
+                    val icon = when (tab) {
+                        Tab.USERBOTS -> Icons.Rounded.SmartToy
+                        Tab.PLUGINS -> Icons.Rounded.Extension
+                        Tab.SETTINGS -> Icons.Rounded.Settings
+                    }
+                    val label = when (tab) {
+                        Tab.USERBOTS -> "Userbots"
+                        Tab.PLUGINS -> "Plugins"
+                        Tab.SETTINGS -> "Settings"
+                    }
+                    Column(
+                        Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .clip(RoundedCornerShape(50))
+                            .clickable { onSelect(tab) },
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            icon,
+                            contentDescription = label,
+                            tint = if (active) MaterialTheme.colorScheme.onPrimaryContainer
+                                else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(22.dp)
+                        )
+                        Spacer(Modifier.height(3.dp))
+                        Text(
+                            label,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (active) MaterialTheme.colorScheme.onPrimaryContainer
+                                else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
