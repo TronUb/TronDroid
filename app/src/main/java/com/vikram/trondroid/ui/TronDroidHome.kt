@@ -262,9 +262,9 @@ private fun FloatingGlassBottomBar(
     val tabs = listOf(Tab.USERBOTS, Tab.PLUGINS, Tab.SETTINGS)
     val selectedIndex = tabs.indexOf(selected).coerceAtLeast(0)
     val dark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
-    val glass = if (dark) Color(0xFF172238).copy(alpha = 0.96f)
-        else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.96f)
-    val edge = MaterialTheme.colorScheme.primary.copy(alpha = if (dark) 0.24f else 0.18f)
+    // Keep the dock neutral; reserve the theme's primary color for the selected tab.
+    val glass = if (dark) Color(0xFF303238) else Color(0xFFFFFFFF)
+    val edge = MaterialTheme.colorScheme.outlineVariant.copy(alpha = if (dark) 0.72f else 0.9f)
     Box(
         modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 22.dp, vertical = 8.dp)
             .height(76.dp),
@@ -284,7 +284,7 @@ private fun FloatingGlassBottomBar(
                 label = "glass-tab-indicator"
             )
             Box(Modifier.offset(x = animatedX).width(itemWidth).fillMaxHeight()
-                .clip(RoundedCornerShape(50)).background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f)))
+                .clip(RoundedCornerShape(50)).background(MaterialTheme.colorScheme.primaryContainer))
             Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
                 tabs.forEach { tab ->
                     val active = selected == tab
