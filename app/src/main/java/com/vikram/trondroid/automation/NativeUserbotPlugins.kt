@@ -430,7 +430,7 @@ class HelpAutomationPlugin(
         when (context.command) {
             "uplugs" -> context.reply("**USERBOT PLUGINS**\n\n" + all.joinToString("\n") { it.id.substringAfter(':') })
             "bplugs" -> context.reply("Bot plugins are listed in the Plugins → Bot tab. Bot runtime help is available with /help.")
-            "inline" -> context.reply("Telegram inline mode is configured through @BotFather. Open BotFather → /mybots → select your assistant bot → Bot Settings → Inline Mode → Turn on. TronDroid's native TDLib command menus do not require inline mode.")
+            "inline" -> context.reply("Enable inline mode for this profile's companion bot: open @BotFather → /mybots → select the bot → Bot Settings → Inline Mode → Turn on (or use /setinline). Also keep the Bot session enabled in TronDroid. Then .help and .ialive will show buttons that open @botusername help/alive results directly in the current chat.")
             else -> {
                 if (!requested.isNullOrBlank()) {
                     val selected = all.firstOrNull {
