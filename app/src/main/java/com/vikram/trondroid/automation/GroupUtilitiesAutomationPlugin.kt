@@ -12,7 +12,8 @@ class GroupUtilitiesAutomationPlugin : AutomationPlugin {
         AutomationCommand("gtitle", "Change the current group title (Telegram admin rights required). Custom administrator titles are not exposed by TDLib for this user session.", "gtitle <new group title>"),
         AutomationCommand("invite", "Invite one user by replying to them or supplying their numeric ID.", "invite <user id> (or reply)"),
         AutomationCommand("join", "Join a public username or invite link.", "join <@username or t.me invite link>"),
-        AutomationCommand("kickme", "Leave the current group. This action is immediate.", "kickme")
+        AutomationCommand("kickme", "Leave the current group. This action is immediate.", "kickme"),
+        AutomationCommand("slowmo", "Set supergroup slow mode to a Telegram-supported interval, or 0 to disable.", "slowmo <0|5|10|30|60|300|900|3600>")
     )
 
     override fun onCommand(context: AutomationContext) {
@@ -30,6 +31,24 @@ class GroupUtilitiesAutomationPlugin : AutomationPlugin {
             }
             "invite" -> invite(context, gateway)
             "join" -> join(context, gateway)
+            "slowmo" -> {
+                val delay = context.arguments.firstOrNull()?.toIntOrNull()
+                    ?: return context.reply("Usage: .slowmo <0|5|10|30|60|300|900|3600>")
+                if (delay !in setOf(0, 5, 10, 30, 60, 300, 900, 3600)) {
+                    return context.reply("Slow mode must be 0, 5, 10, 30, 60, 300, 900 or 3600 seconds.")
+                }
+                gateway.send(TdApi.GetChat(context.message.chatId)) { chatResult ->
+                    val chat = chatResult as? TdApi.Chat
+                        ?: return@send context.reply(if (chatResult is TdApi.Error) chatResult.message else "Chat unavailable.")
+                    val type = chat.type as? TdApi.ChatTypeSupergroup
+                        ?: return@send context.reply("Slow mode is available in supergroups only.")
+                    if (type.isChannel) return@send context.reply("Slow mode is not supported in broadcast channels.")
+                    gateway.send(TdApi.SetChatSlowModeDelay(context.message.chatId, delay)) { result ->
+                        context.reply(if (result is TdApi.Error) "Slow mode update failed: ${result.message}"
+                            else if (delay == 0) "Slow mode disabled." else "Slow mode set to ${delay}s.")
+                    }
+                }
+            }
             "kickme" -> {
                 if (gateway.currentUserId() == null) return context.reply("Unable to determine the connected Telegram account.")
                 context.reply("Leaving this chat…")
