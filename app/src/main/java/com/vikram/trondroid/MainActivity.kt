@@ -152,6 +152,17 @@ class MainActivity : ComponentActivity() {
                         bots = store.all()
                         TelegramBackgroundService.reconcile(applicationContext)
                     },
+                    onSetAllConnections = { enabled ->
+                        store.setAllEnabled(enabled)
+                        bots = store.all()
+                        TelegramBackgroundService.reconcile(applicationContext)
+                    },
+                    onDeleteAllConnections = {
+                        store.removeAll()
+                        bots = store.all()
+                        selectedId = null
+                        TelegramBackgroundService.reconcile(applicationContext)
+                    },
                     onExportSettings = { exportSettingsBackup() },
                     onImportSettings = { raw ->
                         importSettingsBackup(raw)
