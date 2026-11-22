@@ -95,7 +95,32 @@ class MainActivity : ComponentActivity() {
             val colorScheme = when {
                 dynamicColors && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ->
                     if (dark) dynamicDarkColorScheme(this@MainActivity) else dynamicLightColorScheme(this@MainActivity)
-                dark -> darkColorScheme()
+                dark -> darkColorScheme(
+                    primary = androidx.compose.ui.graphics.Color(0xFFB8C7F5),
+                    onPrimary = androidx.compose.ui.graphics.Color(0xFF172D50),
+                    primaryContainer = androidx.compose.ui.graphics.Color(0xFF30476F),
+                    onPrimaryContainer = androidx.compose.ui.graphics.Color(0xFFDCE5FF),
+                    secondary = androidx.compose.ui.graphics.Color(0xFFC1C8DC),
+                    onSecondary = androidx.compose.ui.graphics.Color(0xFF293042),
+                    secondaryContainer = androidx.compose.ui.graphics.Color(0xFF3A4258),
+                    onSecondaryContainer = androidx.compose.ui.graphics.Color(0xFFDDE2F7),
+                    tertiary = androidx.compose.ui.graphics.Color(0xFFE2BDE0),
+                    onTertiary = androidx.compose.ui.graphics.Color(0xFF402843),
+                    tertiaryContainer = androidx.compose.ui.graphics.Color(0xFF593F5C),
+                    onTertiaryContainer = androidx.compose.ui.graphics.Color(0xFFFFD7FA),
+                    background = androidx.compose.ui.graphics.Color(0xFF0D1016),
+                    onBackground = androidx.compose.ui.graphics.Color(0xFFE3E6EF),
+                    surface = androidx.compose.ui.graphics.Color(0xFF11151D),
+                    onSurface = androidx.compose.ui.graphics.Color(0xFFE3E6EF),
+                    surfaceVariant = androidx.compose.ui.graphics.Color(0xFF252B36),
+                    onSurfaceVariant = androidx.compose.ui.graphics.Color(0xFFC0C7D5),
+                    outline = androidx.compose.ui.graphics.Color(0xFF8993A5),
+                    outlineVariant = androidx.compose.ui.graphics.Color(0xFF414958),
+                    error = androidx.compose.ui.graphics.Color(0xFFFFB4AB),
+                    onError = androidx.compose.ui.graphics.Color(0xFF690005),
+                    errorContainer = androidx.compose.ui.graphics.Color(0xFF93000A),
+                    onErrorContainer = androidx.compose.ui.graphics.Color(0xFFFFDAD6)
+                )
                 else -> lightColorScheme()
             }
             MaterialTheme(colorScheme = colorScheme) {
