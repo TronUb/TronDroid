@@ -169,6 +169,18 @@ class PluginSettings(context: Context) {
     private val prefs = context.getSharedPreferences("trondroid.plugins", Context.MODE_PRIVATE)
     fun enabled(id: String) = prefs.getBoolean(id, PluginCatalog.find(id)?.implemented ?: true)
     fun setEnabled(id: String, value: Boolean) { prefs.edit().putBoolean(id, value).apply() }
+
+    private fun commandKey(pluginId: String, command: String) =
+        "command:${pluginId.trim()}:${command.trim().lowercase()}"
+
+    /** Commands are enabled by default; per-command state is independent of the parent plugin. */
+    fun commandEnabled(pluginId: String, command: String): Boolean =
+        prefs.getBoolean(commandKey(pluginId, command), true)
+
+    fun setCommandEnabled(pluginId: String, command: String, value: Boolean) {
+        prefs.edit().putBoolean(commandKey(pluginId, command), value).apply()
+    }
+
     fun handler() = prefs.getString("command_handler", ".") ?: "."
     fun setHandler(value: String) { prefs.edit().putString("command_handler", value).apply() }
 }
