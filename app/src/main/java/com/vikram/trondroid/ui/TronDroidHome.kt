@@ -274,9 +274,10 @@ private fun FloatingGlassBottomBar(
     val tabs = listOf(Tab.USERBOTS, Tab.PLUGINS, Tab.SETTINGS)
     val selectedIndex = tabs.indexOf(selected).coerceAtLeast(0)
     val dark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
-    // Keep the dock neutral; reserve the theme's primary color for the selected tab.
-    val glass = if (dark) Color(0xFF303238) else Color(0xFFFFFFFF)
-    val edge = MaterialTheme.colorScheme.outlineVariant.copy(alpha = if (dark) 0.72f else 0.9f)
+    // Tint the glass dock with the active scheme primary so wallpaper colors
+    // flow through the navigation surface without making it visually opaque.
+    val glass = MaterialTheme.colorScheme.primary.copy(alpha = if (dark) 0.22f else 0.14f)
+    val edge = MaterialTheme.colorScheme.primary.copy(alpha = if (dark) 0.34f else 0.24f)
     Box(
         modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 22.dp, vertical = 8.dp)
             .height(76.dp),
