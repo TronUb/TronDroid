@@ -369,14 +369,14 @@ object TelegramBotRuntime {
                     if (command.isEmpty()) {
                         results.put(inlineArticle("userbot-alive", "Userbot status",
                             "Show userbot uptime and runtime information",
-                            lastUserbotAliveCaption ?: botAliveCaption(), userbotAliveKeyboard()))
+                            currentUserbotAliveCaption(), userbotAliveKeyboard()))
                         results.put(inlineArticle("userbot-quote", "Tron quote", "Share an anime quote",
                             "❝ “If you don't take risks, you can't create a future.” — Monkey D. Luffy ❞",
                             inlineLauncher("quote")))
                     }
                 }
                 "alive", "ialive", "stats" -> results.put(inlineArticle("userbot-alive", "Userbot status",
-                    "Uptime and runtime information", lastUserbotAliveCaption ?: botAliveCaption(),
+                    "Uptime and runtime information", currentUserbotAliveCaption(),
                     userbotAliveKeyboard()))
                 "quote" -> results.put(inlineArticle("userbot-quote", "Tron quote", "Share an anime quote",
                     "❝ “A lesson without pain is meaningless.” — Edward Elric ❞", inlineLauncher("quote")))
