@@ -420,7 +420,38 @@ class HelpAutomationPlugin(
         }.take(3900)
     }
 
+    private fun helpCaption(items: List<AutomationPlugin>): String =
+        "✦ **TRON HELPDEx**\n\nExplore ${items.size} installed plugins. Select a plugin to view its commands, descriptions and exact usage."
 
+    override fun onCommand(context: AutomationContext) {
+        val prefix = commandPrefix().ifBlank { "." }
+        val all = plugins(context)
+        val requested = context.arguments.firstOrNull()?.lowercase()
+        when (context.command) {
+            "uplugs" -> context.reply("**USERBOT PLUGINS**\n\n" + all.joinToString("\n") { it.id.substringAfter(':') })
+            "bplugs" -> context.reply("Bot plugins are listed in the Plugins → Bot tab. Bot runtime help is available with /help.")
+            "inline" -> context.reply("Telegram inline mode is configured through @BotFather. Open BotFather → /mybots → select your assistant bot → Bot Settings → Inline Mode → Turn on. TronDroid's native TDLib command menus do not require inline mode.")
+            else -> {
+                if (!requested.isNullOrBlank()) {
+                    val selected = all.firstOrNull {
+                        it.id.substringAfter(':').equals(requested, true) || it.id.equals(requested, true)
+                    } ?: return context.reply("Plugin '$requested' was not found. Use ${prefix}uplugs to list installed plugins.")
+                    return context.reply(detail(selected, prefix, context.isCommandEnabled))
+                }
+                if (!sendHelpDex(context.message.chatId)) {
+                    val fallback = "Interactive Helpdex requires this profile's Bot session to be enabled.\n\n" +
+                        helpCaption(all) + "\n\n" +
+                        all.joinToString("\n") { "• ${prefix}${it.id.substringAfter(':')}" }
+                    val gateway = context.telegram
+                    if (gateway != null) gateway.sendText(context.message.chatId, fallback)
+                    else context.reply(fallback)
+                }
+                if (context.message.isOutgoing) {
+                    context.telegram?.deleteMessage(context.message.chatId, context.message.messageId)
+                }
+            }
+        }
+    }
 }
 
 class AnimeAutomationPlugin : AutomationPlugin {
