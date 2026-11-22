@@ -37,6 +37,8 @@ import com.vikram.trondroid.automation.AdminAutomationPlugin
 import com.vikram.trondroid.automation.BroadcastAutomationPlugin
 import com.vikram.trondroid.automation.CarbonAutomationPlugin
 import com.vikram.trondroid.automation.DeveloperToolsAutomationPlugin
+import com.vikram.trondroid.automation.GoogleImagesAutomationPlugin
+import com.vikram.trondroid.automation.KeyboardAutomationPlugin
 import com.vikram.trondroid.automation.FileToolsAutomationPlugin
 import com.vikram.trondroid.automation.WebMediaAutomationPlugin
 import com.vikram.trondroid.automation.UtilityExtrasAutomationPlugin
@@ -155,6 +157,8 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
         nativePlugins += BroadcastAutomationPlugin()
         nativePlugins += CarbonAutomationPlugin(context)
         nativePlugins += DeveloperToolsAutomationPlugin(context)
+        nativePlugins += GoogleImagesAutomationPlugin()
+        nativePlugins += KeyboardAutomationPlugin()
         nativePlugins += FileToolsAutomationPlugin(context)
         nativePlugins += WebMediaAutomationPlugin()
         nativePlugins += UtilityExtrasAutomationPlugin()
