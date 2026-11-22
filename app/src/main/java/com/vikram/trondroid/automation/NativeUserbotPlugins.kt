@@ -511,11 +511,12 @@ class HelpAutomationPlugin(
                     return context.reply(detail(selected, prefix, context.isCommandEnabled))
                 }
                 if (!sendHelpDex(context.message.chatId)) {
-                    context.reply(
-                        "Interactive Helpdex requires this profile's Bot session to be enabled.\n\n" +
-                            helpCaption(all) + "\n\n" +
-                            all.joinToString("\n") { "• ${prefix}${it.id.substringAfter(':')}" }
-                    )
+                    val fallback = "Interactive Helpdex requires this profile's Bot session to be enabled.\n\n" +
+                        helpCaption(all) + "\n\n" +
+                        all.joinToString("\n") { "• ${prefix}${it.id.substringAfter(':')}" }
+                    val gateway = context.telegram
+                    if (gateway != null) gateway.sendText(context.message.chatId, fallback)
+                    else context.reply(fallback)
                 }
                 if (context.message.isOutgoing) {
                     context.telegram?.deleteMessage(context.message.chatId, context.message.messageId)
