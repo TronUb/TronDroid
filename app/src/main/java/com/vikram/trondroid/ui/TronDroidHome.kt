@@ -89,16 +89,6 @@ fun TronDroidHome(
     var pendingDelete by remember { mutableStateOf<BotProfile?>(null) }
     var pendingLogout by remember { mutableStateOf<BotProfile?>(null) }
     val isHome = page == Page.Home
-    val title = when (val p = page) {
-        Page.Home -> when (tab) { Tab.USERBOTS -> "Userbots"; Tab.PLUGINS -> "Plugins"; Tab.SETTINGS -> "Settings" }
-        is Page.Userbot -> bots.firstOrNull { it.id == p.id }?.name ?: "Userbot"
-        Page.SessionPreferences -> "Session preferences"
-        Page.BotConnections -> "Bot connections"
-        Page.Permissions -> "Permissions"
-        Page.About -> "About TronDroid"
-        Page.Updater -> "App updates"
-        is Page.PluginDetail -> PluginCatalog.find(p.id)?.title ?: "Plugin"
-    }
     Scaffold(
         topBar = {},
         bottomBar = {},
@@ -163,6 +153,7 @@ fun TronDroidHome(
             } 
             if (isHome) FloatingGlassBottomBar(selected = tab, onSelect = { tab = it },
                 modifier = Modifier.align(Alignment.BottomCenter))
+        }
         }
     }
     BackHandler(enabled = pageStack.size > 1 || tab != Tab.USERBOTS) { if (pageStack.size > 1) goBack() else tab = Tab.USERBOTS }
