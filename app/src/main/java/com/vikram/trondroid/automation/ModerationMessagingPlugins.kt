@@ -394,7 +394,7 @@ class BroadcastAutomationPlugin : AutomationPlugin {
                     return@send
                 }
 
-                val targets = chatIds.filter { it != context.message.chatId || it != 0L }
+                val targets = chatIds.filter { it != 0L }
                 val userId = gateway.currentUserId()
                 var index = 0
                 var sentUsers = 0
