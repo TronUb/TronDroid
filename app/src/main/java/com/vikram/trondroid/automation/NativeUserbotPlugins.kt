@@ -288,17 +288,6 @@ private object TronCommandMedia {
     const val USER_PIC = "https://telegra.ph/file/48f5dc15d51ea7f721275.jpg"
     const val BOT_PIC = "https://raw.githubusercontent.com/TronUb/Tron/master/main/others/resources/images/tron-square.png"
 
-    fun button(text: String, data: String) =
-        TdApi.InlineKeyboardButton(
-            text,
-            0L,
-            TdApi.ButtonStyleDefault(),
-            TdApi.InlineKeyboardButtonTypeCallback(data.toByteArray(Charsets.UTF_8))
-        )
-
-    fun markup(vararg rows: List<TdApi.InlineKeyboardButton>) =
-        TdApi.ReplyMarkupInlineKeyboard(rows.map { it.toTypedArray() }.toTypedArray())
-
     fun uptime(startedAt: Long): String {
         val seconds = ((android.os.SystemClock.elapsedRealtime() - startedAt) / 1000).coerceAtLeast(0)
         val days = seconds / 86400
@@ -393,46 +382,7 @@ class AliveAutomationPlugin(
         if (context.message.isOutgoing) gateway.deleteMessage(context.message.chatId, context.message.messageId)
     }
 
-    override fun onTelegramUpdate(context: AutomationUpdateContext) {
-        val update = context.update as? TdApi.UpdateNewCallbackQuery ?: return
-        val query = update.callbackQuery
-        val data = ((query.payload as? TdApi.CallbackQueryPayloadData)?.data ?: return)
-            .toString(Charsets.UTF_8)
-        val gateway = context.telegram ?: return
-        when (data) {
-            "ialive:refresh", "ialive:runtime" -> {
-                gateway.answerCallbackQuery(query.id, "Refreshing status")
-                gateway.editText(query.message.chatId, query.message.id,
-                    if (data.endsWith("runtime")) "⚙ **Runtime details**\n\n${statusText()}" else "⛊ **Tron Inline Status**\n\n${statusText()}",
-                    TronCommandMedia.markup(
-                        listOf(TronCommandMedia.button("Refresh", "ialive:refresh")),
-                        listOf(TronCommandMedia.button("Plugins", "help:page:0"), TronCommandMedia.button("Runtime", "ialive:runtime")),
-                        listOf(TronCommandMedia.button("Home", "ialive:home"), TronCommandMedia.button("Close", "ialive:close"))
-                    ))
-            }
-            "ialive:home" -> {
-                gateway.answerCallbackQuery(query.id)
-                gateway.editText(query.message.chatId, query.message.id,
-                    "⛊ **Tron Inline Status**\n\n${statusText()}",
-                    TronCommandMedia.markup(listOf(TronCommandMedia.button("Refresh", "ialive:refresh"))))
-            }
-            "ialive:close" -> {
-                gateway.answerCallbackQuery(query.id, "Menu closed")
-                gateway.editText(query.message.chatId, query.message.id, "Tron Inline Status — menu closed.")
-            }
-            "quote:more" -> {
-                gateway.answerCallbackQuery(query.id)
-                gateway.editText(query.message.chatId, query.message.id,
-                    "❝ ${listOf(
-                        "“A lesson without pain is meaningless.” — Edward Elric",
-                        "“If you don't take risks, you can't create a future.” — Monkey D. Luffy",
-                        "“Whatever you lose, you'll find it again.” — Kenshin Himura",
-                        "“Knowing you're different is only the beginning.” — Natsuki Subaru"
-                    ).random()} ❞\n\n**Tron Anime Quotes**",
-                    TronCommandMedia.markup(listOf(TronCommandMedia.button("More", "quote:more"))))
-            }
-        }
-    }
+
 }
 
 class HelpAutomationPlugin(
@@ -470,96 +420,7 @@ class HelpAutomationPlugin(
         }.take(3900)
     }
 
-    private fun pageMarkup(items: List<AutomationPlugin>, page: Int): TdApi.ReplyMarkup {
-        val pageSize = 8
-        val pages = ((items.size + pageSize - 1) / pageSize).coerceAtLeast(1)
-        val current = page.coerceIn(0, pages - 1)
-        val slice = items.drop(current * pageSize).take(pageSize)
-        val rows = slice.chunked(2).map { row ->
-            row.map { plugin ->
-                TronCommandMedia.button(
-                    "🧩 " + plugin.id.substringAfter(':').replace('_', ' ').replaceFirstChar { it.uppercase() },
-                    "help:plugin:${plugin.id}:$current"
-                )
-            }
-        }.toMutableList()
-        rows += listOf(
-            listOfNotNull(
-                if (current > 0) TronCommandMedia.button("❰ Prev", "help:page:${current - 1}") else null,
-                TronCommandMedia.button("Home", "help:home"),
-                if (current < pages - 1) TronCommandMedia.button("Next ❱", "help:page:${current + 1}") else null
-            )
-        )
-        return TronCommandMedia.markup(*rows.toTypedArray())
-    }
 
-    private fun helpCaption(items: List<AutomationPlugin>): String =
-        "✦ **TRON HELPDEx**\n\nExplore ${items.size} installed plugins. Select a plugin to view its commands, descriptions and exact usage."
-
-    override fun onCommand(context: AutomationContext) {
-        val prefix = commandPrefix().ifBlank { "." }
-        val all = plugins(context)
-        val requested = context.arguments.firstOrNull()?.lowercase()
-        when (context.command) {
-            "uplugs" -> context.reply("**USERBOT PLUGINS**\n\n" + all.joinToString("\n") { it.id.substringAfter(':') })
-            "bplugs" -> context.reply("Bot plugins are listed in the Plugins → Bot tab. Bot runtime help is available with /help.")
-            "inline" -> context.reply("Telegram inline mode is configured through @BotFather. Open BotFather → /mybots → select your assistant bot → Bot Settings → Inline Mode → Turn on. TronDroid's native TDLib command menus do not require inline mode.")
-            else -> {
-                if (!requested.isNullOrBlank()) {
-                    val selected = all.firstOrNull { it.id.substringAfter(':').equals(requested, true) || it.id.equals(requested, true) }
-                        ?: return context.reply("Plugin '$requested' was not found. Use ${prefix}uplugs to list installed plugins.")
-                    return context.reply(detail(selected, prefix, context.isCommandEnabled))
-                }
-                if (!sendHelpDex(context.message.chatId)) {
-                    val fallback = "Interactive Helpdex requires this profile's Bot session to be enabled.\n\n" +
-                        helpCaption(all) + "\n\n" +
-                        all.joinToString("\n") { "• ${prefix}${it.id.substringAfter(':')}" }
-                    val gateway = context.telegram
-                    if (gateway != null) gateway.sendText(context.message.chatId, fallback)
-                    else context.reply(fallback)
-                }
-                if (context.message.isOutgoing) {
-                    context.telegram?.deleteMessage(context.message.chatId, context.message.messageId)
-                }
-            }
-        }
-    }
-
-    override fun onTelegramUpdate(context: AutomationUpdateContext) {
-        val update = context.update as? TdApi.UpdateNewCallbackQuery ?: return
-        val query = update.callbackQuery
-        val data = ((query.payload as? TdApi.CallbackQueryPayloadData)?.data ?: return).toString(Charsets.UTF_8)
-        if (!data.startsWith("help:")) return
-        val gateway = context.telegram ?: return
-        val prefix = commandPrefix().ifBlank { "." }
-        val all = available().filter { it.id != id }
-            .filter { plugin -> plugin.commands.any { context.isCommandEnabled(plugin.id, it.name) } }
-            .sortedBy { it.id.substringAfter(':').lowercase() }
-        when {
-            data == "help:home" -> {
-                gateway.answerCallbackQuery(query.id)
-                gateway.editText(query.message.chatId, query.message.id, helpCaption(all), pageMarkup(all, 0))
-            }
-            data.startsWith("help:page:") -> {
-                val page = data.substringAfterLast(':').toIntOrNull() ?: 0
-                gateway.answerCallbackQuery(query.id)
-                gateway.editText(query.message.chatId, query.message.id, helpCaption(all), pageMarkup(all, page))
-            }
-            data.startsWith("help:plugin:") -> {
-                val body = data.removePrefix("help:plugin:")
-                val page = body.substringAfterLast(':').toIntOrNull() ?: 0
-                val pluginId = body.substringBeforeLast(':')
-                val plugin = all.firstOrNull { it.id == pluginId }
-                if (plugin == null) {
-                    gateway.answerCallbackQuery(query.id, "Plugin is no longer available")
-                } else {
-                    gateway.answerCallbackQuery(query.id)
-                    gateway.editText(query.message.chatId, query.message.id, detail(plugin, prefix, context.isCommandEnabled),
-                        TronCommandMedia.markup(listOf(TronCommandMedia.button("❰ Back to plugins", "help:page:$page"))))
-                }
-            }
-        }
-    }
 }
 
 class AnimeAutomationPlugin : AutomationPlugin {
