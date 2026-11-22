@@ -437,18 +437,26 @@ class HelpAutomationPlugin(
     )
 
     private fun plugins(context: AutomationContext): List<AutomationPlugin> =
-        available().filter { it.id != id }.filter { context.isCommandEnabled(it.id, it.commands.firstOrNull()?.name.orEmpty()) }
+        available().filter { it.id != id }
+            .filter { plugin -> plugin.commands.any { context.isCommandEnabled(plugin.id, it.name) } }
             .sortedBy { it.id.substringAfter(':').lowercase() }
 
-    private fun detail(plugin: AutomationPlugin, prefix: String): String = buildString {
-        append("**PLUGIN:** ${plugin.id.substringAfter(':').replace('_', ' ').replaceFirstChar { it.uppercase() }}\n")
-        append("**COMMANDS:** ${plugin.commands.size}\n\n")
-        plugin.commands.forEach { command ->
-            append("✦ **${prefix}${command.name}**\n")
-            append("${command.description}\n")
-            append("**Usage:** `${prefix}${command.usage}`\n\n")
-        }
-    }.take(3900)
+    private fun detail(
+        plugin: AutomationPlugin,
+        prefix: String,
+        commandEnabled: (String, String) -> Boolean
+    ): String {
+        val commands = plugin.commands.filter { commandEnabled(plugin.id, it.name) }
+        return buildString {
+            append("**PLUGIN:** ${plugin.id.substringAfter(':').replace('_', ' ').replaceFirstChar { it.uppercase() }}\n")
+            append("**COMMANDS:** ${commands.size}\n\n")
+            commands.forEach { command ->
+                append("✦ **${prefix}${command.name}**\n")
+                append("${command.description}\n")
+                append("**Usage:** `${prefix}${command.usage}`\n\n")
+            }
+        }.take(3900)
+    }
 
     private fun pageMarkup(items: List<AutomationPlugin>, page: Int): TdApi.ReplyMarkup {
         val pageSize = 8
@@ -488,7 +496,7 @@ class HelpAutomationPlugin(
                 if (!requested.isNullOrBlank()) {
                     val selected = all.firstOrNull { it.id.substringAfter(':').equals(requested, true) || it.id.equals(requested, true) }
                         ?: return context.reply("Plugin '$requested' was not found. Use ${prefix}uplugs to list installed plugins.")
-                    return context.reply(detail(selected, prefix))
+                    return context.reply(detail(selected, prefix, context.isCommandEnabled))
                 }
                 val gateway = context.telegram ?: return context.reply("Telegram session is unavailable.")
                 val keyboard = pageMarkup(all, 0)
@@ -510,7 +518,9 @@ class HelpAutomationPlugin(
         if (!data.startsWith("help:")) return
         val gateway = context.telegram ?: return
         val prefix = commandPrefix().ifBlank { "." }
-        val all = available().filter { it.id != id }.sortedBy { it.id.substringAfter(':').lowercase() }
+        val all = available().filter { it.id != id }
+            .filter { plugin -> plugin.commands.any { context.isCommandEnabled(plugin.id, it.name) } }
+            .sortedBy { it.id.substringAfter(':').lowercase() }
         when {
             data == "help:home" -> {
                 gateway.answerCallbackQuery(query.id)
@@ -530,7 +540,7 @@ class HelpAutomationPlugin(
                     gateway.answerCallbackQuery(query.id, "Plugin is no longer available")
                 } else {
                     gateway.answerCallbackQuery(query.id)
-                    gateway.editText(query.message.chatId, query.message.id, detail(plugin, prefix),
+                    gateway.editText(query.message.chatId, query.message.id, detail(plugin, prefix, context.isCommandEnabled),
                         TronCommandMedia.markup(listOf(TronCommandMedia.button("❰ Back to plugins", "help:page:$page"))))
                 }
             }
