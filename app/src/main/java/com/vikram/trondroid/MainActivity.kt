@@ -17,12 +17,62 @@ import com.vikram.trondroid.telegram.TelegramBackgroundService
 import com.vikram.trondroid.telegram.TelegramRuntime
 import com.vikram.trondroid.telegram.TelegramBotRuntime
 import com.vikram.trondroid.ui.TronDroidHome
+import org.json.JSONArray
+import org.json.JSONObject
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val store = BotStore(applicationContext)
         val preferences = getSharedPreferences("trondroid.settings", MODE_PRIVATE)
+
+        fun exportSettingsBackup(): String {
+            val root = JSONObject()
+                .put("format", "trondroid-settings-backup")
+                .put("schema_version", 1)
+            listOf("trondroid.settings", "trondroid.store", "trondroid.plugins").forEach { name ->
+                val values = getSharedPreferences(name, MODE_PRIVATE).all
+                val section = JSONObject()
+                values.forEach { (key, value) ->
+                    when (value) {
+                        is Set<*> -> section.put(key, JSONArray(value.filterIsInstance<String>()))
+                        null -> Unit
+                        else -> section.put(key, value)
+                    }
+                }
+                root.put(name, section)
+            }
+            return root.toString(2)
+        }
+
+        fun importSettingsBackup(raw: String) {
+            val root = JSONObject(raw)
+            require(root.optString("format") == "trondroid-settings-backup") {
+                "This is not a TronDroid settings backup."
+            }
+            require(root.optInt("schema_version") == 1) { "Unsupported backup version." }
+            listOf("trondroid.settings", "trondroid.store", "trondroid.plugins").forEach { name ->
+                val section = root.optJSONObject(name) ?: return@forEach
+                val editor = getSharedPreferences(name, MODE_PRIVATE).edit().clear()
+                val keys = section.keys()
+                while (keys.hasNext()) {
+                    val key = keys.next()
+                    when (val value = section.get(key)) {
+                        is Boolean -> editor.putBoolean(key, value)
+                        is Int -> editor.putInt(key, value)
+                        is Long -> editor.putLong(key, value)
+                        is Double -> editor.putFloat(key, value.toFloat())
+                        is JSONArray -> editor.putStringSet(key, buildSet {
+                            for (index in 0 until value.length()) add(value.optString(index))
+                        })
+                        JSONObject.NULL -> Unit
+                        else -> editor.putString(key, value.toString())
+                    }
+                }
+                check(editor.commit()) { "Unable to restore $name preferences." }
+            }
+        }
+
         setContent {
             var bots by remember { mutableStateOf(store.all()) }
             var selectedId by remember { mutableStateOf(bots.firstOrNull()?.id) }
@@ -100,6 +150,15 @@ class MainActivity : ComponentActivity() {
                     onBotToggle = { id, enabled ->
                         store.setBotEnabled(id, enabled)
                         bots = store.all()
+                        TelegramBackgroundService.reconcile(applicationContext)
+                    },
+                    onExportSettings = { exportSettingsBackup() },
+                    onImportSettings = { raw ->
+                        importSettingsBackup(raw)
+                        bots = store.all()
+                        selectedId = bots.firstOrNull()?.id
+                        themeMode = preferences.getString("theme_mode", "system") ?: "system"
+                        dynamicColors = preferences.getBoolean("dynamic_colors", true)
                         TelegramBackgroundService.reconcile(applicationContext)
                     }
                 )
