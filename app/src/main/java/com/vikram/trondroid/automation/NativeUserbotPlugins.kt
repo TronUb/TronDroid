@@ -305,8 +305,7 @@ class AliveAutomationPlugin(
     private val profileName: () -> String,
     private val appContext: android.content.Context,
     private val companionBotUserId: () -> Long?,
-    private val cacheInlineAlive: (String) -> Boolean,
-    private val sendInlineQuote: (Long) -> Boolean
+    private val cacheInlineAlive: (String) -> Boolean
 ) : AutomationPlugin {
     override val id = "userbot:alive"
     private val startedAt = android.os.SystemClock.elapsedRealtime()
@@ -379,10 +378,12 @@ class AliveAutomationPlugin(
                 }
             }
             "iquote", "iqt" -> {
-                if (!sendInlineQuote(context.message.chatId)) {
-                    gateway.sendText(context.message.chatId, "Inline quotes require the companion Bot session.")
+                val botId = companionBotUserId()
+                    ?: return context.reply("Inline quotes require this profile's companion Bot session.")
+                gateway.sendInlineBotResult(context.message.chatId, botId, "#quote") { response ->
+                    if (response is TdApi.Error) context.reply("Unable to open inline quotes: ${response.message}")
+                    else if (context.message.isOutgoing) gateway.deleteMessage(context.message.chatId, context.message.messageId)
                 }
-                if (context.message.isOutgoing) gateway.deleteMessage(context.message.chatId, context.message.messageId)
             }
         }
     }
