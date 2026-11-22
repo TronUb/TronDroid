@@ -15,18 +15,31 @@ object TelegramRuntime {
         val app = context.applicationContext
         val store = BotStore(app)
         val enabled = store.all().filter { it.enabled }.associateBy { it.id }
-        mutableEngines.value.filterKeys { it !in enabled }.values.forEach { it.close() }
-        val next = mutableEngines.value.filterKeys { it in enabled }.toMutableMap()
+        val current = mutableEngines.value
+        val stale = current.filterKeys { it !in enabled }
+        val next = current.filterKeys { it in enabled }.toMutableMap()
+
+        // Publish the new engine set before closing old engines. Compose screens
+        // immediately stop observing a session that has just been disabled.
+        mutableEngines.value = next
+        stale.values.forEach { engine ->
+            runCatching { engine.close() }
+                .onFailure { android.util.Log.w("TronDroidTelegram", "Disabled session cleanup failed", it) }
+        }
+
         enabled.values.forEach { bot ->
             if (next[bot.id] == null) {
-                val hash = store.apiHash(bot.id)
-                if (hash.isNullOrBlank()) return@forEach
-                val engine = TelegramEngine(app, bot, hash)
-                next[bot.id] = engine
-                engine.start()
+                val hash = store.apiHash(bot.id)?.takeIf { it.isNotBlank() } ?: return@forEach
+                runCatching {
+                    val engine = TelegramEngine(app, bot, hash)
+                    next[bot.id] = engine
+                    engine.start()
+                }.onFailure {
+                    android.util.Log.e("TronDroidTelegram", "Unable to start session ${bot.id}", it)
+                }
             }
         }
-        mutableEngines.value = next
+        mutableEngines.value = next.toMap()
     }
 
     /** Recreate one enabled userbot engine while leaving other accounts untouched. */
