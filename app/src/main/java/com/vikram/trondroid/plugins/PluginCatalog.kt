@@ -118,7 +118,7 @@ object PluginCatalog {
     val userbot = listOf(
         plugin("userbot:admin","Admin","Native TDLib moderation: ban/unban, timed mute, kick, promotion, demotion, pin management and confirmed supergroup bulk ban.","Moderation",PluginOwner.USERBOT,"main/userbot/modules/plugins/admin.py",true,"ban","dban","banall","unban","mute","dmute","unmute","kick","pin","unpin","promote","demote"),
         plugin("userbot:afk","AFK","Automatically manage away status and reply to mentions.","Automation",PluginOwner.USERBOT,"main/userbot/modules/plugins/afk.py",true,"afk","unafk"),
-        plugin("userbot:alive","Alive","Show connected account and app runtime status.","Status",PluginOwner.USERBOT,"main/userbot/modules/plugins/alive.py",true,"alive"),
+        plugin("userbot:alive","Alive","Show account, TronDroid, Kotlin and TDLib runtime information with image-based alive cards, interactive status buttons and inline quotes.","Status",PluginOwner.USERBOT,"main/userbot/modules/plugins/alive.py",true,"alive","ialive","iquote","iqt"),
         plugin("userbot:anime","Anime","Fetch anime images and GIFs by action.","Entertainment",PluginOwner.USERBOT,"main/userbot/modules/plugins/anime.py",true,"animelist","nekopic","npic","animegif"),
         plugin("userbot:broadcast","Broadcast","Send announcements sequentially to private chats and groups in the main dialog list, with flood-wait handling and delivery totals.","Messaging",PluginOwner.USERBOT,"main/userbot/modules/plugins/broadcast.py",true,"broadcast","bdt"),
         plugin("userbot:carbon","Carbon","Render syntax-styled code images locally on-device with selectable accent colours.","Media",PluginOwner.USERBOT,"main/userbot/modules/plugins/carbon.py",true,"carbon","cb","carblist"),
