@@ -315,7 +315,7 @@ private object TronCommandMedia {
 class AliveAutomationPlugin(
     private val profileName: () -> String,
     private val appContext: android.content.Context,
-    private val sendInlineAlive: (Long) -> Boolean,
+    private val sendInlineAlive: (Long, String) -> Boolean,
     private val sendInlineQuote: (Long) -> Boolean
 ) : AutomationPlugin {
     override val id = "userbot:alive"
@@ -364,10 +364,11 @@ class AliveAutomationPlugin(
                 if (context.message.isOutgoing) gateway.deleteMessage(context.message.chatId, context.message.messageId)
             }
             "ialive" -> {
-                if (!sendInlineAlive(context.message.chatId)) {
-                    withTdlibVersion(gateway) {
+                withTdlibVersion(gateway) {
+                    val caption = "⛊ **Tron Inline Status**\n\n${statusText()}"
+                    if (!sendInlineAlive(context.message.chatId, caption)) {
                         gateway.sendPhotoUrl(context.message.chatId, TronCommandMedia.USER_PIC,
-                            "⛊ **Tron Inline Status**\n\n${statusText()}\n\nEnable this profile's Bot session to use interactive controls.") { response ->
+                            "$caption\n\nEnable this profile's Bot session to use interactive controls.") { response ->
                             if (response is TdApi.Error) context.reply("Unable to send inline alive card: ${response.message}")
                         }
                     }
