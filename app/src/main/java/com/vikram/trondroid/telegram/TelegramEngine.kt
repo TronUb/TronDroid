@@ -281,8 +281,21 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
             }
         }
     }
+    /** Extract command text from both normal messages and media captions. */
+    private fun extractMessageText(message: TdApi.Message): String =
+        when (val content = message.content) {
+            is TdApi.MessageText -> content.text.text
+            is TdApi.MessagePhoto -> content.caption.text
+            is TdApi.MessageVideo -> content.caption.text
+            is TdApi.MessageAnimation -> content.caption.text
+            is TdApi.MessageDocument -> content.caption.text
+            is TdApi.MessageAudio -> content.caption.text
+            is TdApi.MessageVoiceNote -> content.caption.text
+            else -> ""
+        }
+
     private fun dispatchNewMessage(message: TdApi.Message) {
-        val text = (message.content as? TdApi.MessageText)?.text?.text.orEmpty()
+        val text = extractMessageText(message)
         val direction = if (message.isOutgoing) "OUTGOING →" else "INCOMING ←"
         val preview = text.ifBlank { "[${message.content.javaClass.simpleName}]" }.replace("\n", " ").take(180)
         val chatName = _chats.value.firstOrNull { it.id == message.chatId }?.title ?: "chat ${message.chatId}"
