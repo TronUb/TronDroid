@@ -17,14 +17,18 @@ object TelegramRuntime {
         val enabled = store.all().filter { it.enabled }.associateBy { it.id }
         val current = mutableEngines.value
         val stale = current.filterKeys { it !in enabled }
-        val next = current.filterKeys { it in enabled }.toMutableMap()
+        val retained = current.filterKeys { it in enabled }
+        // A TDLib client can enter AuthorizationStateClosed without the profile
+        // being disabled. Do not keep a dead engine in the registry.
+        val disconnected = retained.filterValues { !it.hasActiveClient() }
+        val next = (retained - disconnected.keys).toMutableMap()
 
         // Publish the new engine set before closing old engines. Compose screens
-        // immediately stop observing a session that has just been disabled.
+        // immediately stop observing sessions that are disabled or disconnected.
         mutableEngines.value = next
-        stale.values.forEach { engine ->
+        (stale.values + disconnected.values).forEach { engine ->
             runCatching { engine.close() }
-                .onFailure { android.util.Log.w("TronDroidTelegram", "Disabled session cleanup failed", it) }
+                .onFailure { android.util.Log.w("TronDroidTelegram", "Session cleanup failed", it) }
         }
 
         enabled.values.forEach { bot ->
