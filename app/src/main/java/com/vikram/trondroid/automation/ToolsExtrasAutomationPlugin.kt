@@ -88,7 +88,7 @@ class ToolsExtrasAutomationPlugin(context: Context, private val isDeletedCacheEn
             "mlink" -> {
                 val replied = context.message.tdMessage?.let(gateway::repliedMessage)
                     ?: return context.reply("Reply to a message with .mlink")
-                val link = privateMessageLink(replied.chatId, replied.id)
+                val link = privateMessageLink(gateway, replied.chatId, replied.id)
                 context.reply(link ?: "Telegram does not expose a public message link for this chat. Message ID: ${replied.id}")
             }
             "saved" -> forwardToSaved(gateway, context)
@@ -144,7 +144,7 @@ class ToolsExtrasAutomationPlugin(context: Context, private val isDeletedCacheEn
             page.messages.forEach { message ->
                 val text = (message.content as? TdApi.MessageText)?.text?.text.orEmpty()
                 if (text.contains(query, ignoreCase = true)) {
-                    val link = privateMessageLink(message.chatId, message.id)
+                    val link = privateMessageLink(gateway, message.chatId, message.id)
                     found += (link ?: "Message ID ${message.id}") + " — " + text.replace("\\n", " ").take(140)
                 }
             }
@@ -158,10 +158,16 @@ class ToolsExtrasAutomationPlugin(context: Context, private val isDeletedCacheEn
         context.reply(if (found.isEmpty()) "No matches found for: $query" else "Matches for “$query” (up to 500 recent messages):\\n" + found.take(25).joinToString("\\n").take(3900))
     }
 
-    private fun privateMessageLink(chatId: Long, messageId: Long): String? {
-        val raw = chatId.toString()
-        if (!raw.startsWith("-100") || raw.length <= 4) return null
-        return "https://t.me/c/${raw.removePrefix("-100")}/$messageId"
+    private fun privateMessageLink(
+        gateway: com.vikram.trondroid.telegram.TelegramClientGateway,
+        chatId: Long,
+        messageId: Long
+    ): String? {
+        return when (val type = gateway.cachedChat(chatId)?.type) {
+            is TdApi.ChatTypeSupergroup -> "https://t.me/c/" + type.supergroupId + "/" + messageId
+            is TdApi.ChatTypePrivate -> "tg://openmessage?user_id=" + type.userId + "&message_id=" + messageId
+            else -> null
+        }
     }
 
     private fun forwardToSaved(gateway: com.vikram.trondroid.telegram.TelegramClientGateway, context: AutomationContext) {
