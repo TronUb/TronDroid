@@ -1229,17 +1229,20 @@ private fun BotConnectionsScreen(modifier: Modifier) {
 @Composable
 private fun PermissionsScreen(modifier: Modifier) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    val activity = context as? android.app.Activity
     val manager = context.getSystemService(android.content.Context.POWER_SERVICE) as android.os.PowerManager
     var refresh by remember { mutableIntStateOf(0) }
     val notificationsGranted = if (android.os.Build.VERSION.SDK_INT >= 33)
         androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) == android.content.pm.PackageManager.PERMISSION_GRANTED
     else true
     val batteryAllowed = manager.isIgnoringBatteryOptimizations(context.packageName)
+    val internetGranted = context.packageManager.checkPermission(android.Manifest.permission.INTERNET, context.packageName) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    val networkGranted = context.packageManager.checkPermission(android.Manifest.permission.ACCESS_NETWORK_STATE, context.packageName) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    val foregroundGranted = context.packageManager.checkPermission(android.Manifest.permission.FOREGROUND_SERVICE, context.packageName) == android.content.pm.PackageManager.PERMISSION_GRANTED
     val installAllowed = if (android.os.Build.VERSION.SDK_INT >= 26) context.packageManager.canRequestPackageInstalls() else true
     fun openSettings(action: String) {
         runCatching { context.startActivity(android.content.Intent(action).apply {
-            if (action == android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+            if (action == android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS ||
+                action == android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES)
                 data = android.net.Uri.parse("package:" + context.packageName)
             else if (action == android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS)
                 putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName)
@@ -1264,11 +1267,11 @@ private fun PermissionsScreen(modifier: Modifier) {
             Text("Required", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
             Card(shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
                 Column {
-                    PermissionStatusRow("Internet access", "Required for Telegram API and media requests", true, "Granted")
+                    PermissionStatusRow("Internet access", "Required for Telegram API and media requests", true, if (internetGranted) "Granted" else "Missing")
                     HorizontalDivider(Modifier.padding(horizontal = 16.dp))
-                    PermissionStatusRow("Network state", "Detects connectivity changes", true, "Granted")
+                    PermissionStatusRow("Network state", "Detects connectivity changes", true, if (networkGranted) "Granted" else "Missing")
                     HorizontalDivider(Modifier.padding(horizontal = 16.dp))
-                    PermissionStatusRow("Foreground service", "Keeps user-enabled sessions running in the background", true, "Declared")
+                    PermissionStatusRow("Foreground service", "Keeps user-enabled sessions running in the background", true, if (foregroundGranted) "Granted" else "Missing")
                 }
             }
         }
@@ -1283,7 +1286,7 @@ private fun PermissionsScreen(modifier: Modifier) {
                     HorizontalDivider(Modifier.padding(horizontal = 16.dp))
                     PermissionStatusRow("Install app updates", "Allows APK updates initiated by TronDroid", false,
                         if (installAllowed) "Allowed" else "Not allowed")
-                    OutlinedButton(onClick = { openSettings(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES) .also { } },
+                    OutlinedButton(onClick = { openSettings(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES) },
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp)) { Text("Manage install access") }
                 }
             }
