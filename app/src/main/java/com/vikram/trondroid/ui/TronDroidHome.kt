@@ -50,6 +50,9 @@ import com.vikram.trondroid.telegram.TelegramEngine
 import com.vikram.trondroid.telegram.TelegramBotRuntime
 import com.vikram.trondroid.plugins.PluginOwner
 import org.drinkless.tdlib.TdApi
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 private enum class Tab { USERBOTS, PLUGINS, SETTINGS }
 private sealed interface Page {
@@ -91,6 +94,7 @@ fun TronDroidHome(
     val userbotPluginsListState = rememberLazyListState()
     val botPluginsListState = rememberLazyListState()
     val context = androidx.compose.ui.platform.LocalContext.current
+    val scope = rememberCoroutineScope()
     var pendingDelete by remember { mutableStateOf<BotProfile?>(null) }
     var pendingLogout by remember { mutableStateOf<BotProfile?>(null) }
     var importingPlugin by remember { mutableStateOf(false) }
@@ -98,17 +102,21 @@ fun TronDroidHome(
         ActivityResultContracts.OpenDocument()
     ) { uri ->
         if (uri != null) {
-            importingPlugin = true
-            val result = runCatching { ExternalPluginLoader.importManifest(context, uri) }
-            android.widget.Toast.makeText(
-                context,
-                result.fold(
-                    { "Imported $it manifest. Metadata only; external code is not executed." },
-                    { "Plugin import failed: ${it.message ?: "Invalid manifest"}" }
-                ),
-                android.widget.Toast.LENGTH_LONG
-            ).show()
-            importingPlugin = false
+            scope.launch {
+                importingPlugin = true
+                val result = withContext(Dispatchers.IO) {
+                    runCatching { ExternalPluginLoader.importManifest(context, uri) }
+                }
+                android.widget.Toast.makeText(
+                    context,
+                    result.fold(
+                        { "Imported $it manifest. Metadata only; external code is not executed." },
+                        { "Plugin import failed: ${it.message ?: "Invalid manifest"}" }
+                    ),
+                    android.widget.Toast.LENGTH_LONG
+                ).show()
+                importingPlugin = false
+            }
         }
     }
     val isHome = page == Page.Home
@@ -411,8 +419,11 @@ private fun UserbotDetailScreen(
             Modifier.fillMaxWidth().padding(start = 8.dp, end = 18.dp, top = 8.dp, bottom = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = onBack) {
-                Icon(Icons.Rounded.ArrowBack, contentDescription = "Back")
+            Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.primaryContainer) {
+                IconButton(onClick = onBack) {
+                    Icon(Icons.Rounded.ArrowBack, contentDescription = "Back",
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer)
+                }
             }
             Column(Modifier.weight(1f)) {
                 Text("Configuration", style = MaterialTheme.typography.headlineSmall)
@@ -674,7 +685,6 @@ private fun UserbotDetailScreen(
                     it.type is TdApi.ChatTypeSupergroup && (it.type as TdApi.ChatTypeSupergroup).isChannel
                 }
                 val stats = listOf(
-                    "All chats" to chats.size,
                     "Users" to users,
                     "Groups" to groups,
                     "Supergroups" to supergroups,
@@ -694,6 +704,25 @@ private fun UserbotDetailScreen(
                             modifier = Modifier.padding(top = 4.dp)
                         )
                     }
+                    item {
+                        Card(
+                            shape = RoundedCornerShape(24.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+                        ) {
+                            Row(Modifier.fillMaxWidth().padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Column(Modifier.weight(1f)) {
+                                    Text("Total conversations", style = MaterialTheme.typography.titleSmall,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.82f))
+                                    Text(chats.size.toString(), style = MaterialTheme.typography.displaySmall,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer)
+                                    Text("Chats synchronized with this account", style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.82f))
+                                }
+                                Icon(Icons.Rounded.Forum, null, Modifier.size(42.dp),
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.82f))
+                            }
+                        }
+                    }
                     items(stats.chunked(2)) { rowStats ->
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             rowStats.forEach { (label, count) ->
@@ -712,6 +741,11 @@ private fun UserbotDetailScreen(
                                         )
                                         Text(label, style = MaterialTheme.typography.labelLarge,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        LinearProgressIndicator(
+                                            progress = { if (chats.isEmpty()) 0f else (count.toFloat() / chats.size).coerceIn(0f, 1f) },
+                                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                                            trackColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                                        )
                                     }
                                 }
                             }
@@ -791,6 +825,8 @@ private fun UserbotDetailScreen(
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 item {
+                    Text("ACCOUNT", style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(start = 4.dp, top = 4.dp))
                     Card(shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
                         ListItem(headlineContent = { Text("Profile name") }, supportingContent = { Text(bot.name) },
                             leadingContent = { Icon(Icons.Rounded.Edit, null) },
@@ -798,6 +834,8 @@ private fun UserbotDetailScreen(
                     }
                 }
                 item {
+                    Text("SESSION", style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(start = 4.dp, top = 8.dp))
                     Card(shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
                         ListItem(headlineContent = { Text("Telegram session") }, supportingContent = { Text("Log out from this account on this device.") },
                             leadingContent = { Icon(Icons.Rounded.Logout, null) },
@@ -810,6 +848,8 @@ private fun UserbotDetailScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 item {
+                    Text("DANGER ZONE", style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(start = 4.dp, top = 8.dp))
                     Card(shape = RoundedCornerShape(22.dp),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
                         Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
