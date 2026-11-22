@@ -71,6 +71,10 @@ object TelegramBotRuntime {
     fun sendUserbotAlive(profileId: String, chatId: Long, caption: String): Boolean =
         workers[profileId]?.sendUserbotAlive(chatId, caption) ?: false
 
+    fun cacheUserbotAlive(profileId: String, caption: String): Boolean =
+        workers[profileId]?.cacheUserbotAlive(caption) ?: false
+
+
     fun sendUserbotQuote(profileId: String, chatId: Long): Boolean =
         workers[profileId]?.sendUserbotQuote(chatId) ?: false
 
@@ -234,6 +238,13 @@ object TelegramBotRuntime {
                 .optBoolean("ok")
         }.getOrDefault(false)
 
+        fun cacheUserbotAlive(caption: String): Boolean = runCatching {
+            lastUserbotAliveCaption = caption
+            app.getSharedPreferences("trondroid.bot.runtime", Context.MODE_PRIVATE)
+                .edit().putString("userbot_alive_caption.$profileId", caption).apply()
+            true
+        }.getOrDefault(false)
+
         fun sendUserbotAlive(chatId: Long, caption: String): Boolean = runCatching {
             lastUserbotAliveCaption = caption
             app.getSharedPreferences("trondroid.bot.runtime", Context.MODE_PRIVATE)
@@ -361,13 +372,13 @@ object TelegramBotRuntime {
         private fun handleInlineQuery(query: JSONObject) {
             val queryId = query.optString("id")
             val raw = query.optString("query").trim()
-            val normalized = raw.removePrefix("/").removePrefix(".").removePrefix("!")
+            val normalized = raw.removePrefix("/").removePrefix(".").removePrefix("!").removePrefix("#")
                 .substringBefore('@').trim()
             val command = normalized.substringBefore(' ').lowercase()
             val argument = normalized.substringAfter(' ', "").trim()
             val results = org.json.JSONArray()
             when (command) {
-                "", "help", "ihelp", "helpdex", "plugins" -> {
+                "", "help", "ihelp", "helpdex", "helpmenu", "plugins" -> {
                     val page = argument.toIntOrNull()?.coerceAtLeast(0) ?: 0
                     results.put(inlineArticle("userbot-help", "Tron Userbot Helpdex",
                         "Browse enabled userbot plugins and command usage",
