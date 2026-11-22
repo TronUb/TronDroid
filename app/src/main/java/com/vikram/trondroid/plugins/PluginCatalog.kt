@@ -24,7 +24,7 @@ object PluginCatalog {
         id, title, summary, category, owner, source,
         commands.map { name ->
             val usage = when (name) {
-                in setOf("wiki", "imdb", "reddit", "r", "translate", "tr", "tl", "upcase", "joke", "weather", "currency", "paste", "google", "download", "upload", "ytsearch", "song", "lyrics", "whois", "id", "qrcode", "tts", "ud", "short", "unshort", "telegraph", "search", "pfp", "deezer", "spotify", "webshot", "itos", "vsubclip", "wlink", "commonchat") -> "$name <query>"
+                in setOf("wiki", "imdb", "reddit", "r", "translate", "tr", "tl", "upcase", "joke", "weather", "currency", "paste", "google", "download", "upload", "ytsearch", "song", "lyrics", "whois", "id", "qrcode", "tts", "ud", "short", "unshort", "telegraph", "search", "pfp", "deezer", "spotify", "webshot", "itos", "vsubclip", "wlink", "commonchat", "noshort", "wtr") -> "$name <query>"
                 in setOf("ban", "unban", "kick", "mute", "unmute", "promote", "demote") -> "$name <reply or user> [duration]"
                 in setOf("whois", "uinfo") -> "$name <user id> (or reply to a user)"
                 in setOf("mention", "men") -> "$name <user id> <display text>"
@@ -37,6 +37,9 @@ object PluginCatalog {
                 "img" -> "img [count 1-3] <query>"
                 "pic" -> "pic <query>"
                 "sauce" -> "sauce (reply to photo)"
+                "tgm" -> "Reply to text or supported media with .tgm"
+                "noshort" -> "noshort <shortened URL>"
+                "wtr" -> "wtr <city>"
                 "wlink" -> "wlink <word or phrase>"
                 "json" -> "json (reply optional)"
                 "mlink" -> "Reply to a message with .mlink"
