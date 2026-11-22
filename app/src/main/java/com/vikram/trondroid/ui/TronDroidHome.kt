@@ -718,19 +718,42 @@ private fun AddBotDialog(onDismiss: () -> Unit, onSave: (String, String, Int, St
     AlertDialog(onDismissRequest = onDismiss, title = { Text("Add userbot") }, text = {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedTextField(name, { name = it }, label = { Text("Profile name") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                ExposedDropdownMenuBox(expanded = countryMenu, onExpandedChange = { countryMenu = it }, modifier = Modifier.width(124.dp)) {
-                    OutlinedTextField(value = country.dial, onValueChange = {}, readOnly = true,
-                        label = { Text("Code") }, trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(countryMenu) },
-                        modifier = Modifier.menuAnchor().fillMaxWidth(), singleLine = true)
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                ExposedDropdownMenuBox(
+                    expanded = countryMenu,
+                    onExpandedChange = { countryMenu = it },
+                    modifier = Modifier.width(112.dp)
+                ) {
+                    OutlinedTextField(
+                        value = country.dial,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Code", maxLines = 1, softWrap = false) },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(countryMenu) },
+                        modifier = Modifier.menuAnchor().fillMaxWidth(),
+                        singleLine = true
+                    )
                     ExposedDropdownMenu(expanded = countryMenu, onDismissRequest = { countryMenu = false }) {
-                        countries.forEach { c -> DropdownMenuItem(text = { Text("${c.name}  ${c.dial}") },
-                            onClick = { country = c; countryMenu = false }) }
+                        countries.forEach { c ->
+                            DropdownMenuItem(
+                                text = { Text("${c.name}  ${c.dial}") },
+                                onClick = { country = c; countryMenu = false }
+                            )
+                        }
                     }
                 }
-                OutlinedTextField(phone, { phone = it.filter(Char::isDigit) }, label = { Text("Phone number") },
+                OutlinedTextField(
+                    value = phone,
+                    onValueChange = { phone = it.filter(Char::isDigit).take(15) },
+                    label = { Text("Mobile", maxLines = 1, softWrap = false) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-                    singleLine = true, modifier = Modifier.weight(1f))
+                    singleLine = true,
+                    modifier = Modifier.weight(1f)
+                )
             }
             OutlinedTextField(apiId, { apiId = it }, label = { Text("Telegram API ID") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), singleLine = true, modifier = Modifier.fillMaxWidth())
