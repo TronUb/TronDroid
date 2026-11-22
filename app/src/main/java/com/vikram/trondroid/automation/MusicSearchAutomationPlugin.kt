@@ -61,7 +61,10 @@ class MusicSearchAutomationPlugin : AutomationPlugin {
             }
             else -> {
                 context.reply("Searching Deezer for $query…")
-                MusicSearchHttp.run(context) { searchTracks(query) }
+                Thread({ sendTrackCards(context, query) }, "TronDroid-DeezerCards").apply {
+                    isDaemon = true
+                    start()
+                }
             }
         }
     }
@@ -78,7 +81,15 @@ class MusicSearchAutomationPlugin : AutomationPlugin {
         }.trim()
     }
 
-    private data class Track(val title: String, val artist: String, val album: String, val duration: Int, val link: String, val preview: String)
+    private data class Track(
+        val title: String,
+        val artist: String,
+        val album: String,
+        val duration: Int,
+        val link: String,
+        val preview: String,
+        val cover: String
+    )
 
     private fun tracks(query: String): List<Track> {
         val root = JSONObject(MusicSearchHttp.get("https://api.deezer.com/search?q=${MusicSearchHttp.encode(query)}&limit=5"))
@@ -94,8 +105,55 @@ class MusicSearchAutomationPlugin : AutomationPlugin {
                 item.optJSONObject("album")?.optString("title").orEmpty(),
                 item.optInt("duration"),
                 link,
-                preview
+                preview,
+                item.optJSONObject("album")?.optString("cover_xl")
+                    ?.takeIf { it.startsWith("https://") }
+                    ?: item.optJSONObject("album")?.optString("cover_big").orEmpty()
             )
+        }
+    }
+
+    private fun sendTrackCards(context: AutomationContext, query: String) {
+        val gateway = context.telegram ?: return context.reply("Telegram session is unavailable.")
+        val results = runCatching { tracks(query) }.getOrElse {
+            return context.reply("Deezer search failed: ${it.message ?: "unknown error"}")
+        }
+        if (results.isEmpty()) return context.reply("No Deezer tracks found for: $query")
+        results.forEachIndexed { index, track ->
+            val duration = if (track.duration > 0) {
+                "%d:%02d".format(track.duration / 60, track.duration % 60)
+            } else "Unknown"
+            val caption = buildString {
+                append("🎵 **${track.title}**\n")
+                append("👤 ${track.artist}\n")
+                if (track.album.isNotBlank()) append("💿 ${track.album}\n")
+                append("⏱ $duration\n")
+                append("Result ${index + 1} of ${results.size}")
+            }
+            val buttons = mutableListOf(
+                TdApi.InlineKeyboardButton(
+                    "Open in Deezer", 0L, TdApi.ButtonStyleDefault(),
+                    TdApi.InlineKeyboardButtonTypeUrl(track.link)
+                )
+            )
+            if (track.preview.isNotBlank()) {
+                buttons += TdApi.InlineKeyboardButton(
+                    "30-second preview", 0L, TdApi.ButtonStyleDefault(),
+                    TdApi.InlineKeyboardButtonTypeUrl(track.preview)
+                )
+            }
+            val markup = TdApi.ReplyMarkupInlineKeyboard(arrayOf(buttons.toTypedArray()))
+            val fallback = "$caption\n\n${track.link}" +
+                if (track.preview.isNotBlank()) "\nPreview: ${track.preview}" else ""
+            val sent = if (track.cover.startsWith("https://")) {
+                gateway.sendPhotoUrl(context.message.chatId, track.cover, caption, markup) { response ->
+                    if (response is TdApi.Error) context.reply(fallback)
+                }
+            } else {
+                gateway.sendText(context.message.chatId, fallback, markup) { response ->
+                    if (response is TdApi.Error) context.reply(fallback)
+                }
+            }
         }
     }
 
