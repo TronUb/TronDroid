@@ -53,6 +53,10 @@ import org.drinkless.tdlib.TdApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
 
 private enum class Tab { USERBOTS, PLUGINS, SETTINGS }
 private sealed interface Page {
@@ -98,6 +102,7 @@ fun TronDroidHome(
     val botPluginsListState = rememberLazyListState()
     val context = androidx.compose.ui.platform.LocalContext.current
     val scope = rememberCoroutineScope()
+    val hazeState = rememberHazeState()
     var pendingDelete by remember { mutableStateOf<BotProfile?>(null) }
     var pendingLogout by remember { mutableStateOf<BotProfile?>(null) }
     var importingPlugin by remember { mutableStateOf(false) }
@@ -153,7 +158,7 @@ fun TronDroidHome(
         }
     ) { _ ->
         Box(Modifier.fillMaxSize()) {
-            AnimatedContent(modifier = Modifier.fillMaxSize().statusBarsPadding(), targetState = page, transitionSpec = {
+            AnimatedContent(modifier = Modifier.fillMaxSize().statusBarsPadding().hazeSource(state = hazeState), targetState = page, transitionSpec = {
             val direction = navigationDirection
             (slideInHorizontally { width -> if (direction > 0) width else -width } + fadeIn()) togetherWith
                 (slideOutHorizontally { width -> if (direction > 0) -width else width } + fadeOut())
@@ -216,6 +221,7 @@ fun TronDroidHome(
                 FloatingGlassBottomBar(
                     selected = tab,
                     onSelect = { tab = it },
+                    hazeState = hazeState,
                     modifier = Modifier.align(Alignment.BottomCenter)
                 )
             }
@@ -269,6 +275,7 @@ fun TronDroidHome(
 private fun FloatingGlassBottomBar(
     selected: Tab,
     onSelect: (Tab) -> Unit,
+    hazeState: HazeState,
     modifier: Modifier = Modifier
 ) {
     val tabs = listOf(Tab.USERBOTS, Tab.PLUGINS, Tab.SETTINGS)
@@ -277,7 +284,7 @@ private fun FloatingGlassBottomBar(
     // Tint the glass dock with the active scheme primary so wallpaper colors
     // flow through the navigation surface without making it visually opaque.
     val glass = MaterialTheme.colorScheme.primary.copy(alpha = if (dark) 0.22f else 0.14f)
-    val edge = MaterialTheme.colorScheme.primary.copy(alpha = if (dark) 0.34f else 0.24f)
+    val shape = RoundedCornerShape(50)
     Box(
         modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 22.dp, vertical = 8.dp)
             .height(76.dp),
@@ -285,9 +292,9 @@ private fun FloatingGlassBottomBar(
     ) {
         BoxWithConstraints(
             Modifier.fillMaxWidth().height(66.dp)
-                .clip(RoundedCornerShape(50))
-                .background(glass)
-                .border(1.dp, edge, RoundedCornerShape(50))
+                .clip(shape)
+                .hazeEffect(state = hazeState)
+                .background(glass, shape)
                 .padding(5.dp)
         ) {
             val itemWidth = maxWidth / 3
