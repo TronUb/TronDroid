@@ -150,10 +150,15 @@ fun TronDroidHome(
             Page.About -> AboutScreen(Modifier.fillMaxSize())
             Page.Updater -> AppUpdaterScreen(Modifier.fillMaxSize())
             is Page.PluginDetail -> PluginDetailScreen(Modifier.fillMaxSize(), current.id)
-            } 
-            if (isHome) FloatingGlassBottomBar(selected = tab, onSelect = { tab = it },
-                modifier = Modifier.align(Alignment.BottomCenter))
+            }
         }
+            if (isHome) {
+                FloatingGlassBottomBar(
+                    selected = tab,
+                    onSelect = { tab = it },
+                    modifier = Modifier.align(Alignment.BottomCenter)
+                )
+            }
         }
     }
     BackHandler(enabled = pageStack.size > 1 || tab != Tab.USERBOTS) { if (pageStack.size > 1) goBack() else tab = Tab.USERBOTS }
