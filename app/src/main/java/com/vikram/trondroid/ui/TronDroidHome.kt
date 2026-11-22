@@ -1580,6 +1580,8 @@ private fun CredentialDetailScreen(
     var reveal by remember { mutableStateOf(false) }
     var hash by remember(bot.id, apiHash) { mutableStateOf(apiHash) }
     var showCustomCredentialsDialog by remember { mutableStateOf(false) }
+    var editingCredentialKey by remember { mutableStateOf<String?>(null) }
+    var pendingCredentialDelete by remember { mutableStateOf<String?>(null) }
     LazyColumn(modifier.fillMaxSize().padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         item {
             Text("Saved credentials", style = MaterialTheme.typography.titleMedium)
@@ -1629,8 +1631,29 @@ private fun CredentialDetailScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 } else {
-                    customCredentials.toSortedMap().forEach { (key, value) ->
-                        CustomCredentialField(key, value)
+                    Column(
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)),
+                        verticalArrangement = Arrangement.spacedBy(1.dp)
+                    ) {
+                        val entries = customCredentials.toSortedMap().entries.toList()
+                        entries.forEachIndexed { index, entry ->
+                            val shape = when {
+                                entries.size == 1 -> RoundedCornerShape(18.dp)
+                                index == 0 -> RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp)
+                                index == entries.lastIndex -> RoundedCornerShape(bottomStart = 18.dp, bottomEnd = 18.dp)
+                                else -> RoundedCornerShape(0.dp)
+                            }
+                            CustomCredentialField(
+                                keyName = entry.key,
+                                value = entry.value,
+                                shape = shape,
+                                onEdit = {
+                                    editingCredentialKey = entry.key
+                                    showCustomCredentialsDialog = true
+                                },
+                                onDelete = { pendingCredentialDelete = entry.key }
+                            )
+                        }
                     }
                 }
                 if (customCredentials.isNotEmpty()) {
@@ -1643,24 +1666,61 @@ private fun CredentialDetailScreen(
         item { CredentialField("TDLib session", context.filesDir.resolve("tdlib/" + bot.id).absolutePath) }
     }
     if (showCustomCredentialsDialog) {
+        val editingKey = editingCredentialKey
         CustomCredentialsDialog(
-            existing = customCredentials,
-            onDismiss = { showCustomCredentialsDialog = false },
-            onConfirm = { values ->
-                onSaveCustomCredentials(values)
+            existing = if (editingKey == null) customCredentials else mapOf(editingKey to customCredentials[editingKey].orEmpty()),
+            onDismiss = {
                 showCustomCredentialsDialog = false
+                editingCredentialKey = null
+            },
+            onConfirm = { values ->
+                val merged = customCredentials.toMutableMap()
+                if (editingKey != null) merged.remove(editingKey)
+                merged.putAll(values)
+                onSaveCustomCredentials(merged)
+                showCustomCredentialsDialog = false
+                editingCredentialKey = null
+            }
+        )
+    }
+    pendingCredentialDelete?.let { key ->
+        AlertDialog(
+            onDismissRequest = { pendingCredentialDelete = null },
+            icon = { Icon(Icons.Rounded.DeleteOutline, null, tint = MaterialTheme.colorScheme.error) },
+            title = { Text("Delete credential?") },
+            text = { Text("Remove $key from this account? This cannot be undone.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onSaveCustomCredentials(customCredentials - key)
+                        pendingCredentialDelete = null
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = MaterialTheme.colorScheme.onError
+                    )
+                ) { Text("Delete") }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { pendingCredentialDelete = null }) { Text("Cancel") }
             }
         )
     }
 }
 
 @Composable
-private fun CustomCredentialField(keyName: String, value: String) {
+private fun CustomCredentialField(
+    keyName: String,
+    value: String,
+    shape: RoundedCornerShape,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
+) {
     val context = androidx.compose.ui.platform.LocalContext.current
     var reveal by remember(keyName) { mutableStateOf(false) }
     val sensitive = keyName.contains("TOKEN", true) || keyName.contains("HASH", true) ||
         keyName.contains("SECRET", true) || keyName.contains("PASSWORD", true)
-    Card(shape = RoundedCornerShape(18.dp)) {
+    Card(shape = shape, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
         Column(Modifier.fillMaxWidth().padding(14.dp)) {
             Text(keyName, style = MaterialTheme.typography.labelLarge)
             Text(
@@ -1669,12 +1729,22 @@ private fun CustomCredentialField(keyName: String, value: String) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 6.dp)
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                if (sensitive) TextButton(onClick = { reveal = !reveal }) { Text(if (reveal) "Hide" else "Show") }
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (sensitive) {
+                    IconButton(onClick = { reveal = !reveal }) {
+                        Icon(if (reveal) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility, if (reveal) "Hide $keyName" else "Show $keyName")
+                    }
+                }
                 IconButton(onClick = {
                     (context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager)
                         .setPrimaryClip(android.content.ClipData.newPlainText(keyName, value))
                 }) { Icon(Icons.Rounded.ContentCopy, "Copy $keyName") }
+                IconButton(onClick = onEdit) { Icon(Icons.Rounded.Edit, "Edit $keyName") }
+                IconButton(onClick = onDelete) { Icon(Icons.Rounded.DeleteOutline, "Delete $keyName", tint = MaterialTheme.colorScheme.error) }
             }
         }
     }
