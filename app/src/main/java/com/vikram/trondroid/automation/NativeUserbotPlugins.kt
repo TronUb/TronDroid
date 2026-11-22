@@ -312,7 +312,8 @@ class HelpAutomationPlugin(
     override fun onCommand(context: AutomationContext) {
         val prefix = commandPrefix().ifBlank { "." }
         val lines = available().flatMap { plugin ->
-            plugin.commands.map { "${prefix}${it.name} — ${it.description}" }
+            plugin.commands.filter { context.isCommandEnabled(plugin.id, it.name) }
+                .map { "${prefix}${it.name} — ${it.description}" }
         }.distinct().sorted()
         context.reply(if (lines.isEmpty()) "No commands are currently registered."
             else "**Available commands**\n" + lines.take(80).joinToString("\n"))
