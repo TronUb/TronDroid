@@ -25,7 +25,10 @@ object PluginCatalog {
         commands.map { name ->
             val usage = when (name) {
                 in setOf("wiki", "imdb", "reddit", "r", "translate", "tr", "tl", "upcase", "joke", "weather", "currency", "paste", "google", "img", "download", "upload", "ytsearch", "song", "lyrics", "whois", "id", "qrcode", "tts", "ud", "short", "unshort", "telegraph", "carbon", "search", "pic", "pfp", "deezer", "spotify", "webshot", "itos", "vsubclip") -> "$name <query>"
-                in setOf("ban", "mute", "kick", "promote", "demote", "pin", "unpin", "block", "unblock", "approve", "disapprove") -> "$name <reply or user>"
+                in setOf("ban", "unban", "kick", "mute", "unmute", "promote", "demote") -> "$name <reply or user> [duration]"
+                "pin" -> "pin (reply required) [loud]"
+                "unpin" -> "unpin (reply required) | unpin all"
+                "banall" -> "banall confirm"
                 in setOf("afk", "setwelcome", "welcome", "save", "setdv", "filter", "schedule", "settitle", "colourtemplate", "tts") -> "$name <text>"
                 in setOf("purge", "purgecount", "spam", "dspam", "vcut", "vspeed", "vmute", "vinvert") -> "$name <count or options>"
                 else -> name
@@ -47,7 +50,7 @@ object PluginCatalog {
     )
 
     val userbot = listOf(
-        plugin("userbot:admin","Admin","Group moderation, member management and permission controls.","Moderation",PluginOwner.USERBOT,"main/userbot/modules/plugins/admin.py",false,"ban","banall","unban","mute","unmute","kick","pin","unpin","promote","demote"),
+        plugin("userbot:admin","Admin","Native TDLib moderation: ban/unban, timed mute, kick, promotion, demotion, pin management and confirmed supergroup bulk ban.","Moderation",PluginOwner.USERBOT,"main/userbot/modules/plugins/admin.py",true,"ban","banall","unban","mute","unmute","kick","pin","unpin","promote","demote"),
         plugin("userbot:afk","AFK","Automatically manage away status and reply to mentions.","Automation",PluginOwner.USERBOT,"main/userbot/modules/plugins/afk.py",true,"afk","unafk"),
         plugin("userbot:alive","Alive","Show connected account and app runtime status.","Status",PluginOwner.USERBOT,"main/userbot/modules/plugins/alive.py",true,"alive"),
         plugin("userbot:anime","Anime","Fetch anime images and GIFs by action.","Entertainment",PluginOwner.USERBOT,"main/userbot/modules/plugins/anime.py",true,"animelist","nekopic","npic","animegif"),
