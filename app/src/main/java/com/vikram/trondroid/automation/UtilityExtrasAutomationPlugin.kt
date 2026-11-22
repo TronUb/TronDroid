@@ -20,7 +20,7 @@ class UtilityExtrasAutomationPlugin : AutomationPlugin {
             val response = runCatching {
                 when (context.command) {
                     "short" -> {
-                        require(value.startsWith("https://") || value.startsWith("http://")) { "Provide a valid HTTP(S) URL." }
+                        validatePublicUrl(value)
                         val url = "https://is.gd/create.php?format=simple&url=" + URLEncoder.encode(value, Charsets.UTF_8.name())
                         get(url).trim().also { require(it.startsWith("https://")) { it } }
                     }
@@ -30,8 +30,6 @@ class UtilityExtrasAutomationPlugin : AutomationPlugin {
                     }
                     "webshot" -> {
                         require(value.startsWith("https://") || value.startsWith("http://")) { "Provide a valid HTTP(S) URL." }
-                        val host = URL(value).host.lowercase()
-                        require(host.isNotBlank() && host !in setOf("localhost", "127.0.0.1", "0.0.0.0")) { "This host cannot be captured." }
                         val gateway = context.telegram ?: return@runCatching "Telegram session is unavailable."
                         val screenshot = "https://image.thum.io/get/width/1200/crop/900/noanimate/" + value
                         gateway.sendPhotoUrl(context.message.chatId, screenshot, "Web screenshot: $value") { result ->
@@ -62,6 +60,14 @@ class UtilityExtrasAutomationPlugin : AutomationPlugin {
         }, "TronDroid-UtilityExtras").apply { isDaemon = true }.start()
     }
 
+    private fun validatePublicUrl(raw: String) {
+        val parsed = URL(raw)
+        require(parsed.protocol.equals("https", true) || parsed.protocol.equals("http", true)) { "Only HTTP(S) URLs are supported." }
+        val host = parsed.host.lowercase()
+        require(host.isNotBlank() && !host.startsWith("[") && !host.matches(Regex("[0-9.]+"))) { "IP-address URLs are not accepted." }
+        require(parsed.userInfo == null && parsed.port in listOf(-1, 80, 443)) { "URLs with credentials or custom ports are not accepted." }
+        require(host !in setOf("localhost", "localhost.localdomain") && !host.endsWith(".local") && !host.endsWith(".internal") && !host.endsWith(".test") && !host.endsWith(".localhost")) { "Local and private hostnames are not accepted." }
+    }
     private fun get(url: String): String {
         val connection = URL(url).openConnection() as HttpURLConnection
         connection.connectTimeout = 10000
