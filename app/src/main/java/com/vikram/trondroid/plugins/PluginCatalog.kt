@@ -25,16 +25,16 @@ object PluginCatalog {
         commands.map { name ->
             val usage = when (name) {
                 in setOf("wiki", "imdb", "reddit", "r", "translate", "tr", "tl", "upcase", "joke", "weather", "currency", "paste", "google", "img", "download", "upload", "ytsearch", "song", "lyrics", "whois", "id", "qrcode", "tts", "ud", "short", "unshort", "telegraph", "carbon", "search", "pic", "pfp", "deezer", "spotify", "webshot", "itos", "vsubclip") -> "$name <query>"
-                in setOf("ban", "unban", "kick", "mute", "unmute", "promote", "demote") -> "$name <reply or user> [duration]"
+                in setOf("ban", "unban", "kick", "mute", "unmute", "promote", "demote") -> "$name <reply or user> [duration]"\n                in setOf("broadcast", "bdt") -> "$name <message>"
                 "pin" -> "pin (reply required) [loud]"
-                "unpin" -> "unpin (reply required) | unpin all"
+                "unpin" -> "unpin (reply required) | unpin all"\n                "broadcast", "bdt" -> "$name <message>"
                 "banall" -> "banall confirm"
                 in setOf("afk", "setwelcome", "welcome", "save", "setdv", "filter", "schedule", "settitle", "colourtemplate", "tts") -> "$name <text>"
                 in setOf("purge", "purgecount", "spam", "dspam", "vcut", "vspeed", "vmute", "vinvert") -> "$name <count or options>"
                 else -> name
             }
             val example = when (name) {
-                "wiki" -> "wiki quantum mechanics"
+                "broadcast", "bdt" -> "$name Hello everyone! Important announcement."\n                "wiki" -> "wiki quantum mechanics"
                 "imdb" -> "imdb Interstellar"
                 "translate", "tr", "tl" -> "$name en Hello, how are you?"
                 "reddit", "r" -> "$name android"
@@ -54,7 +54,7 @@ object PluginCatalog {
         plugin("userbot:afk","AFK","Automatically manage away status and reply to mentions.","Automation",PluginOwner.USERBOT,"main/userbot/modules/plugins/afk.py",true,"afk","unafk"),
         plugin("userbot:alive","Alive","Show connected account and app runtime status.","Status",PluginOwner.USERBOT,"main/userbot/modules/plugins/alive.py",true,"alive"),
         plugin("userbot:anime","Anime","Fetch anime images and GIFs by action.","Entertainment",PluginOwner.USERBOT,"main/userbot/modules/plugins/anime.py",true,"animelist","nekopic","npic","animegif"),
-        plugin("userbot:broadcast","Broadcast","Send an announcement to selected chats.","Messaging",PluginOwner.USERBOT,"main/userbot/modules/plugins/broadcast.py",false,"broadcast"),
+        plugin("userbot:broadcast","Broadcast","Send announcements sequentially to private chats and groups in the main dialog list, with flood-wait handling and delivery totals.","Messaging",PluginOwner.USERBOT,"main/userbot/modules/plugins/broadcast.py",true,"broadcast","bdt"),
         plugin("userbot:carbon","Carbon","Create syntax-highlighted code images. The upstream implementation is broken and remains unavailable until it is replaced.","Media",PluginOwner.USERBOT,"main/userbot/modules/plugins/carbon.py",false,"carbon","carblist"),
         plugin("userbot:clone","Clone","Copy and restore Telegram profile details.","Profile",PluginOwner.USERBOT,"main/userbot/modules/plugins/clone.py",true,"clone","revert"),
         plugin("userbot:dev","Developer tools","Developer utilities and code evaluation. Shell execution is intentionally not enabled.","Developer",PluginOwner.USERBOT,"main/userbot/modules/plugins/dev.py",false,"eval","terminal"),
