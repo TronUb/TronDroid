@@ -334,11 +334,11 @@ private fun UserbotDetailScreen(
 
     Column(modifier.fillMaxSize()) {
         ScrollableTabRow(
-            selectedTabIndex = UserbotSection.entries.indexOf(section),
+            selectedTabIndex = UserbotSection.values().indexOf(section),
             edgePadding = 16.dp,
             divider = { HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)) }
         ) {
-            UserbotSection.entries.forEach { item ->
+            UserbotSection.values().forEach { item ->
                 Tab(
                     selected = section == item,
                     onClick = { section = item },
@@ -364,11 +364,11 @@ private fun UserbotDetailScreen(
                 var dragDistance = 0f
                 detectHorizontalDragGestures(
                     onDragEnd = {
-                        val index = UserbotSection.entries.indexOf(section)
-                        if (dragDistance < -72f && index < UserbotSection.entries.lastIndex) {
-                            section = UserbotSection.entries[index + 1]
+                        val index = UserbotSection.values().indexOf(section)
+                        if (dragDistance < -72f && index < UserbotSection.values().lastIndex) {
+                            section = UserbotSection.values()[index + 1]
                         } else if (dragDistance > 72f && index > 0) {
-                            section = UserbotSection.entries[index - 1]
+                            section = UserbotSection.values()[index - 1]
                         }
                         dragDistance = 0f
                     },
