@@ -13,6 +13,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -71,6 +73,9 @@ fun TronDroidHome(
     fun goBack() { if (pageStack.size > 1) { navigationDirection = -1; pageStack = pageStack.dropLast(1) } }
     var showAdd by remember { mutableStateOf(false) }
     var pluginOwner by remember { mutableIntStateOf(0) }
+    val userbotsListState = rememberLazyListState()
+    val userbotPluginsListState = rememberLazyListState()
+    val botPluginsListState = rememberLazyListState()
     val context = androidx.compose.ui.platform.LocalContext.current
     var pendingDelete by remember { mutableStateOf<BotProfile?>(null) }
     var pendingLogout by remember { mutableStateOf<BotProfile?>(null) }
@@ -132,10 +137,10 @@ fun TronDroidHome(
         }, label = "page-slide") { currentPage ->
         when (val current = currentPage) {
             Page.Home -> when (tab) {
-                Tab.USERBOTS -> UserbotsScreen(Modifier.padding(padding), bots, onOpen = {
+                Tab.USERBOTS -> UserbotsScreen(Modifier.padding(padding), bots, listState = userbotsListState, onOpen = {
                     onSelect(it); navigate(Page.Userbot(it))
                 }, onToggle = { id, enabled -> onToggle(id, enabled) })
-                Tab.PLUGINS -> PluginsScreen(Modifier.padding(padding), selectedOwner = pluginOwner, onOwnerChange = { pluginOwner = it }, onOpen = { navigate(Page.PluginDetail(it)) })
+                Tab.PLUGINS -> PluginsScreen(Modifier.padding(padding), selectedOwner = pluginOwner, onOwnerChange = { pluginOwner = it }, listState = if (pluginOwner == 0) userbotPluginsListState else botPluginsListState, onOpen = { navigate(Page.PluginDetail(it)) })
                 Tab.SETTINGS -> SettingsScreen(Modifier.padding(padding),
                     onGeneral = { navigate(Page.GeneralSettings) }, onAbout = { navigate(Page.About) }, onUpdater = { navigate(Page.Updater) }, themeMode = themeMode, onThemeChange = onThemeChange,
                     dynamicColors = dynamicColors, onDynamicColorsChange = onDynamicColorsChange)
@@ -190,8 +195,8 @@ fun TronDroidHome(
 }
 
 @Composable
-private fun UserbotsScreen(modifier: Modifier, bots: List<BotProfile>, onOpen: (String) -> Unit, onToggle: (String, Boolean) -> Unit) {
-    LazyColumn(modifier.fillMaxSize().padding(horizontal = 18.dp),
+private fun UserbotsScreen(modifier: Modifier, bots: List<BotProfile>, listState: LazyListState, onOpen: (String) -> Unit, onToggle: (String, Boolean) -> Unit) {
+    LazyColumn(state = listState, modifier = modifier.fillMaxSize().padding(horizontal = 18.dp),
         contentPadding = PaddingValues(top = 12.dp, bottom = 100.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         if (bots.isEmpty()) item {
             Box(Modifier.fillMaxWidth().padding(top = 90.dp), contentAlignment = Alignment.Center) {
@@ -745,7 +750,7 @@ private fun AddBotDialog(onDismiss: () -> Unit, onSave: (String, String, Int, St
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun PluginsScreen(modifier: Modifier, selectedOwner: Int, onOwnerChange: (Int) -> Unit, onOpen: (String) -> Unit) {
+private fun PluginsScreen(modifier: Modifier, selectedOwner: Int, onOwnerChange: (Int) -> Unit, listState: LazyListState, onOpen: (String) -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val settings = remember { PluginSettings(context) }
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
@@ -795,7 +800,7 @@ private fun PluginsScreen(modifier: Modifier, selectedOwner: Int, onOwnerChange:
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(top = 14.dp, bottom = 8.dp)
         )
-        LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp),
+        LazyColumn(state = listState, modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp),
             contentPadding = PaddingValues(bottom = 24.dp)) {
             items(plugins, key = { it.id }) { plugin ->
                 Card(onClick = { onOpen(plugin.id) }, shape = RoundedCornerShape(20.dp)) {
