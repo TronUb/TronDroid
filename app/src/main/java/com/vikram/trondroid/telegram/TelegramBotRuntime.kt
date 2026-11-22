@@ -101,6 +101,7 @@ object TelegramBotRuntime {
         override fun run() {
             var offset = 0L
             var identityLoaded = false
+            var retryDelayMs = 3_000L
             while (running.get()) {
                 try {
                     if (!identityLoaded) {
@@ -117,16 +118,19 @@ object TelegramBotRuntime {
                             identityLoaded = true
                         } else {
                             if (!preferences.getBoolean("auto_reconnect_bots", true)) break
-                            Thread.sleep(10_000)
+                            Thread.sleep(retryDelayMs)
+                            retryDelayMs = (retryDelayMs * 2).coerceAtMost(60_000L)
                             continue
                         }
                     }
                     val updates = request("getUpdates?timeout=25&offset=$offset")
                     if (!updates.optBoolean("ok")) {
                         if (!preferences.getBoolean("auto_reconnect_bots", true)) break
-                        Thread.sleep(5_000)
+                        Thread.sleep(retryDelayMs)
+                        retryDelayMs = (retryDelayMs * 2).coerceAtMost(60_000L)
                         continue
                     }
+                    retryDelayMs = 3_000L
                     val results = updates.optJSONArray("result") ?: continue
                     for (index in 0 until results.length()) {
                         val update = results.optJSONObject(index) ?: continue
@@ -137,7 +141,7 @@ object TelegramBotRuntime {
                     break
                 } catch (_: Exception) {
                     if (!preferences.getBoolean("auto_reconnect_bots", true)) break
-                    try { Thread.sleep(5_000) } catch (_: InterruptedException) { break }
+                    try { Thread.sleep(retryDelayMs); retryDelayMs = (retryDelayMs * 2).coerceAtMost(60_000L) } catch (_: InterruptedException) { break }
                 }
             }
         }
@@ -198,11 +202,12 @@ object TelegramBotRuntime {
                 append("${plugin.summary}\n\n")
                 val prefix = if (userbot) pluginSettings.handler() else "/"
                 plugin.commands.filter { pluginSettings.commandEnabled(plugin.id, it.name) }.forEach { command ->
-                    append("✦ **${prefix}${command.name}**\\n")
-                    append("${command.description}\\n")
-                    append("**Usage:** `${prefix}${command.usage}`\\n")
-                    append("**Example:** `${prefix}${command.example}`\\n\\n")
-                }            }.take(950)
+                    append("✦ **${prefix}${command.name}**\n")
+                    append("${command.description}\n")
+                    append("**Usage:** `${prefix}${command.usage}`\n")
+                    append("**Example:** `${prefix}${command.example}`\n\n")
+                }
+            }.take(950)
         }
 
         private fun sendBotPhoto(chatId: Long, caption: String, markup: JSONObject): JSONObject =
@@ -219,7 +224,7 @@ object TelegramBotRuntime {
 
         fun sendUserbotHelpDex(chatId: Long): Boolean = runCatching {
             sendBotText(chatId,
-                "✦ **TRON USERBOT HELPDEX**\\n\\nOpen the Helpdex in any chat using inline mode. Browse plugins, commands and usage without sending a command message.",
+                "✦ **TRON USERBOT HELPDEX**\n\nOpen the Helpdex in any chat using inline mode. Browse plugins, commands and usage without sending a command message.",
                 inlineLauncher("help")).optBoolean("ok")
         }.getOrDefault(false)
 
