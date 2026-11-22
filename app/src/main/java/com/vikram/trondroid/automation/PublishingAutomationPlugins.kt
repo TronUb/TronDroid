@@ -30,51 +30,13 @@ private object TelegraphHttp {
 }
 
 class PublishingAutomationPlugin(private val cacheDir: File) : AutomationPlugin {
-    override val id = "userbot:publishing"
-    private val colors = listOf("aqua", "red", "blue", "green", "yellow", "gold", "orange", "purple", "black", "white", "lime", "silver", "maroon", "olive", "teal", "navy", "chocolate")
+    override val id = "userbot:telegraph"
     override val commands = listOf(
-        AutomationCommand("carbon", "Render code or text as a Carbon image.", "carbon [colour] <text>"),
-        AutomationCommand("carblist", "List Carbon color presets.", "carblist"),
-        AutomationCommand("telegraph", "Publish replied text to a Telegraph page.", "telegraph (reply to text)")
+        AutomationCommand("telegraph", "Publish replied text or supported media to a Telegraph page.", "telegraph (reply to text, photo or video)")
     )
 
     override fun onCommand(context: AutomationContext) {
-        when (context.command) {
-            "carblist" -> context.reply("Carbon color presets:\n" + colors.joinToString(", "))
-            "carbon" -> carbon(context)
-            "telegraph" -> telegraph(context)
-        }
-    }
-
-    private fun carbon(context: AutomationContext) {
-        val raw = context.arguments.joinToString(" ").trim()
-        if (raw.isBlank()) return context.reply("Usage: .carbon [colour] <code or text>")
-        val color = raw.substringBefore(' ').lowercase().takeIf { it in colors }
-        val code = if (color != null) raw.substringAfter(' ') else raw
-        if (code.isBlank()) return context.reply("Provide code or text to render.")
-        context.reply("Generating Carbon image…")
-        Thread({
-            runCatching {
-                val encoded = URLEncoder.encode(code.take(12_000), "UTF-8")
-                val url = "https://carbon-api.vercel.app/api?code=$encoded&theme=dracula&background=true&padding=24"
-                val connection = URL(url).openConnection() as HttpURLConnection
-                connection.connectTimeout = 15_000
-                connection.readTimeout = 45_000
-                connection.setRequestProperty("User-Agent", "TronDroid/1.0")
-                val file = File(cacheDir, "carbon_${System.currentTimeMillis()}.png")
-                try {
-                    require(connection.responseCode == 200) { "Carbon service returned HTTP ${connection.responseCode}" }
-                    connection.inputStream.use { input -> file.outputStream().use { input.copyTo(it) } }
-                    require(file.length() in 1..15L * 1024 * 1024) { "Generated image is empty or too large." }
-                } finally { connection.disconnect() }
-                file
-            }.onSuccess { file ->
-                context.telegram?.sendDocumentPath(context.message.chatId, file.absolutePath, "Generated with Carbon") { result ->
-                    context.reply(if (result is TdApi.Error) "Carbon upload failed: ${result.message}" else "Carbon image sent.")
-                    file.delete()
-                } ?: context.reply("Telegram session is unavailable.")
-            }.onFailure { context.reply("Carbon failed: ${it.message ?: "unknown error"}") }
-        }, "TronDroid-Carbon").apply { isDaemon = true }.start()
+        if (context.command == "telegraph") telegraph(context)
     }
 
     private fun telegraph(context: AutomationContext) {
