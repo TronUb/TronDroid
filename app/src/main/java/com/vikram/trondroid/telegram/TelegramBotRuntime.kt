@@ -375,7 +375,7 @@ object TelegramBotRuntime {
                             inlineLauncher("quote")))
                     }
                 }
-                "alive", "ialive", "stats", "ialive" -> results.put(inlineArticle("userbot-alive", "Userbot status",
+                "alive", "ialive", "stats" -> results.put(inlineArticle("userbot-alive", "Userbot status",
                     "Uptime and runtime information", lastUserbotAliveCaption ?: botAliveCaption(),
                     userbotAliveKeyboard()))
                 "quote" -> results.put(inlineArticle("userbot-quote", "Tron quote", "Share an anime quote",
