@@ -30,6 +30,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.asImageBitmap
 import android.graphics.BitmapFactory
 import androidx.compose.ui.input.pointer.pointerInput
@@ -194,7 +195,7 @@ fun TronDroidHome(
 private fun FloatingGlassBottomBar(selected: Tab, onSelect: (Tab) -> Unit) {
     val tabs = listOf(Tab.USERBOTS, Tab.PLUGINS, Tab.SETTINGS)
     val selectedIndex = tabs.indexOf(selected).coerceAtLeast(0)
-    val dark = androidx.compose.foundation.isSystemInDarkTheme()
+    val dark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
     val glass = if (dark) Color(0xFF17181D).copy(alpha = 0.82f) else Color.White.copy(alpha = 0.78f)
     val edge = if (dark) Color.White.copy(alpha = 0.12f) else Color.White.copy(alpha = 0.72f)
     val shadowTint = if (dark) Color.Black else Color(0xFF64748B)
@@ -991,7 +992,7 @@ private fun PluginDetailScreen(modifier: Modifier, id: String) {
                         }
                         Surface(shape = RoundedCornerShape(50), color = MaterialTheme.colorScheme.surface.copy(alpha = 0.65f)) {
                             Text("$enabledCommands / ${plugin.commands.size} commands enabled", Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                                style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                                style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurface)
                         }
                     }
                 }
@@ -1100,14 +1101,21 @@ private fun AboutScreen(modifier: Modifier) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val version = com.vikram.trondroid.BuildConfig.VERSION_NAME
     LazyColumn(modifier.fillMaxSize().padding(horizontal = 18.dp), verticalArrangement = Arrangement.spacedBy(14.dp),
-        contentPadding = PaddingValues(top = 14.dp, bottom = 30.dp)) {
+        contentPadding = PaddingValues(top = 10.dp, bottom = 30.dp)) {
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text("About TronDroid", style = MaterialTheme.typography.headlineMedium)
+                Text("Project details and app information.", style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
         item {
             Card(shape = RoundedCornerShape(28.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
                 Column(Modifier.fillMaxWidth().padding(22.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surface.copy(alpha = 0.55f), modifier = Modifier.size(64.dp)) {
-                        Box(contentAlignment = Alignment.Center) { Icon(Icons.Rounded.Send, null, Modifier.size(34.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer) }
+                        Box(contentAlignment = Alignment.Center) { Icon(Icons.Rounded.Send, null, Modifier.size(34.dp), tint = MaterialTheme.colorScheme.primary) }
                     }
-                    Text("TronDroid", style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                    Text("TronDroid", style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text("Telegram sessions, userbot automation and Bot API connections — managed from Android.",
                         style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onPrimaryContainer)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
