@@ -155,7 +155,6 @@ class TelegramEngine(private val context: Context, private val profile: BotProfi
         nativePlugins += StatsAutomationPlugin()
         nativePlugins += SpamAutomationPlugin()
         nativePlugins += DigitalVaultAutomationPlugin(context.getSharedPreferences("trondroid.userbot.digital_vault", Context.MODE_PRIVATE))
-        nativePlugins += TextToolsAutomationPlugin()
         nativePlugins += WelcomeAutomationPlugin(context.getSharedPreferences("trondroid.userbot.welcome", Context.MODE_PRIVATE))
         nativePlugins += AdminAutomationPlugin()
         nativePlugins += BroadcastAutomationPlugin()
