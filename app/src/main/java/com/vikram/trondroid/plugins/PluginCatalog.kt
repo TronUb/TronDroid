@@ -50,7 +50,7 @@ object PluginCatalog {
     )
 
     val userbot = listOf(
-        plugin("userbot:admin","Admin","Native TDLib moderation: ban/unban, timed mute, kick, promotion, demotion, pin management and confirmed supergroup bulk ban.","Moderation",PluginOwner.USERBOT,"main/userbot/modules/plugins/admin.py",true,"ban","banall","unban","mute","unmute","kick","pin","unpin","promote","demote"),
+        plugin("userbot:admin","Admin","Native TDLib moderation: ban/unban, timed mute, kick, promotion, demotion, pin management and confirmed supergroup bulk ban.","Moderation",PluginOwner.USERBOT,"main/userbot/modules/plugins/admin.py",true,"ban","dban","banall","unban","mute","dmute","unmute","kick","pin","unpin","promote","demote"),
         plugin("userbot:afk","AFK","Automatically manage away status and reply to mentions.","Automation",PluginOwner.USERBOT,"main/userbot/modules/plugins/afk.py",true,"afk","unafk"),
         plugin("userbot:alive","Alive","Show connected account and app runtime status.","Status",PluginOwner.USERBOT,"main/userbot/modules/plugins/alive.py",true,"alive"),
         plugin("userbot:anime","Anime","Fetch anime images and GIFs by action.","Entertainment",PluginOwner.USERBOT,"main/userbot/modules/plugins/anime.py",true,"animelist","nekopic","npic","animegif"),
