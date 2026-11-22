@@ -349,8 +349,8 @@ object TelegramBotRuntime {
                 }
                 "alive", "ialive", "stats" -> {
                     val markup = JSONObject().put("inline_keyboard", org.json.JSONArray().apply {
-                        put(org.json.JSONArray().put(button("Refresh", "ubalive:refresh")))
-                        put(org.json.JSONArray().put(button("Help", "bothelp:home")).put(button("Close", "ubalive:close")))
+                        put(org.json.JSONArray().put(button("Refresh", "botalive:refresh")))
+                        put(org.json.JSONArray().put(button("Help", "bothelp:home")).put(button("Close", "botalive:close")))
                     })
                     sendBotPhoto(chatId, botAliveCaption(), markup)
                     return
