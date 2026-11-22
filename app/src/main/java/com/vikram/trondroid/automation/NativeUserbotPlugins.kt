@@ -314,7 +314,9 @@ private object TronCommandMedia {
 
 class AliveAutomationPlugin(
     private val profileName: () -> String,
-    private val appContext: android.content.Context
+    private val appContext: android.content.Context,
+    private val sendInlineAlive: (Long) -> Boolean,
+    private val sendInlineQuote: (Long) -> Boolean
 ) : AutomationPlugin {
     override val id = "userbot:alive"
     private val startedAt = android.os.SystemClock.elapsedRealtime()
@@ -362,21 +364,12 @@ class AliveAutomationPlugin(
                 if (context.message.isOutgoing) gateway.deleteMessage(context.message.chatId, context.message.messageId)
             }
             "ialive" -> {
-                val keyboard = TronCommandMedia.markup(
-                    listOf(TronCommandMedia.button("Refresh", "ialive:refresh")),
-                    listOf(
-                        TronCommandMedia.button("Plugins", "help:page:0"),
-                        TronCommandMedia.button("Runtime", "ialive:runtime")
-                    ),
-                    listOf(
-                        TronCommandMedia.button("Home", "ialive:home"),
-                        TronCommandMedia.button("Close", "ialive:close")
-                    )
-                )
-                withTdlibVersion(gateway) {
-                    gateway.sendPhotoUrl(context.message.chatId, TronCommandMedia.USER_PIC,
-                        "⛊ **Tron Inline Status**\n\n${statusText()}", keyboard) { response ->
-                        if (response is TdApi.Error) context.reply("Unable to send inline alive card: ${response.message}")
+                if (!sendInlineAlive(context.message.chatId)) {
+                    withTdlibVersion(gateway) {
+                        gateway.sendPhotoUrl(context.message.chatId, TronCommandMedia.USER_PIC,
+                            "⛊ **Tron Inline Status**\n\n${statusText()}\n\nEnable this profile's Bot session to use interactive controls.") { response ->
+                            if (response is TdApi.Error) context.reply("Unable to send inline alive card: ${response.message}")
+                        }
                     }
                 }
                 if (context.message.isOutgoing) gateway.deleteMessage(context.message.chatId, context.message.messageId)
@@ -395,8 +388,7 @@ class AliveAutomationPlugin(
             "“The world is not perfect. But it is there for us.” — Roy Mustang\n**Fullmetal Alchemist**"
         )
         val text = "❝ ${quotes.random()} ❞"
-        gateway.sendText(context.message.chatId, text,
-            TronCommandMedia.markup(listOf(TronCommandMedia.button("More", "quote:more"))))
+        if (!sendInlineQuote(context.message.chatId)) gateway.sendText(context.message.chatId, text)
         if (context.message.isOutgoing) gateway.deleteMessage(context.message.chatId, context.message.messageId)
     }
 
@@ -444,7 +436,8 @@ class AliveAutomationPlugin(
 
 class HelpAutomationPlugin(
     private val commandPrefix: () -> String,
-    private val available: () -> List<AutomationPlugin>
+    private val available: () -> List<AutomationPlugin>,
+    private val sendHelpDex: (Long) -> Boolean
 ) : AutomationPlugin {
     override val id = "userbot:help"
     override val commands = listOf(
@@ -516,15 +509,16 @@ class HelpAutomationPlugin(
                         ?: return context.reply("Plugin '$requested' was not found. Use ${prefix}uplugs to list installed plugins.")
                     return context.reply(detail(selected, prefix, context.isCommandEnabled))
                 }
-                val gateway = context.telegram ?: return context.reply("Telegram session is unavailable.")
-                val keyboard = pageMarkup(all, 0)
-                gateway.sendPhotoUrl(context.message.chatId, TronCommandMedia.BOT_PIC, helpCaption(all), keyboard) { response ->
-                    if (response is TdApi.Error) {
-                        context.reply("Unable to send Helpdex image: ${response.message}")
-                        gateway.sendText(context.message.chatId, helpCaption(all), keyboard)
-                    }
+                if (!sendHelpDex(context.message.chatId)) {
+                    context.reply(
+                        "Interactive Helpdex requires this profile's Bot session to be enabled.\n\n" +
+                            helpCaption(all) + "\n\n" +
+                            all.joinToString("\n") { "• ${prefix}${it.id.substringAfter(':')}" }
+                    )
                 }
-                if (context.message.isOutgoing) gateway.deleteMessage(context.message.chatId, context.message.messageId)
+                if (context.message.isOutgoing) {
+                    context.telegram?.deleteMessage(context.message.chatId, context.message.messageId)
+                }
             }
         }
     }
