@@ -215,7 +215,7 @@ object TelegramBotRuntime {
 
         private fun sendBotPhoto(chatId: Long, caption: String, markup: JSONObject): JSONObject =
             request("sendPhoto?chat_id=$chatId&photo=${encode(tronBotImage)}" +
-                "&caption=${encode(caption)}&parse_mode=Markdown&reply_markup=${encode(markup.toString())}")
+                "&caption=${encode(caption.replace("**", "*"))}&parse_mode=Markdown&reply_markup=${encode(markup.toString())}")
 
         private fun switchInlineButton(label: String, query: String): JSONObject =
             JSONObject().put("text", label).put("switch_inline_query_current_chat", query)
@@ -281,13 +281,14 @@ object TelegramBotRuntime {
             request("answerCallbackQuery?callback_query_id=${encode(callbackId)}")
             val hasPhoto = message?.optJSONArray("photo") != null
             fun edit(caption: String, markup: JSONObject? = null) {
+                val safeCaption = caption.replace("**", "*")
                 val markupArg = markup?.let { "&reply_markup=${encode(it.toString())}" }.orEmpty()
                 if (inlineMessageId.isNotBlank()) {
-                    request("editMessageText?inline_message_id=${encode(inlineMessageId)}&text=${encode(caption)}&parse_mode=Markdown$markupArg")
+                    request("editMessageText?inline_message_id=${encode(inlineMessageId)}&text=${encode(safeCaption)}&parse_mode=Markdown$markupArg")
                 } else {
                     val method = if (hasPhoto) "editMessageCaption" else "editMessageText"
                     val field = if (hasPhoto) "caption" else "text"
-                    request("$method?chat_id=$chatId&message_id=$messageId&$field=${encode(caption)}&parse_mode=Markdown$markupArg")
+                    request("$method?chat_id=$chatId&message_id=$messageId&$field=${encode(safeCaption)}&parse_mode=Markdown$markupArg")
                 }
             }
             when {
@@ -345,7 +346,7 @@ object TelegramBotRuntime {
         private fun inlineArticle(
             id: String, title: String, description: String, message: String, markup: JSONObject? = null
         ): JSONObject {
-            val content = JSONObject().put("message_text", message.take(4000)).put("parse_mode", "Markdown")
+            val content = JSONObject().put("message_text", message.take(4000).replace("**", "*")).put("parse_mode", "Markdown")
             return JSONObject().put("type", "article").put("id", id).put("title", title.take(64))
                 .put("description", description.take(256)).put("input_message_content", content)
                 .apply { if (markup != null) put("reply_markup", markup) }
@@ -570,7 +571,7 @@ object TelegramBotRuntime {
 
         private fun sendBotText(chatId: Long, text: String, markup: JSONObject? = null): JSONObject {
             val markupArg = markup?.let { "&reply_markup=${encode(it.toString())}" }.orEmpty()
-            return request("sendMessage?chat_id=$chatId&text=${encode(text.take(4000))}&parse_mode=Markdown$markupArg")
+            return request("sendMessage?chat_id=$chatId&text=${encode(text.take(4000).replace("**", "*"))}&parse_mode=Markdown$markupArg")
         }
 
         private fun sendReply(chatId: Long, reply: String) {
