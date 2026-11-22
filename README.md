@@ -104,6 +104,10 @@ A plugin marked **Native Android implementation** has a Kotlin handler registere
 
 Dangerous or abuse-prone source capabilities (for example unrestricted shell/eval, mass messaging, unsolicited spam, or permission-bypass behaviour) are not enabled as-is. Administrative actions must validate Telegram permissions, scope and rate limits before being ported.
 
+### Telegram inline mode
+
+Enable inline mode for each companion bot with `@BotFather → /setinline`. Then use `@botusername help`, `alive`, `quote` or a plugin name in any chat to insert userbot menus and browse commands.
+
 ### Runtime and reliability
 
 - Telegram sessions are maintained by an Android foreground service while enabled.
