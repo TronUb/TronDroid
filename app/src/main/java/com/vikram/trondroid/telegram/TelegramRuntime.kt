@@ -29,6 +29,21 @@ object TelegramRuntime {
         mutableEngines.value = next
     }
 
+    /** Recreate one enabled userbot engine while leaving other accounts untouched. */
+    @Synchronized
+    fun restart(context: Context, id: String): Boolean {
+        val app = context.applicationContext
+        val store = BotStore(app)
+        val profile = store.all().firstOrNull { it.id == id && it.enabled } ?: return false
+        val hash = store.apiHash(id)?.takeIf { it.isNotBlank() } ?: return false
+        val current = mutableEngines.value[id] ?: return false
+        current.close()
+        val replacement = TelegramEngine(app, profile, hash)
+        mutableEngines.value = mutableEngines.value + (id to replacement)
+        replacement.start()
+        return true
+    }
+
     fun engine(id: String?): TelegramEngine? = id?.let { mutableEngines.value[it] }
 
     @Synchronized
