@@ -251,6 +251,7 @@ object TelegramBotRuntime {
         }
 
         private fun handleNumberGame(message: JSONObject, chat: JSONObject, text: String) {
+            if (!pluginSettings.commandEnabled("bot:botfun", "numbers")) return
             if (chat.optString("type") !in setOf("group", "supergroup")) return
             if (!text.matches(Regex("[+-][1-9]"))) return
             val reply = message.optJSONObject("reply_to_message") ?: return
