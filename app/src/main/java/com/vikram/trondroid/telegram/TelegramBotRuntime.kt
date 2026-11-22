@@ -354,6 +354,24 @@ object TelegramBotRuntime {
             }
         }
 
+        private fun inlinePhoto(
+            id: String,
+            title: String,
+            description: String,
+            photoUrl: String,
+            caption: String,
+            markup: JSONObject? = null
+        ): JSONObject = JSONObject()
+            .put("type", "photo")
+            .put("id", id)
+            .put("title", title.take(64))
+            .put("description", description.take(256))
+            .put("photo_url", photoUrl)
+            .put("thumb_url", photoUrl)
+            .put("caption", caption.take(1024).replace("**", "*"))
+            .put("parse_mode", "Markdown")
+            .apply { if (markup != null) put("reply_markup", markup) }
+
         private fun inlineArticle(
             id: String, title: String, description: String, message: String, markup: JSONObject? = null
         ): JSONObject {
@@ -380,20 +398,20 @@ object TelegramBotRuntime {
             when (command) {
                 "", "help", "ihelp", "helpdex", "helpmenu", "plugins" -> {
                     val page = argument.toIntOrNull()?.coerceAtLeast(0) ?: 0
-                    results.put(inlineArticle("userbot-help", "Tron Userbot Helpdex",
+                    results.put(inlinePhoto("userbot-help", "Tron Userbot Helpdex",
                         "Browse enabled userbot plugins and command usage",
-                        helpCaption(userbot = true), helpKeyboard(page, userbot = true)))
+                        tronBotImage, helpCaption(userbot = true), helpKeyboard(page, userbot = true)))
                     if (command.isEmpty()) {
-                        results.put(inlineArticle("userbot-alive", "Userbot status",
+                        results.put(inlinePhoto("userbot-alive", "Userbot status",
                             "Show userbot uptime and runtime information",
-                            currentUserbotAliveCaption(), userbotAliveKeyboard()))
+                            tronBotImage, currentUserbotAliveCaption(), userbotAliveKeyboard()))
                         results.put(inlineArticle("userbot-quote", "Tron quote", "Share an anime quote",
                             "❝ “If you don't take risks, you can't create a future.” — Monkey D. Luffy ❞",
                             inlineLauncher("quote")))
                     }
                 }
-                "alive", "ialive", "stats" -> results.put(inlineArticle("userbot-alive", "Userbot status",
-                    "Uptime and runtime information", currentUserbotAliveCaption(),
+                "alive", "ialive", "stats" -> results.put(inlinePhoto("userbot-alive", "Userbot status",
+                    "Uptime and runtime information", tronBotImage, currentUserbotAliveCaption(),
                     userbotAliveKeyboard()))
                 "quote" -> results.put(inlineArticle("userbot-quote", "Tron quote", "Share an anime quote",
                     "❝ “A lesson without pain is meaningless.” — Edward Elric ❞", inlineLauncher("quote")))
