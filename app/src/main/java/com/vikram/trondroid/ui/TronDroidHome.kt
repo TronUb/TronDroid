@@ -218,7 +218,15 @@ fun TronDroidHome(
             text = { Text("This will end the Telegram session on this device. You can sign in again later.") },
             confirmButton = {
                 Button(
-                    onClick = { if (selected?.id == bot.id) engine?.logout(); pendingLogout = null },
+                    onClick = {
+                        val activeEngine = if (selected?.id == bot.id) engine else null
+                        if (activeEngine == null) {
+                            onToggle(bot.id, false)
+                        } else {
+                            activeEngine.logout { onToggle(bot.id, false) }
+                        }
+                        pendingLogout = null
+                    },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.error,
                         contentColor = MaterialTheme.colorScheme.onError
