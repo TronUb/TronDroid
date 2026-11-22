@@ -125,7 +125,8 @@ fun TronDroidHome(
             Page.Home -> when (tab) {
                 Tab.USERBOTS -> UserbotsScreen(Modifier.fillMaxSize(), bots, listState = userbotsListState, onOpen = {
                     onSelect(it); navigate(Page.Userbot(it))
-                }, onToggle = { id, enabled -> onToggle(id, enabled) })
+                }, onToggle = { id, enabled -> onToggle(id, enabled) },
+                    onBotToggle = { id, enabled -> onBotToggle(id, enabled) })
                 Tab.PLUGINS -> PluginsScreen(Modifier.fillMaxSize(), selectedOwner = pluginOwner, onOwnerChange = { pluginOwner = it }, listState = if (pluginOwner == 0) userbotPluginsListState else botPluginsListState, onOpen = { navigate(Page.PluginDetail(it)) })
                 Tab.SETTINGS -> SettingsScreen(Modifier.fillMaxSize(),
                     onSessions = { navigate(Page.SessionPreferences) }, onBots = { navigate(Page.BotConnections) },
@@ -146,7 +147,8 @@ fun TronDroidHome(
                     onLogout = { if (bot != null) pendingLogout = bot },
                     onRename = { name -> bot?.let { onRename(it.id, name) } },
                     onToggle = onToggle,
-                    onBotToggle = onBotToggle
+                    onBotToggle = onBotToggle,
+                    onBack = { goBack() }
                 )
             }
             Page.SessionPreferences -> SessionPreferencesScreen(Modifier.fillMaxSize())
@@ -173,8 +175,18 @@ fun TronDroidHome(
     pendingLogout?.let { bot ->
         AlertDialog(onDismissRequest = { pendingLogout = null }, title = { Text("Log out of ${bot.name}?") },
             text = { Text("This will end the Telegram session on this device. You can sign in again later.") },
-            confirmButton = { TextButton(onClick = { if (selected?.id == bot.id) engine?.logout(); pendingLogout = null }) { Text("Log out") } },
-            dismissButton = { TextButton(onClick = { pendingLogout = null }) { Text("Cancel") } })
+            confirmButton = {
+                Button(
+                    onClick = { if (selected?.id == bot.id) engine?.logout(); pendingLogout = null },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = MaterialTheme.colorScheme.onError
+                    )
+                ) { Text("Log out") }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { pendingLogout = null }) { Text("Cancel") }
+            })
     }
     pendingDelete?.let { bot ->
         AlertDialog(
@@ -201,8 +213,9 @@ private fun FloatingGlassBottomBar(
     val tabs = listOf(Tab.USERBOTS, Tab.PLUGINS, Tab.SETTINGS)
     val selectedIndex = tabs.indexOf(selected).coerceAtLeast(0)
     val dark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
-    val glass = if (dark) Color(0xFF17181D).copy(alpha = 0.82f) else Color.White.copy(alpha = 0.78f)
-    val edge = if (dark) Color.White.copy(alpha = 0.12f) else Color.White.copy(alpha = 0.72f)
+    val glass = if (dark) Color(0xFF172238).copy(alpha = 0.96f)
+        else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.96f)
+    val edge = MaterialTheme.colorScheme.primary.copy(alpha = if (dark) 0.24f else 0.18f)
     Box(
         modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 22.dp, vertical = 8.dp)
             .height(76.dp),
@@ -251,9 +264,16 @@ private fun FloatingGlassBottomBar(
 }
 
 @Composable
-private fun UserbotsScreen(modifier: Modifier, bots: List<BotProfile>, listState: LazyListState, onOpen: (String) -> Unit, onToggle: (String, Boolean) -> Unit) {
+private fun UserbotsScreen(
+    modifier: Modifier,
+    bots: List<BotProfile>,
+    listState: LazyListState,
+    onOpen: (String) -> Unit,
+    onToggle: (String, Boolean) -> Unit,
+    onBotToggle: (String, Boolean) -> Unit
+) {
     LazyColumn(state = listState, modifier = modifier.fillMaxSize().padding(horizontal = 18.dp),
-        contentPadding = PaddingValues(top = 12.dp, bottom = 100.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        contentPadding = PaddingValues(top = 12.dp, bottom = 120.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         item {
             Text("Userbots", style = MaterialTheme.typography.headlineMedium)
             Text("Manage your Telegram account sessions.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -277,7 +297,13 @@ private fun UserbotsScreen(modifier: Modifier, bots: List<BotProfile>, listState
                         Text(bot.name, style = MaterialTheme.typography.titleMedium)
                         Text(bot.phoneNumber, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    Switch(checked = bot.enabled, onCheckedChange = { onToggle(bot.id, it) })
+                    Switch(
+                        checked = bot.enabled || bot.botEnabled,
+                        onCheckedChange = { enabled ->
+                            onToggle(bot.id, enabled)
+                            onBotToggle(bot.id, enabled)
+                        }
+                    )
                     Icon(Icons.Rounded.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
@@ -313,7 +339,8 @@ private fun UserbotDetailScreen(
     onLogout: () -> Unit,
     onRename: (String) -> Unit,
     onToggle: (String, Boolean) -> Unit,
-    onBotToggle: (String, Boolean) -> Unit
+    onBotToggle: (String, Boolean) -> Unit,
+    onBack: () -> Unit
 ) {
     if (bot == null) return
     val auth = engine?.authorization?.collectAsState()?.value
@@ -332,6 +359,22 @@ private fun UserbotDetailScreen(
     val terminalAccent = androidx.compose.ui.graphics.Color(0xFF9BE7B0)
 
     Column(modifier.fillMaxSize()) {
+        Row(
+            Modifier.fillMaxWidth().padding(start = 8.dp, end = 18.dp, top = 8.dp, bottom = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onBack) {
+                Icon(Icons.Rounded.ArrowBack, contentDescription = "Back")
+            }
+            Column(Modifier.weight(1f)) {
+                Text("Configuration", style = MaterialTheme.typography.headlineSmall)
+                Text(
+                    "Manage Telegram sessions, credentials and automation.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
         ScrollableTabRow(
             selectedTabIndex = userbotSections.indexOf(section),
             edgePadding = 16.dp,
@@ -862,7 +905,7 @@ private fun PluginsScreen(modifier: Modifier, selectedOwner: Int, onOwnerChange:
     }
     val enabledCount = allPlugins.count { settings.enabled(it.id) }
     LazyColumn(state = listState, modifier = modifier.fillMaxSize().padding(horizontal = 16.dp),
-        contentPadding = PaddingValues(top = 10.dp, bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        contentPadding = PaddingValues(top = 10.dp, bottom = 120.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         item {
             Text("Plugins", style = MaterialTheme.typography.headlineMedium)
             Text("Manage automation tools and individual commands.", style = MaterialTheme.typography.bodySmall,
@@ -889,10 +932,12 @@ private fun PluginsScreen(modifier: Modifier, selectedOwner: Int, onOwnerChange:
                 }
             }
         }
-        if (selectedOwner == 0) item {
+        item {
+            val isUserbot = selectedOwner == 0
+            val shownPrefix = if (isUserbot) handler else "/"
             Card(shape = RoundedCornerShape(22.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
-                Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.secondaryContainer) {
                             Icon(Icons.Rounded.Terminal, null, Modifier.padding(9.dp).size(20.dp),
@@ -901,27 +946,62 @@ private fun PluginsScreen(modifier: Modifier, selectedOwner: Int, onOwnerChange:
                         Spacer(Modifier.width(10.dp))
                         Column(Modifier.weight(1f)) {
                             Text("Command prefix", style = MaterialTheme.typography.titleSmall)
-                            Text("Used before every userbot command", style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(
+                                if (isUserbot) "Used before every userbot command" else "Telegram Bot API command prefix",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                         Surface(shape = RoundedCornerShape(50.dp), color = MaterialTheme.colorScheme.primaryContainer) {
-                            Text(savedPrefix, Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                            Text(if (isUserbot) savedPrefix else "/", Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
                                 style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onPrimaryContainer)
                         }
                     }
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        OutlinedTextField(value = handler, onValueChange = { handler = it.take(8) },
-                            modifier = Modifier.weight(1f), shape = RoundedCornerShape(18.dp), singleLine = true,
-                            placeholder = { Text(".") },
-                            leadingIcon = { Text("⌘", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary) },
-                            supportingText = { Text("Choose a short prefix, e.g. . or !") })
-                        FilledTonalButton(onClick = {
-                            val value = handler.trim().ifBlank { "." }
-                            settings.setHandler(value); handler = value; savedPrefix = value
-                            focusManager.clearFocus(); keyboard?.hide()
-                        }, enabled = handler.isNotBlank() && handler.trim() != savedPrefix,
+                    Row(
+                        verticalAlignment = Alignment.Top,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            TextField(
+                                value = shownPrefix,
+                                onValueChange = { if (isUserbot) handler = it.take(8) },
+                                modifier = Modifier.fillMaxWidth(),
+                                enabled = isUserbot,
+                                readOnly = !isUserbot,
+                                singleLine = true,
+                                shape = RoundedCornerShape(18.dp),
+                                placeholder = { Text(if (isUserbot) "." else "/") },
+                                leadingIcon = {
+                                    Icon(Icons.Rounded.Terminal, null, tint = MaterialTheme.colorScheme.primary)
+                                },
+                                colors = TextFieldDefaults.colors(
+                                    focusedIndicatorColor = Color.Transparent,
+                                    unfocusedIndicatorColor = Color.Transparent,
+                                    disabledIndicatorColor = Color.Transparent
+                                )
+                            )
+                            Text(
+                                if (isUserbot) "Choose a short prefix, e.g. . or !"
+                                else "Telegram Bot API requires / for bot commands; custom prefixes aren't supported.",
+                                modifier = Modifier.padding(start = 12.dp, top = 4.dp),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        FilledTonalButton(
+                            onClick = {
+                                val value = handler.trim().ifBlank { "." }
+                                settings.setHandler(value)
+                                handler = value
+                                savedPrefix = value
+                                focusManager.clearFocus()
+                                keyboard?.hide()
+                            },
+                            enabled = isUserbot && handler.isNotBlank() && handler.trim() != savedPrefix,
                             shape = RoundedCornerShape(16.dp),
-                            contentPadding = PaddingValues(horizontal = 18.dp, vertical = 15.dp)) {
+                            contentPadding = PaddingValues(horizontal = 18.dp, vertical = 15.dp),
+                            modifier = Modifier.padding(top = 4.dp)
+                        ) {
                             Icon(Icons.Rounded.Check, null, Modifier.size(18.dp))
                             Spacer(Modifier.width(6.dp))
                             Text("Save")
@@ -943,10 +1023,24 @@ private fun PluginsScreen(modifier: Modifier, selectedOwner: Int, onOwnerChange:
             }
         }
         item {
-            OutlinedTextField(value = search, onValueChange = { search = it }, modifier = Modifier.fillMaxWidth(),
-                singleLine = true, shape = RoundedCornerShape(16.dp), placeholder = { Text("Search plugins or commands") },
+            TextField(
+                value = search,
+                onValueChange = { search = it },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                shape = RoundedCornerShape(28.dp),
+                placeholder = { Text("Search plugins or commands") },
                 leadingIcon = { Icon(Icons.Rounded.Search, null) },
-                trailingIcon = { if (search.isNotEmpty()) IconButton(onClick = { search = "" }) { Icon(Icons.Rounded.Close, "Clear search") } })
+                trailingIcon = {
+                    if (search.isNotEmpty()) {
+                        IconButton(onClick = { search = "" }) { Icon(Icons.Rounded.Close, "Clear search") }
+                    }
+                },
+                colors = TextFieldDefaults.colors(
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent
+                )
+            )
         }
         if (plugins.isEmpty()) item {
             Column(Modifier.fillMaxWidth().padding(vertical = 28.dp), horizontalAlignment = Alignment.CenterHorizontally) {
