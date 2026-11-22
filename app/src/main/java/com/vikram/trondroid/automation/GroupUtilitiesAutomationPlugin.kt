@@ -31,8 +31,7 @@ class GroupUtilitiesAutomationPlugin : AutomationPlugin {
             "invite" -> invite(context, gateway)
             "join" -> join(context, gateway)
             "kickme" -> {
-                val userId = gateway.currentUserId()
-                    ?: return context.reply("Unable to determine the connected Telegram account.")
+                if (gateway.currentUserId() == null) return context.reply("Unable to determine the connected Telegram account.")
                 context.reply("Leaving this chat…")
                 gateway.send(TdApi.LeaveChat(context.message.chatId)) { result ->
                     context.reply(if (result is TdApi.Error) "Could not leave chat: ${result.message}" else "Left the chat.")
