@@ -353,49 +353,122 @@ class AdminAutomationPlugin : AutomationPlugin {
 class BroadcastAutomationPlugin : AutomationPlugin {
     override val id = "userbot:broadcast"
     override val commands = listOf(
-        AutomationCommand("broadcast", "Broadcast text to loaded main-dialog chats (up to 1000).", "broadcast <text>")
+        AutomationCommand("broadcast", "Broadcast a text announcement to private chats and groups in the main dialog list (up to 1000).", "broadcast <message>"),
+        AutomationCommand("bdt", "Alias for broadcast.", "bdt <message>")
     )
+
+    private val running = java.util.concurrent.atomic.AtomicBoolean(false)
+    private val scheduler = java.util.concurrent.Executors.newSingleThreadScheduledExecutor { runnable ->
+        Thread(runnable, "TronDroid-Broadcast").apply { isDaemon = true }
+    }
 
     override fun onCommand(context: AutomationContext) {
         val gateway = context.telegram ?: return context.reply("Telegram session is unavailable.")
-        val text = context.arguments.joinToString(" ").trim()
-        if (text.isBlank()) return context.reply("Usage: .broadcast <message>")
-        context.reply("Loading dialogs before broadcast…")
+        val commandText = context.arguments.joinToString(" ").trim()
+        if (commandText.isBlank()) {
+            context.reply("Usage: .broadcast <message> (or .bdt <message>)")
+            return
+        }
+        if (commandText.length > 4096) {
+            context.reply("Telegram messages are limited to 4096 characters. Shorten the announcement and try again.")
+            return
+        }
+        if (!running.compareAndSet(false, true)) {
+            context.reply("A broadcast is already running. Wait for it to finish before starting another.")
+            return
+        }
+
+        context.reply("Preparing broadcast…")
         gateway.send(TdApi.LoadChats(TdApi.ChatListMain(), 1000)) { loadResult ->
-            if (loadResult is TdApi.Error) return@send context.reply("Unable to load dialogs: ${loadResult.message}")
+            if (loadResult is TdApi.Error) {
+                running.set(false)
+                context.reply("Unable to load dialogs: ${loadResult.message}")
+                return@send
+            }
             gateway.send(TdApi.GetChats(TdApi.ChatListMain(), 1000)) { chatsResult ->
-                val chats = (chatsResult as? TdApi.Chats)?.chatIds?.distinct().orEmpty()
-                if (chats.isEmpty()) return@send context.reply("No main-dialog chats are available.")
-                val loaded = java.util.concurrent.ConcurrentLinkedQueue<TdApi.Chat>()
-                val loadCompleted = java.util.concurrent.atomic.AtomicInteger(0)
-                chats.forEach { chatId ->
-                    gateway.send(TdApi.GetChat(chatId)) { chatResult ->
-                        val chat = chatResult as? TdApi.Chat
-                        if (chat != null) loaded.add(chat)
-                        if (loadCompleted.incrementAndGet() == chats.size) {
-                            val eligible = loaded.filter { chat ->
-                                when (chat.type) {
-                                    is TdApi.ChatTypePrivate, is TdApi.ChatTypeBasicGroup, is TdApi.ChatTypeSupergroup -> true
-                                    else -> false
-                                }
+                val chatIds = (chatsResult as? TdApi.Chats)?.chatIds?.distinct().orEmpty()
+                if (chatsResult is TdApi.Error || chatIds.isEmpty()) {
+                    running.set(false)
+                    context.reply((chatsResult as? TdApi.Error)?.let { "Unable to read dialogs: ${it.message}" }
+                        ?: "No main-dialog chats are available.")
+                    return@send
+                }
+
+                val targets = chatIds.filter { it != context.message.chatId || it != 0L }
+                val userId = gateway.currentUserId()
+                var index = 0
+                var sentUsers = 0
+                var sentGroups = 0
+                var failed = 0
+                var skipped = 0
+                var retriedFloodWait = false
+
+                fun finish() {
+                    running.set(false)
+                    context.reply(
+                        "Broadcast finished. Sent to $sentUsers users and $sentGroups groups. " +
+                            "Failed: $failed. Skipped: $skipped."
+                    )
+                }
+
+                fun next(delayMs: Long = 300L) {
+                    if (index >= targets.size) {
+                        finish()
+                        return
+                    }
+                    scheduler.schedule({
+                        val chatId = targets[index++]
+                        gateway.send(TdApi.GetChat(chatId)) { chatResult ->
+                            val chat = chatResult as? TdApi.Chat
+                            if (chat == null) {
+                                failed++
+                                next()
+                                return@send
                             }
-                            if (eligible.isEmpty()) return@send context.reply("No eligible private or group chats were found.")
-                            context.reply("Broadcast started for ${eligible.size} chats.")
-                            val completed = java.util.concurrent.atomic.AtomicInteger(0)
-                            val sent = java.util.concurrent.atomic.AtomicInteger(0)
-                            val failed = java.util.concurrent.atomic.AtomicInteger(0)
-                            eligible.forEach { chat ->
-                                val input = TdApi.InputMessageText(TdApi.FormattedText(text.take(4000), emptyArray()), null, true)
-                                gateway.send(TdApi.SendMessage(chat.id, null, null, null, null, input)) { result ->
-                                    if (result is TdApi.Error) failed.incrementAndGet() else sent.incrementAndGet()
-                                    if (completed.incrementAndGet() == eligible.size) {
-                                        context.reply("Broadcast finished. Sent: ${sent.get()}, failed: ${failed.get()}.")
+                            val isPrivate = chat.type is TdApi.ChatTypePrivate
+                            val isGroup = chat.type is TdApi.ChatTypeBasicGroup ||
+                                chat.type is TdApi.ChatTypeSupergroup
+                            if (!isPrivate && !isGroup) {
+                                skipped++
+                                next(50L)
+                                return@send
+                            }
+                            val privateType = chat.type as? TdApi.ChatTypePrivate
+                            if (privateType != null && privateType.userId == userId) {
+                                skipped++
+                                next(50L)
+                                return@send
+                            }
+
+                            val content = TdApi.InputMessageText(
+                                TdApi.FormattedText(commandText, emptyArray()), null, true
+                            )
+                            gateway.send(TdApi.SendMessage(chat.id, null, null, null, null, content)) { sendResult ->
+                                val error = sendResult as? TdApi.Error
+                                if (error == null) {
+                                    if (isPrivate) sentUsers++ else sentGroups++
+                                    retriedFloodWait = false
+                                    next()
+                                } else {
+                                    val waitSeconds = Regex("(?i)(?:retry after|FLOOD_WAIT[_ ]?)(\\d+)")
+                                        .find(error.message.orEmpty())?.groupValues?.getOrNull(1)?.toLongOrNull()
+                                    if (error.code == 429 && waitSeconds != null && !retriedFloodWait) {
+                                        retriedFloodWait = true
+                                        index--
+                                        next((waitSeconds.coerceIn(1L, 60L) * 1000L) + 250L)
+                                    } else {
+                                        failed++
+                                        retriedFloodWait = false
+                                        next()
                                     }
                                 }
                             }
                         }
-                    }
+                    }, delayMs.coerceAtLeast(0L), java.util.concurrent.TimeUnit.MILLISECONDS)
                 }
+
+                context.reply("Broadcast started for up to ${targets.size} main-dialog chats. Sending sequentially to respect Telegram limits.")
+                next(0L)
             }
         }
     }
