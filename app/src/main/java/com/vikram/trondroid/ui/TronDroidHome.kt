@@ -841,6 +841,7 @@ private fun PluginDetailScreen(modifier: Modifier, id: String) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val plugin = PluginCatalog.find(id) ?: return
     val isBot = plugin.owner == com.vikram.trondroid.plugins.PluginOwner.BOT
+    val pluginSettings = remember { PluginSettings(context) }
     LazyColumn(
         modifier.fillMaxSize().padding(horizontal = 18.dp),
         contentPadding = PaddingValues(vertical = 16.dp),
@@ -877,21 +878,34 @@ private fun PluginDetailScreen(modifier: Modifier, id: String) {
             Text("Commands", style = MaterialTheme.typography.titleMedium)
         }
         items(plugin.commands, key = { it.name }) { command ->
+            var commandEnabled by remember(plugin.id, command.name) {
+                mutableStateOf(pluginSettings.commandEnabled(plugin.id, command.name))
+            }
             Card(shape = RoundedCornerShape(18.dp)) {
                 Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(
-                        (if (isBot) "/" else PluginSettings(context).handler()) + command.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            (if (isBot) "/" else pluginSettings.handler()) + command.name,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Switch(
+                            checked = commandEnabled,
+                            onCheckedChange = {
+                                commandEnabled = it
+                                pluginSettings.setCommandEnabled(plugin.id, command.name, it)
+                            }
+                        )
+                    }
                     Text(command.description, style = MaterialTheme.typography.bodyMedium)
                     Text(
-                        "Usage: " + (if (isBot) "/" else PluginSettings(context).handler()) + command.usage,
+                        "Usage: " + (if (isBot) "/" else pluginSettings.handler()) + command.usage,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        "Example: " + (if (isBot) "/" else PluginSettings(context).handler()) + command.example,
+                        "Example: " + (if (isBot) "/" else pluginSettings.handler()) + command.example,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
