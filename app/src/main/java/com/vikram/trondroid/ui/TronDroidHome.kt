@@ -1890,6 +1890,7 @@ private fun CredentialDetailScreen(
     var showCustomCredentialsDialog by remember { mutableStateOf(false) }
     var editingCredentialKey by remember { mutableStateOf<String?>(null) }
     var pendingCredentialDelete by remember { mutableStateOf<String?>(null) }
+    var pendingClearAll by remember { mutableStateOf(false) }
     val exportCredentialsLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/json")
     ) { uri ->
@@ -1949,7 +1950,11 @@ private fun CredentialDetailScreen(
                 android.widget.Toast.LENGTH_LONG).show()
         }
     }
-    LazyColumn(modifier.fillMaxSize().padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    LazyColumn(
+        modifier.fillMaxSize().padding(horizontal = 18.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+        contentPadding = PaddingValues(top = 10.dp, bottom = 160.dp)
+    ) {
         item {
             Text("Saved credentials", style = MaterialTheme.typography.titleMedium)
             Text(
@@ -1957,24 +1962,41 @@ private fun CredentialDetailScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-        item { CredentialField("Profile name", bot.name) }
-        item { CredentialField("Phone number", bot.phoneNumber) }
-        item { CredentialField("Telegram API ID", bot.apiId.toString()) }
         item {
-            Card(shape = RoundedCornerShape(16.dp)) {
+            Column(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)),
+                verticalArrangement = Arrangement.spacedBy(1.dp)
+            ) {
+                CredentialField("Profile name", bot.name, RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp))
+                CredentialField("Phone number", bot.phoneNumber, RoundedCornerShape(0.dp))
+                CredentialField("Telegram API ID", bot.apiId.toString(), RoundedCornerShape(0.dp))
+                Card(
+                    shape = RoundedCornerShape(bottomStart = 18.dp, bottomEnd = 18.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
+                ) {
                 Column(Modifier.fillMaxWidth().padding(14.dp)) {
                     Text("Telegram API Hash", style = MaterialTheme.typography.labelLarge)
-                    if (editing) OutlinedTextField(hash, { hash = it }, modifier = Modifier.fillMaxWidth(),
-                        visualTransformation = if (reveal) VisualTransformation.None else PasswordVisualTransformation(), singleLine = true)
-                    else Text(if (reveal) apiHash else "••••••••••••••••", modifier = Modifier.padding(vertical = 8.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (editing) OutlinedTextField(
+                        value = hash,
+                        onValueChange = { hash = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        visualTransformation = if (reveal) VisualTransformation.None else PasswordVisualTransformation(),
+                        trailingIcon = {
+                            IconButton(onClick = { reveal = !reveal }) {
+                                Icon(if (reveal) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility,
+                                    if (reveal) "Hide API hash" else "Show API hash")
+                            }
+                        },
+                        singleLine = true
+                    ) else Text(if (reveal) apiHash else "••••••••••••••••", modifier = Modifier.padding(vertical = 8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                         TextButton(onClick = { editing = !editing; hash = apiHash }) { Text(if (editing) "Cancel" else "Edit") }
-                        TextButton(onClick = { reveal = !reveal }) { Text(if (reveal) "Hide" else "Show") }
                         if (editing) Button(onClick = { onSaveApiHash(hash); editing = false }) { Text("Save") }
                         IconButton(onClick = { android.content.ClipData.newPlainText("Telegram API Hash", apiHash).also {
                             (context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager).setPrimaryClip(it)
                         } }) { Icon(Icons.Rounded.ContentCopy, "Copy API hash") }
                     }
+                }
                 }
             }
         }
@@ -2037,7 +2059,7 @@ private fun CredentialDetailScreen(
                     }
                 }
                 if (customCredentials.isNotEmpty()) {
-                    TextButton(onClick = { onSaveCustomCredentials(emptyMap()) }, modifier = Modifier.align(Alignment.End)) {
+                    TextButton(onClick = { pendingClearAll = true }, modifier = Modifier.align(Alignment.End)) {
                         Text("Clear all credentials", color = MaterialTheme.colorScheme.error)
                     }
                 }
@@ -2060,6 +2082,26 @@ private fun CredentialDetailScreen(
                 onSaveCustomCredentials(merged)
                 showCustomCredentialsDialog = false
                 editingCredentialKey = null
+            }
+        )
+    }
+    if (pendingClearAll) {
+        AlertDialog(
+            onDismissRequest = { pendingClearAll = false },
+            icon = { Icon(Icons.Rounded.DeleteSweep, null, tint = MaterialTheme.colorScheme.error) },
+            title = { Text("Clear all credentials?") },
+            text = { Text("Remove every custom credential saved for ${bot.name}? This cannot be undone.") },
+            confirmButton = {
+                Button(
+                    onClick = { onSaveCustomCredentials(emptyMap()); pendingClearAll = false },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = MaterialTheme.colorScheme.onError
+                    )
+                ) { Text("Clear all") }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { pendingClearAll = false }) { Text("Cancel") }
             }
         )
     }
@@ -2212,9 +2254,13 @@ private fun CustomCredentialsDialog(
 }
 
 @Composable
-private fun CredentialField(label: String, value: String) {
+private fun CredentialField(
+    label: String,
+    value: String,
+    shape: RoundedCornerShape = RoundedCornerShape(16.dp)
+) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    Card(shape = RoundedCornerShape(16.dp)) {
+    Card(shape = shape, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
         Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(label, style = MaterialTheme.typography.labelLarge)
