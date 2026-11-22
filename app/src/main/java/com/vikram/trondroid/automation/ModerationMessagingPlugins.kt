@@ -14,10 +14,12 @@ class AdminAutomationPlugin : AutomationPlugin {
 
     override val commands = listOf(
         AutomationCommand("ban", "Ban a replied user or ID/username, optionally for a duration (10s, 5m, 2h, 3d).", "ban <reply or user> [duration]"),
+        AutomationCommand("dban", "Delete the replied message and ban its sender.", "dban (reply required)"),
         AutomationCommand("unban", "Remove a user's ban from this chat.", "unban <reply or user>"),
         AutomationCommand("banall", "Ban all regular members after an explicit confirmation.", "banall confirm"),
         AutomationCommand("kick", "Remove a member from this chat without a permanent ban.", "kick <reply or user>"),
         AutomationCommand("mute", "Restrict a member from sending messages, optionally for a duration.", "mute <reply or user> [duration]"),
+        AutomationCommand("dmute", "Delete the replied message and mute its sender.", "dmute (reply required)"),
         AutomationCommand("unmute", "Restore the default member permissions for a restricted user.", "unmute <reply or user>"),
         AutomationCommand("promote", "Promote a member with a safe set of administrator permissions.", "promote <reply or user>"),
         AutomationCommand("demote", "Remove administrator permissions from a member.", "demote <reply or user>"),
@@ -27,7 +29,11 @@ class AdminAutomationPlugin : AutomationPlugin {
 
     override fun onCommand(context: AutomationContext) {
         val gateway = context.telegram ?: return context.reply("Telegram session is unavailable.")
-        val command = context.command.lowercase()
+        val command = when (context.command.lowercase()) {
+            "dban" -> "ban"
+            "dmute" -> "mute"
+            else -> context.command.lowercase()
+        }
         val replied = context.message.tdMessage?.let(gateway::repliedMessage)
 
         if (command == "pin" || command == "unpin") {
@@ -192,11 +198,7 @@ class AdminAutomationPlugin : AutomationPlugin {
             "unmute" -> TdApi.SetChatMemberStatus(chatId, sender, TdApi.ChatMemberStatusMember())
             "promote" -> {
                 val rights = TdApi.ChatAdministratorRights().apply {
-                    canManageChat = true
-                    canDeleteMessages = true
-                    canRestrictMembers = true
                     canInviteUsers = true
-                    canPinMessages = true
                 }
                 TdApi.SetChatMemberStatus(chatId, sender, TdApi.ChatMemberStatusAdministrator(false, rights))
             }
@@ -220,7 +222,7 @@ class AdminAutomationPlugin : AutomationPlugin {
                     "unban" -> "Member unbanned."
                     "mute" -> if (duration != null) "Member muted for ${durationToken}." else "Member muted indefinitely."
                     "unmute" -> "Member unmuted."
-                    "promote" -> "Member promoted with moderation, invite, pin and message-management rights."
+                    "promote" -> "Member promoted with invite-only administrator rights."
                     "demote" -> "Administrator rights removed."
                     else -> "Action completed."
                 }
