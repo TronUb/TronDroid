@@ -399,6 +399,7 @@ private fun UserbotDetailScreen(
     val ready = auth?.constructor == TdApi.AuthorizationStateReady.CONSTRUCTOR
     var section by remember(bot.id) { mutableStateOf(UserbotSection.GENERAL) }
     var recentChatsExpanded by remember(bot.id) { mutableStateOf(false) }
+    var terminalFullscreen by remember(bot.id) { mutableStateOf(false) }
     var showRenameDialog by remember(bot.id) { mutableStateOf(false) }
     var renamedProfile by remember(bot.id, bot.name) { mutableStateOf(bot.name) }
     val terminal = androidx.compose.ui.graphics.Color(0xFF050705)
@@ -617,6 +618,9 @@ private fun UserbotDetailScreen(
                                 style = MaterialTheme.typography.labelSmall
                             )
                         }
+                        IconButton(onClick = { terminalFullscreen = true }) {
+                            Icon(Icons.Rounded.Fullscreen, "Open terminal fullscreen", tint = terminalAccent)
+                        }
                         Surface(
                             shape = RoundedCornerShape(50),
                             color = androidx.compose.ui.graphics.Color(0xFF14251A)
@@ -824,6 +828,50 @@ private fun UserbotDetailScreen(
                 }
             }
         }
+        }
+    }
+    if (terminalFullscreen) {
+        Dialog(
+            onDismissRequest = { terminalFullscreen = false },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Card(
+                Modifier.fillMaxWidth().fillMaxHeight(0.96f).padding(8.dp),
+                colors = CardDefaults.cardColors(containerColor = terminal),
+                shape = RoundedCornerShape(22.dp)
+            ) {
+                Column(Modifier.fillMaxSize().padding(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Rounded.Code, null, tint = terminalAccent)
+                        Spacer(Modifier.width(9.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text("TRONDROID / SESSION", color = terminalAccent, style = MaterialTheme.typography.titleSmall)
+                            Text("LIVE LOG STREAM · ${logs.size} EVENTS", color = terminalText.copy(alpha = 0.75f),
+                                style = MaterialTheme.typography.labelSmall)
+                        }
+                        IconButton(onClick = { terminalFullscreen = false }) {
+                            Icon(Icons.Rounded.FullscreenExit, "Exit fullscreen", tint = terminalAccent)
+                        }
+                    }
+                    HorizontalDivider(Modifier.padding(vertical = 12.dp), color = Color(0xFF26352A))
+                    if (logs.isEmpty()) {
+                        Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                            Text("> waiting for events…", color = terminalText)
+                        }
+                    } else {
+                        LazyColumn(Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(bottom = 18.dp)) {
+                            items(logs.takeLast(1000)) { entry ->
+                                Text(
+                                    "[${entry.time}] ${if (entry.isError) "ERROR" else "INFO"}  ${entry.message}",
+                                    color = if (entry.isError) Color(0xFFFF8A80) else terminalText,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
     if (showRenameDialog) {
