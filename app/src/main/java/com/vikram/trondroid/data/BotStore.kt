@@ -107,6 +107,30 @@ class BotStore(private val context: Context) {
         editor.apply()
     }
 
+    fun setAllEnabled(enabled: Boolean) {
+        val editor = prefs.edit()
+        all().forEach { profile ->
+            editor.putBoolean("enabled.${profile.id}", enabled)
+            editor.putBoolean("botEnabled.${profile.id}", enabled)
+        }
+        editor.apply()
+    }
+
+    fun removeAll() {
+        val profiles = all()
+        val editor = prefs.edit().putString("bots", "[]")
+        profiles.forEach { profile ->
+            val id = profile.id
+            listOf(
+                "apiHash.$id", "enabled.$id", "customCredentials.$id", "botEnabled.$id",
+                "botName.$id", "botUsername.$id", "botTelegramId.$id", "botPhotoPath.$id"
+            ).forEach(editor::remove)
+            context.filesDir.resolve("tdlib/$id").deleteRecursively()
+            context.filesDir.resolve("bot-avatars/$id.jpg").delete()
+        }
+        editor.apply()
+    }
+
     fun remove(id: String) {
         val json = JSONArray()
         all().filterNot { it.id == id }.forEach { b -> json.put(JSONObject().put("id", b.id)
